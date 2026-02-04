@@ -51,6 +51,8 @@ jobs:
 
       - name: Build
         run: ${{ steps.detect-package-manager.outputs.runner }} run build
+        env:
+          VITE_GAS_APP_URL: ${{ secrets.VITE_GAS_APP_URL }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
