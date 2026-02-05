@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { transformReportData } from '../utils/reportTransformer';
 
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -29,6 +31,7 @@ interface ReportData {
 export default function Report() {
     const { user, signOut } = useAuth();
     const { t } = useTranslation();
+    const navigate = useNavigate();
 
     const [reportId, setReportId] = useState<string>('');
     const [reportData, setReportData] = useState<ReportData | null>(null);
@@ -109,6 +112,12 @@ export default function Report() {
     const hasFlights = (reportData?.items?.Flight?.length || 0) > 0;
     const isOtherFormsDisabled = loadingCount > 0 || !hasFlights;
 
+    const handleConfirmSave = () => {
+        if (!reportData || !user) return;
+        const formattedData = transformReportData(reportData, reportId, user.name);
+        navigate('/report/summary', { state: { reportData: formattedData } });
+    };
+
     if (loading) return <div className="p-8 text-center text-gray-500">Initializing Report...</div>;
 
     return (
@@ -117,7 +126,14 @@ export default function Report() {
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-gray-800">{t('app_title')} - {reportId}</h1>
                     <div className="flex items-center gap-4">
-
+                        {reportData && (
+                            <button
+                                onClick={handleConfirmSave}
+                                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2"
+                            >
+                                <span>確認存檔</span>
+                            </button>
+                        )}
                         <span className="text-gray-600">{t('welcome')}, {user?.name}</span>
                         <button
                             onClick={() => {

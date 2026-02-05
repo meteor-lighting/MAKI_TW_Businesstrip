@@ -1,15 +1,37 @@
 import React, { useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import SummaryCards from './SummaryCards';
 import ExpenseCharts from './ExpenseCharts';
 import DetailTable from './DetailTable';
-import { mockReportData } from '../../mock/reportData';
 import { generateWordDocument } from '../../utils/wordGenerator';
 import * as htmlToImage from 'html-to-image';
 import { Download } from 'lucide-react';
+import { ReportData } from '../../types/report';
 
 const ExpenseReportPage: React.FC = () => {
-    const reportData = mockReportData;
+    const location = useLocation();
+    const navigate = useNavigate();
+
     const chartsRef = useRef<HTMLDivElement>(null);
+
+    // Get data from location state
+    const reportData = location.state?.reportData as ReportData;
+
+    if (!reportData) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-center">
+                    <h2 className="text-xl font-bold mb-4">No Report Data Found</h2>
+                    <button
+                        onClick={() => navigate('/report')}
+                        className="text-blue-600 hover:underline"
+                    >
+                        Return to Report Page
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const handleExport = async () => {
         let chartImageBase64 = undefined;

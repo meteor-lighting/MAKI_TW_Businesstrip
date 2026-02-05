@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Report from './pages/Report';
+import ExpenseReportPage from './components/Report/ExpenseReportPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './i18n';
 
@@ -27,6 +28,14 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <Report />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/report/summary"
+                        element={
+                            <ProtectedRoute>
+                                <ExpenseReportPage />
                             </ProtectedRoute>
                         }
                     />
