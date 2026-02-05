@@ -1,0 +1,75 @@
+import React from 'react';
+import { ReportColumn } from '../../types/report';
+import clsx from 'clsx';
+
+interface DetailTableProps {
+    title: string;
+    total: {
+        displayString: string;
+    };
+    columns: ReportColumn[];
+    data: Record<string, any>[];
+}
+
+const DetailTable: React.FC<DetailTableProps> = ({ title, total, columns, data }) => {
+    return (
+        <div className="mb-6">
+            {/* Table Header / Title */}
+            <div className="bg-slate-800 text-white px-4 py-2 flex justify-between items-center rounded-t-sm">
+                <div className="flex items-center gap-2">
+                    <div className="bg-white text-slate-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                        {/* Icon placeholder or just generic bullet */}
+                        -
+                    </div>
+                    <h3 className="font-bold">{title}</h3>
+                </div>
+                {/* Total in title bar if needed? Image doesn't show it here, but below table usually. 
+             Wait, image shows "Total Flight 9,444" below table.
+             Top bar has "機票明細 (Flight Details)"
+         */}
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left rtl:text-right text-gray-500">
+                    <thead className="text-xs text-white uppercase bg-slate-700">
+                        <tr>
+                            {columns.map((col, index) => (
+                                <th key={index} scope="col" className="px-4 py-2 border-r border-slate-600 last:border-r-0">
+                                    {col.header}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {data.map((row, rowIndex) => (
+                            <tr key={rowIndex} className={clsx("border-b", rowIndex % 2 === 0 ? "bg-gray-100" : "bg-white")}>
+                                {columns.map((col, colIndex) => {
+                                    let cellValue = row[col.accessorKey];
+
+                                    if (col.type === 'currency' || col.type === 'number') {
+                                        // Simple formatting
+                                        cellValue = new Intl.NumberFormat('en-US').format(cellValue);
+                                    }
+
+                                    return (
+                                        <td key={colIndex} className="px-4 py-2 border-r border-slate-300 last:border-r-0 text-slate-800 font-medium">
+                                            {cellValue}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Footer Total */}
+            <div className="flex justify-between items-center bg-white px-4 py-2 border-b border-x border-slate-200">
+                <div className="font-bold text-gray-700">Total</div>
+                <div className="font-bold text-xl text-gray-800">{total.displayString}</div>
+            </div>
+        </div>
+    );
+};
+
+export default DetailTable;
