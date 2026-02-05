@@ -56,8 +56,8 @@ const ExpenseReportPage: React.FC = () => {
                         </h1>
                         <div className="text-sm text-gray-500 mt-1 flex gap-4">
                             <span>用戶: <span className="font-medium text-gray-700">{reportData.user}</span></span>
-                            <span>商機天數: {reportData.summary.days}天</span>
-                            <span>USD產率: {reportData.summary.rateUSD}</span>
+                            <span>商旅天數: {reportData.summary.days}天</span>
+                            <span>USD匯率: {reportData.summary.rateUSD}</span>
                             <span>期間: {reportData.summary.period}</span>
                         </div>
                     </div>
