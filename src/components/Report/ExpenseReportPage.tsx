@@ -86,29 +86,33 @@ const ExpenseReportPage: React.FC = () => {
                                 <div className="flex justify-between border-b border-slate-500 pb-2">
                                     <span>合計 TWD:</span>
                                     <div className="text-right">
-                                        <div>{reportData.summary.personalTWD.toLocaleString()} (個人)</div>
-                                        <div>{reportData.summary.totalTWD.toLocaleString()} (總體)</div>
+                                        <span>{reportData.summary.personalTWD.toLocaleString()} (個人)</span>
+                                        <span className="mx-1">/</span>
+                                        <span>{reportData.summary.totalTWD.toLocaleString()} (總體)</span>
                                     </div>
                                 </div>
                                 <div className="flex justify-between border-b border-slate-500 pb-2">
                                     <span>avg/day (TWD):</span>
                                     <div className="text-right">
-                                        <div>{(reportData.summary.personalTWD / reportData.summary.days).toFixed(1)}</div>
-                                        <div>{reportData.summary.avgDayTWD.toLocaleString()}</div>
+                                        <span>{(reportData.summary.personalTWD / reportData.summary.days).toFixed(1)}</span>
+                                        <span className="mx-1">/</span>
+                                        <span>{reportData.summary.avgDayTWD.toLocaleString()}</span>
                                     </div>
                                 </div>
                                 <div className="flex justify-between border-b border-slate-500 pb-2">
                                     <span>合計 USD:</span>
                                     <div className="text-right">
-                                        <div>{(reportData.summary.personalTWD / reportData.summary.rateUSD).toFixed(2)}</div>
-                                        <div>{reportData.summary.totalUSD.toLocaleString()}</div>
+                                        <span>{(reportData.summary.personalTWD / reportData.summary.rateUSD).toFixed(2)}</span>
+                                        <span className="mx-1">/</span>
+                                        <span>{reportData.summary.totalUSD.toLocaleString()}</span>
                                     </div>
                                 </div>
                                 <div className="flex justify-between">
                                     <span>avg/day (USD):</span>
                                     <div className="text-right">
-                                        <div>{((reportData.summary.personalTWD / reportData.summary.rateUSD) / reportData.summary.days).toFixed(2)}</div>
-                                        <div>{reportData.summary.avgDayUSD.toLocaleString()}</div>
+                                        <span>{((reportData.summary.personalTWD / reportData.summary.rateUSD) / reportData.summary.days).toFixed(2)}</span>
+                                        <span className="mx-1">/</span>
+                                        <span>{reportData.summary.avgDayUSD.toLocaleString()}</span>
                                     </div>
                                 </div>
                             </div>
