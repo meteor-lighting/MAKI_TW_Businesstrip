@@ -78,47 +78,48 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         }
     };
 
-    // Define columns mapping
-    // Flight
+    // Define columns mapping matching Google Sheet Headers
+    // Flight Sheet Headers: 報告編號, 次序, 日期, 航班代號, 出發地, 抵達地, 出發時間, 抵達時間, 幣別, 金額, TWD金額, 匯率, 備註
     createSection('Flight', '機票明細 (Flight Details)', [
         { header: '日期', accessorKey: '日期', width: 15 },
-        { header: '航班', accessorKey: '航班', width: 15 },
-        { header: '出發', accessorKey: '出發', width: 10 },
-        { header: '抵達', accessorKey: '抵達', width: 10 },
+        { header: '航班', accessorKey: '航班代號', width: 15 },
+        { header: '出發', accessorKey: '出發地', width: 10 },
+        { header: '抵達', accessorKey: '抵達地', width: 10 },
         { header: '幣別', accessorKey: '幣別', width: 10 },
         { header: '金額', accessorKey: '金額', width: 10, type: 'number' },
-        { header: '匯率/票號', accessorKey: '匯率', width: 15 },
-        { header: 'TWD', accessorKey: 'TWD', width: 10, type: 'currency' }
+        { header: '匯率', accessorKey: '匯率', width: 15 },
+        { header: 'TWD', accessorKey: 'TWD金額', width: 10, type: 'currency' }
     ], 'flight');
 
-    // Accommodation
+    // Accommodation Sheet Headers: ..., TWD個人金額, TWD代墊金額, 總體金額, TWD總體金額...
     createSection('Accommodation', '住宿明細 (Accommodation Details)', [
         { header: '日期', accessorKey: '日期', width: 15 },
         { header: '地區', accessorKey: '地區', width: 15 },
         { header: '天數', accessorKey: '天數', width: 5 },
-        { header: 'TWD個人', accessorKey: 'TWD個人', width: 10, type: 'currency' },
-        { header: '代墊', accessorKey: '代墊', width: 10, type: 'currency' },
-        { header: '總額', accessorKey: '總額', width: 10, type: 'currency' },
-        { header: '金額(外幣)', accessorKey: '金額', width: 10, type: 'currency' },
-        { header: 'TWD金額', accessorKey: 'TWD', width: 10, type: 'currency' }
+        { header: 'TWD個人', accessorKey: 'TWD個人金額', width: 10, type: 'currency' },
+        { header: '代墊', accessorKey: 'TWD代墊金額', width: 10, type: 'currency' },
+        { header: '總額', accessorKey: 'TWD總體金額', width: 10, type: 'currency' },
+        { header: '金額(外幣)', accessorKey: '總體金額', width: 10, type: 'currency' },
+        { header: 'TWD金額', accessorKey: 'TWD總體金額', width: 10, type: 'currency' }
     ], 'accommodation');
 
-    // Taxi
+    // Taxi Sheet Headers: ..., 幣別, 金額, TWD金額, 匯率, 備註
     createSection('Taxi', '計程車明細 (Taxi Details)', [
         { header: '日期', accessorKey: '日期', width: 15 },
         { header: '地區', accessorKey: '地區', width: 15 },
         { header: '幣別', accessorKey: '幣別', width: 10 },
         { header: '金額', accessorKey: '金額', width: 10, type: 'currency' },
-        { header: 'TWD', accessorKey: 'TWD', width: 10, type: 'currency' },
+        { header: 'TWD', accessorKey: 'TWD金額', width: 10, type: 'currency' },
         { header: '備註', accessorKey: '備註', width: 25 }
     ], 'taxi');
 
-    // Others
+    // Others - using generic keys, assuming similar structure or falling back strictly if needed.
+    // For now, assuming other sheets roughly follow logic.
     ['Internet', 'Social', 'Gift', 'HandingFee', 'PerDiem', 'Others'].forEach(cat => {
         createSection(cat, `${cat} Details`, [
             { header: '日期', accessorKey: '日期', width: 20 },
-            { header: '說明', accessorKey: '說明', width: 30 },
-            { header: 'TWD', accessorKey: 'TWD', width: 20, type: 'currency' },
+            { header: '說明', accessorKey: '說明', width: 30 }, // Description often '備註' or '說明'
+            { header: 'TWD', accessorKey: 'TWD總體金額', width: 20, type: 'currency' }, // Assuming TWD總體金額 exists
             { header: '備註', accessorKey: '備註', width: 30 }
         ], cat.toLowerCase());
     });
