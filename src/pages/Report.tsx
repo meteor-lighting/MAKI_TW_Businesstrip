@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { exportToExcel } from '../utils/excelExport';
+
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../services/api';
@@ -104,10 +104,7 @@ export default function Report() {
         if (reportId) await fetchReportData(reportId);
     };
 
-    const handleExport = () => {
-        if (!reportData) return;
-        exportToExcel(reportData, reportId);
-    };
+
 
     const hasFlights = (reportData?.items?.Flight?.length || 0) > 0;
     const isOtherFormsDisabled = loadingCount > 0 || !hasFlights;
@@ -120,14 +117,7 @@ export default function Report() {
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-gray-800">{t('app_title')} - {reportId}</h1>
                     <div className="flex items-center gap-4">
-                        {reportData && (
-                            <button
-                                onClick={handleExport}
-                                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors shadow-sm flex items-center gap-2"
-                            >
-                                <span>Download Excel</span>
-                            </button>
-                        )}
+
                         <span className="text-gray-600">{t('welcome')}, {user?.name}</span>
                         <button
                             onClick={() => {
