@@ -36,7 +36,7 @@ const ExpenseReportPage: React.FC = () => {
         // Clear auth tokens
         localStorage.removeItem('token');
         sessionStorage.removeItem('token');
-        navigate('/login');
+        navigate('/');
     };
 
     return (
