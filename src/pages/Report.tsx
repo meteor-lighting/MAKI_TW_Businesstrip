@@ -124,7 +124,7 @@ export default function Report() {
         <div className="min-h-screen bg-gray-100 p-4 md:p-8 pb-32">
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-800">商務旅行報告輸入 - {reportId}</h1>
+                    <h1 className="text-2xl font-bold text-gray-800">商務旅行報告 - {reportId}</h1>
                     <div className="flex items-center gap-4">
                         {reportData && (
                             <button
