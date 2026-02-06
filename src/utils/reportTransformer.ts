@@ -61,16 +61,16 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     const sections: ReportSection[] = [];
 
     // Helper to create section
-    const createSection = (key: string, title: string, columns: any[], id: string) => {
+    const createSection = (key: string, title: string, columns: any[], id: string, totalOverride?: number) => {
         const items = raw.items[key];
         if (items && items.length > 0) {
             sections.push({
                 id,
                 title,
                 total: {
-                    amount: catTotals[key] || 0,
+                    amount: totalOverride !== undefined ? totalOverride : (catTotals[key] || 0),
                     currency: 'TWD',
-                    displayString: (catTotals[key] || 0).toLocaleString()
+                    displayString: (totalOverride !== undefined ? totalOverride : (catTotals[key] || 0)).toLocaleString()
                 },
                 columns,
                 data: items
@@ -92,6 +92,9 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     ], 'flight');
 
     // Accommodation Sheet Headers: ..., TWD個人金額, TWD代墊金額, 總體金額, TWD總體金額...
+    const accommodationItems = raw.items['Accommodation'] || [];
+    const accommodationTotalTWD = accommodationItems.reduce((sum, item) => sum + Number(item['TWD總體金額'] || 0), 0);
+
     createSection('Accommodation', '住宿明細 (Accommodation Details)', [
         { header: '日期', accessorKey: '日期', width: 12, type: 'date' },
         { header: '地區', accessorKey: '地區', width: 10 },
@@ -103,7 +106,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: '匯率', accessorKey: '匯率', width: 8 },
         { header: 'TWD個人金額', accessorKey: 'TWD個人金額', width: 12, type: 'currency' },
         { header: 'TWD總體金額', accessorKey: 'TWD總體金額', width: 12, type: 'currency' }
-    ], 'accommodation');
+    ], 'accommodation', accommodationTotalTWD);
 
     // Taxi Sheet Headers: ..., 幣別, 金額, TWD金額, 匯率, 備註
     createSection('Taxi', '計程車明細 (Taxi Details)', [
@@ -111,7 +114,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: '地區', accessorKey: '地區', width: 15 },
         { header: '幣別', accessorKey: '幣別', width: 10 },
         { header: '金額', accessorKey: '金額', width: 10, type: 'currency' },
-        { header: 'TWD', accessorKey: 'TWD金額', width: 10, type: 'currency' },
+        { header: 'TWD金額', accessorKey: 'TWD金額', width: 10, type: 'currency' },
         { header: '備註', accessorKey: '備註', width: 25 }
     ], 'taxi');
 
