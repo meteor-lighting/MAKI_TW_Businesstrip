@@ -29,7 +29,7 @@ interface ReportData {
 }
 
 export default function Report() {
-    const { user, signOut } = useAuth();
+    const { user } = useAuth();
     const { t } = useTranslation();
     const navigate = useNavigate();
 
@@ -129,21 +129,12 @@ export default function Report() {
                         {reportData && (
                             <button
                                 onClick={handleConfirmSave}
-                                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm flex items-center gap-2"
+                                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors shadow-sm flex items-center gap-2"
                             >
-                                <span>確認存檔</span>
+                                <span>確認</span>
                             </button>
                         )}
                         <span className="text-gray-600">{t('welcome')}, {user?.name}</span>
-                        <button
-                            onClick={() => {
-                                sessionStorage.removeItem('activeReportId');
-                                signOut();
-                            }}
-                            className="px-4 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
-                        >
-                            Logout
-                        </button>
                     </div>
                 </div>
 
