@@ -79,7 +79,11 @@ export default function Report() {
             if (activeReportId) {
                 setReportId(activeReportId);
                 // Load Data
-                fetchReportData(activeReportId);
+                // Add a minimum delay to ensure the funnel animation is visible/smooth
+                await Promise.all([
+                    fetchReportData(activeReportId),
+                    new Promise(resolve => setTimeout(resolve, 800))
+                ]);
             }
 
         } catch (e) {
