@@ -3,9 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import SummaryCards from './SummaryCards';
 import ExpenseCharts from './ExpenseCharts';
 import DetailTable from './DetailTable';
-import { generateWordDocument } from '../../utils/wordGenerator';
-import * as htmlToImage from 'html-to-image';
-import { Download } from 'lucide-react';
+
+import { ArrowLeft, LogOut } from 'lucide-react';
 import { ReportData } from '../../types/report';
 
 const ExpenseReportPage: React.FC = () => {
@@ -33,16 +32,11 @@ const ExpenseReportPage: React.FC = () => {
         );
     }
 
-    const handleExport = async () => {
-        let chartImageBase64 = undefined;
-        if (chartsRef.current) {
-            try {
-                chartImageBase64 = await htmlToImage.toPng(chartsRef.current, { backgroundColor: '#ffffff' });
-            } catch (error) {
-                console.error('Failed to capture charts image', error);
-            }
-        }
-        await generateWordDocument(reportData, chartImageBase64);
+    const handleLogout = () => {
+        // Clear auth tokens
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
+        navigate('/login');
     };
 
     return (
@@ -61,13 +55,22 @@ const ExpenseReportPage: React.FC = () => {
                             <span>期間: {reportData.summary.period}</span>
                         </div>
                     </div>
-                    <button
-                        onClick={handleExport}
-                        className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-                    >
-                        <Download size={18} />
-                        匯出 Word
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => navigate('/report')}
+                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                        >
+                            <ArrowLeft size={18} />
+                            返回
+                        </button>
+                        <button
+                            onClick={handleLogout}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-red-200"
+                        >
+                            <LogOut size={18} />
+                            登出
+                        </button>
+                    </div>
                 </div>
 
                 {/* Summary Cards */}

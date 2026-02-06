@@ -21,10 +21,10 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
                 <div>
                     <h3 className="text-gray-600 font-bold mb-1">總支出</h3>
                     <div className="text-sm text-gray-500 mb-2">(Total TWD)</div>
-                    <div className="text-4xl font-bold text-gray-800">{formatCurrency(summary.totalTWD)}</div>
+                    <div className="text-5xl font-bold text-gray-800">{formatCurrency(summary.totalTWD)}</div>
                 </div>
                 <div className="text-teal-600">
-                    <Coins size={48} strokeWidth={1.5} />
+                    <Coins size={64} strokeWidth={1.5} />
                 </div>
             </div>
 
@@ -33,10 +33,10 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
                 <div>
                     <h3 className="text-gray-600 font-bold mb-1">個人負擔</h3>
                     <div className="text-sm text-gray-500 mb-2">(Personal TWD)</div>
-                    <div className="text-4xl font-bold text-gray-800">{formatCurrency(summary.personalTWD)}</div>
+                    <div className="text-5xl font-bold text-gray-800">{formatCurrency(summary.personalTWD)}</div>
                 </div>
                 <div className="text-blue-500">
-                    <User size={48} strokeWidth={1.5} />
+                    <User size={64} strokeWidth={1.5} />
                 </div>
             </div>
 
@@ -45,10 +45,10 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
                 <div>
                     <h3 className="text-gray-600 font-bold mb-1">日均支出</h3>
                     <div className="text-sm text-gray-500 mb-2">(Avg/Day TWD)</div>
-                    <div className="text-4xl font-bold text-gray-800">{formatCurrency(summary.avgDayTWD)}</div>
+                    <div className="text-5xl font-bold text-gray-800">{formatCurrency(summary.avgDayTWD)}</div>
                 </div>
                 <div className="text-teal-600">
-                    <Calendar size={48} strokeWidth={1.5} />
+                    <Calendar size={64} strokeWidth={1.5} />
                 </div>
             </div>
         </div>
