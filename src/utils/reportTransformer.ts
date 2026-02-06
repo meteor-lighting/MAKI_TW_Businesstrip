@@ -126,12 +126,12 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     // Others - using generic keys
     // Mapping keys to IDs. Backend uses 'Handing Fee' and 'Per Diem' with spaces.
     const otherCats = [
-        { key: 'Internet', id: 'internet' },
-        { key: 'Social', id: 'social' },
-        { key: 'Gift', id: 'gift' },
-        { key: 'Handing Fee', id: 'handingFee' },
-        { key: 'Per Diem', id: 'perDiem' },
-        { key: 'Others', id: 'others' }
+        { key: 'Internet', id: 'internet', title: '網路費明細 (Internet Details)' },
+        { key: 'Social', id: 'social', title: '交際費明細 (Social Details)' },
+        { key: 'Gift', id: 'gift', title: '禮品費明細 (Gift Details)' },
+        { key: 'Handing Fee', id: 'handingFee', title: '手續費明細 (Handing Fee Details)' },
+        { key: 'Per Diem', id: 'perDiem', title: '日支費明細 (Per Diem Details)' },
+        { key: 'Others', id: 'others', title: '其他費用明細 (Others Details)' }
     ];
 
     otherCats.forEach(cat => {
@@ -140,7 +140,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         const catTotal = catItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
         catTotals[cat.key] = catTotal;
 
-        createSection(cat.key, `${cat.key} Details`, [
+        const columns = [
             { header: '日期', accessorKey: '日期', width: 15, type: 'date' },
             { header: '地區', accessorKey: '地區', width: 15 },
             { header: '幣別', accessorKey: '幣別', width: 10 },
@@ -148,7 +148,20 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
             { header: '匯率', accessorKey: '匯率', width: 10 },
             { header: 'TWD金額', accessorKey: 'TWD金額', width: 10, type: 'currency' },
             { header: '備註', accessorKey: '備註', width: 25 }
-        ], cat.id, catTotal);
+        ];
+
+        // Add 'Category' column for 'Others'
+        if (cat.key === 'Others') {
+            // Insert after '日期' (index 0) or at the beginning? 
+            // Request says "In the Other Expenses... Add column 'Category'". 
+            // Usually implies first or second column. 
+            // Let's put it after '次序' (which isn't here, handled by index usually) or '日期'.
+            // Based on OthersForm.tsx, it might be the first field.
+            // Let's place it at the beginning of the columns list for visibility.
+            columns.unshift({ header: '分類', accessorKey: '分類', width: 15 });
+        }
+
+        createSection(cat.key, cat.title, columns, cat.id, catTotal);
     });
 
     return {
