@@ -46,17 +46,6 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     const totalUSD = Number(header['合計USD總體總額'] || 0);
     const avgDayUSD = Number(header['合計USD總體平均'] || 0);
 
-    // 2. Charts Data
-    const pieData: ChartData[] = [];
-    const barData: ChartData[] = [];
-
-    Object.entries(catTotals).forEach(([key, value]) => {
-        if (value > 0) {
-            pieData.push({ name: key, value });
-            barData.push({ name: key, value });
-        }
-    });
-
     // 3. Sections
     const sections: ReportSection[] = [];
 
@@ -156,8 +145,9 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
             }
         },
         charts: {
-            pie: pieData,
-            bar: barData
+            // 2. Charts Data (Generated after all totals are finalized)
+            pie: Object.entries(catTotals).filter(([, v]) => v > 0).map(([k, v]) => ({ name: k, value: v })) as ChartData[],
+            bar: Object.entries(catTotals).filter(([, v]) => v > 0).map(([k, v]) => ({ name: k, value: v })) as ChartData[]
         },
         sections
     };
