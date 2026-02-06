@@ -17,6 +17,7 @@ import GiftForm from '../components/Report/forms/GiftForm';
 import HandingFeeForm from '../components/Report/forms/HandingFeeForm';
 import PerDiemForm from '../components/Report/forms/PerDiemForm';
 import OthersForm from '../components/Report/forms/OthersForm';
+import FunnelLoader from '../components/common/FunnelLoader';
 
 // Define types for state
 interface ReportData {
@@ -118,7 +119,7 @@ export default function Report() {
         navigate('/report/summary', { state: { reportData: formattedData } });
     };
 
-    if (loading) return <div className="p-8 text-center text-gray-500">Initializing Report...</div>;
+    if (loading) return <FunnelLoader />;
 
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8 pb-32">
