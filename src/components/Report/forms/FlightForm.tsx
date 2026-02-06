@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
 import { Hourglass } from 'lucide-react';
 
@@ -27,6 +28,7 @@ interface FlightFormProps {
 }
 
 export default function FlightForm({ reportId, headerRate, hasFlights = false, onSubmitSuccess, onLoadingChange, disabled = false }: FlightFormProps) {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [rateLoading, setRateLoading] = useState(false);
 
@@ -198,17 +200,17 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
             {loading && (
                 <div className="absolute inset-0 bg-white/60 z-10 flex flex-col items-center justify-center rounded">
                     <Hourglass className="w-10 h-10 text-blue-600 animate-spin" />
-                    <span className="text-sm text-blue-600 font-medium mt-2">Processing...</span>
+                    <span className="text-sm text-blue-600 font-medium mt-2">{t('processing')}...</span>
                 </div>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">日期 (YYYY/MM/DD)</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('date')} (YYYY/MM/DD)</label>
                     <input
                         type="date"
                         {...register('date', {
-                            required: '請輸入日期',
+                            required: t('please_enter_date'),
                         })}
                         disabled={loading || disabled}
                         className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.date ? 'border-red-500' : ''}`}
@@ -216,30 +218,30 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
                     {errors.date && <span className="text-red-500 text-sm">{errors.date.message}</span>}
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">航班代號</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('flight_code')}</label>
                     <input type="text" {...register('flightCode')} onBlur={handleFlightBlur} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 uppercase disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white" placeholder="e.g. BR123" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">出發地</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('departure')}</label>
                     <input type="text" {...register('departure')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 uppercase disabled:bg-gray-100" maxLength={3} />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">抵達地</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('arrival')}</label>
                     <input type="text" {...register('arrival')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 uppercase disabled:bg-gray-100" maxLength={3} />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">出發時間</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('departure_time')}</label>
                     <input type="time" {...register('depTime')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">抵達時間</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('arrival_time')}</label>
                     <input type="time" {...register('arrTime')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
                 </div>
             </div>
 
             <div className="border-t border-gray-200 pt-4 mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">幣別</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('currency')}</label>
                     <select {...register('currency')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100">
                         <option value="TWD">TWD</option>
                         <option value="USD">USD</option>
@@ -249,13 +251,13 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">金額</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('amount')}</label>
                     <input
                         type="number"
                         step="0.01"
                         {...register('amount', {
-                            required: '請輸入金額',
-                            min: { value: 0, message: '金額不能為負數' }
+                            required: t('please_enter_amount'),
+                            min: { value: 0, message: t('amount_cannot_be_negative') }
                         })}
                         disabled={loading || disabled}
                         className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 ${errors.amount ? 'border-red-500' : ''}`}
@@ -263,18 +265,18 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
                     {errors.amount && <span className="text-red-500 text-sm">{errors.amount.message}</span>}
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">匯率</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('exchange_rate')}</label>
                     <input type="number" step="0.0001" {...register('rate', { valueAsNumber: true })} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100" />
                     {rateLoading && <span className="text-xs text-blue-500">Updating...</span>}
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">TWD 金額</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('twd_amount')}</label>
                     <input type="number" {...register('twdAmount', { valueAsNumber: true })} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100 font-bold text-blue-600" />
                 </div>
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">備註</label>
+                <label className="block text-sm font-medium text-gray-700">{t('remark')}</label>
                 <input type="text" {...register('note')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
             </div>
 
@@ -287,10 +289,10 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
                     {loading ? (
                         <>
                             <Hourglass className="w-4 h-4 animate-spin" />
-                            <span>Saving...</span>
+                            <span>{t('saving')}...</span>
                         </>
                     ) : (
-                        '新增'
+                        t('add')
                     )}
                 </button>
             </div>

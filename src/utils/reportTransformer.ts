@@ -1,4 +1,5 @@
 import { ReportData, ReportSection, ChartData } from '../types/report';
+import { TFunction } from 'i18next';
 
 // Define the raw data structure coming from the API (Report.tsx)
 export interface RawReportData {
@@ -17,7 +18,7 @@ export interface RawReportData {
     };
 }
 
-export function transformReportData(raw: RawReportData, reportId: string, userName: string): ReportData {
+export function transformReportData(raw: RawReportData, reportId: string, userName: string, t: TFunction): ReportData {
     const header = raw.header || {};
 
     // 1. Calculate Summary Totals
@@ -76,15 +77,15 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     const flightTotalTWD = flightItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
     catTotals['Flight'] = flightTotalTWD;
 
-    createSection('Flight', '機票明細 (Flight Details)', [
-        { header: '日期', accessorKey: '日期', width: 15, type: 'date' },
-        { header: '航班', accessorKey: '航班代號', width: 15 },
-        { header: '出發', accessorKey: '出發地', width: 10 },
-        { header: '抵達', accessorKey: '抵達地', width: 10 },
-        { header: '幣別', accessorKey: '幣別', width: 10 },
-        { header: '金額', accessorKey: '金額', width: 10, type: 'number' },
-        { header: '匯率', accessorKey: '匯率', width: 15 },
-        { header: 'TWD金額', accessorKey: 'TWD金額', width: 10, type: 'currency' }
+    createSection('Flight', `${t('flight_details')} (Flight Details)`, [
+        { header: t('date'), accessorKey: '日期', width: 15, type: 'date' },
+        { header: t('flight_code'), accessorKey: '航班代號', width: 15 },
+        { header: t('departure'), accessorKey: '出發地', width: 10 },
+        { header: t('arrival'), accessorKey: '抵達地', width: 10 },
+        { header: t('currency'), accessorKey: '幣別', width: 10 },
+        { header: t('amount'), accessorKey: '金額', width: 10, type: 'number' },
+        { header: t('exchange_rate'), accessorKey: '匯率', width: 15 },
+        { header: t('twd_amount'), accessorKey: 'TWD金額', width: 10, type: 'currency' }
     ], 'flight', flightTotalTWD);
 
     // Accommodation Sheet Headers: ..., TWD個人金額, TWD代墊金額, 總體金額, TWD總體金額...
@@ -94,17 +95,17 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     // Update catTotals for Accommodation to ensure Charts pick it up
     catTotals['Accommodation'] = accommodationTotalTWD;
 
-    createSection('Accommodation', '住宿明細 (Accommodation Details)', [
-        { header: '日期', accessorKey: '日期', width: 12, type: 'date' },
-        { header: '地區', accessorKey: '地區', width: 10 },
-        { header: '天數', accessorKey: '天數', width: 5 },
-        { header: '幣別', accessorKey: '幣別', width: 8 },
-        { header: '個人金額', accessorKey: '個人金額', width: 10, type: 'currency' },
-        { header: '總體金額', accessorKey: '總體金額', width: 10, type: 'currency' },
-        { header: '每人每天金額', accessorKey: '每人每天金額', width: 12, type: 'currency' },
-        { header: '匯率', accessorKey: '匯率', width: 8 },
-        { header: 'TWD個人金額', accessorKey: 'TWD個人金額', width: 12, type: 'currency' },
-        { header: 'TWD總體金額', accessorKey: 'TWD總體金額', width: 12, type: 'currency' }
+    createSection('Accommodation', `${t('accommodation_details')} (Accommodation Details)`, [
+        { header: t('date'), accessorKey: '日期', width: 12, type: 'date' },
+        { header: t('region'), accessorKey: '地區', width: 10 },
+        { header: t('days'), accessorKey: '天數', width: 5 },
+        { header: t('currency'), accessorKey: '幣別', width: 8 },
+        { header: t('personal_amount'), accessorKey: '個人金額', width: 10, type: 'currency' },
+        { header: t('overall_amount'), accessorKey: '總體金額', width: 10, type: 'currency' },
+        { header: t('per_person_per_day'), accessorKey: '每人每天金額', width: 12, type: 'currency' },
+        { header: t('exchange_rate'), accessorKey: '匯率', width: 8 },
+        { header: t('twd_personal'), accessorKey: 'TWD個人金額', width: 12, type: 'currency' },
+        { header: t('twd_overall'), accessorKey: 'TWD總體金額', width: 12, type: 'currency' }
     ], 'accommodation', accommodationTotalTWD);
 
     // Taxi Sheet Headers: ..., 幣別, 金額, TWD金額, 匯率, 備註
@@ -113,25 +114,25 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     const taxiTotalTWD = taxiItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
     catTotals['Taxi'] = taxiTotalTWD;
 
-    createSection('Taxi', '計程車明細 (Taxi Details)', [
-        { header: '日期', accessorKey: '日期', width: 15, type: 'date' },
-        { header: '地區', accessorKey: '地區', width: 15 },
-        { header: '幣別', accessorKey: '幣別', width: 10 },
-        { header: '金額', accessorKey: '金額', width: 10, type: 'currency' },
-        { header: '匯率', accessorKey: '匯率', width: 10 },
-        { header: 'TWD金額', accessorKey: 'TWD金額', width: 10, type: 'currency' },
-        { header: '備註', accessorKey: '備註', width: 25 }
+    createSection('Taxi', `${t('taxi_details')} (Taxi Details)`, [
+        { header: t('date'), accessorKey: '日期', width: 15, type: 'date' },
+        { header: t('region'), accessorKey: '地區', width: 15 },
+        { header: t('currency'), accessorKey: '幣別', width: 10 },
+        { header: t('amount'), accessorKey: '金額', width: 10, type: 'currency' },
+        { header: t('exchange_rate'), accessorKey: '匯率', width: 10 },
+        { header: t('twd_amount'), accessorKey: 'TWD金額', width: 10, type: 'currency' },
+        { header: t('remark'), accessorKey: '備註', width: 25 }
     ], 'taxi', taxiTotalTWD);
 
     // Others - using generic keys
     // Mapping keys to IDs. Backend uses 'Handing Fee' and 'Per Diem' with spaces.
     const otherCats = [
-        { key: 'Internet', id: 'internet', title: '網路費明細 (Internet Details)' },
-        { key: 'Social', id: 'social', title: '交際費明細 (Social Details)' },
-        { key: 'Gift', id: 'gift', title: '禮品費明細 (Gift Details)' },
-        { key: 'Handing Fee', id: 'handingFee', title: '手續費明細 (Handing Fee Details)' },
-        { key: 'Per Diem', id: 'perDiem', title: '日支費明細 (Per Diem Details)' },
-        { key: 'Others', id: 'others', title: '其他費用明細 (Others Details)' }
+        { key: 'Internet', id: 'internet', title: `${t('internet_details')} (Internet Details)` },
+        { key: 'Social', id: 'social', title: `${t('social_details')} (Social Details)` },
+        { key: 'Gift', id: 'gift', title: `${t('gift_details')} (Gift Details)` },
+        { key: 'Handing Fee', id: 'handingFee', title: `${t('handing_fee_details')} (Handing Fee Details)` },
+        { key: 'Per Diem', id: 'perDiem', title: `${t('per_diem_details')} (Per Diem Details)` },
+        { key: 'Others', id: 'others', title: `${t('others_details')} (Others Details)` }
     ];
 
     otherCats.forEach(cat => {
@@ -141,13 +142,13 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         catTotals[cat.key] = catTotal;
 
         const columns = [
-            { header: '日期', accessorKey: '日期', width: 15, type: 'date' },
-            { header: '地區', accessorKey: '地區', width: 15 },
-            { header: '幣別', accessorKey: '幣別', width: 10 },
-            { header: '金額', accessorKey: '金額', width: 10, type: 'currency' },
-            { header: '匯率', accessorKey: '匯率', width: 10 },
-            { header: 'TWD金額', accessorKey: 'TWD金額', width: 10, type: 'currency' },
-            { header: '備註', accessorKey: '備註', width: 25 }
+            { header: t('date'), accessorKey: '日期', width: 15, type: 'date' },
+            { header: t('region'), accessorKey: '地區', width: 15 },
+            { header: t('currency'), accessorKey: '幣別', width: 10 },
+            { header: t('amount'), accessorKey: '金額', width: 10, type: 'currency' },
+            { header: t('exchange_rate'), accessorKey: '匯率', width: 10 },
+            { header: t('twd_amount'), accessorKey: 'TWD金額', width: 10, type: 'currency' },
+            { header: t('remark'), accessorKey: '備註', width: 25 }
         ];
 
         // Add 'Category' column for 'Others'
@@ -158,7 +159,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
             // Let's put it after '次序' (which isn't here, handled by index usually) or '日期'.
             // Based on OthersForm.tsx, it might be the first field.
             // Let's place it at the beginning of the columns list for visibility.
-            columns.unshift({ header: '分類', accessorKey: '分類', width: 15 });
+            columns.unshift({ header: t('category'), accessorKey: '分類', width: 15 });
         }
 
         createSection(cat.key, cat.title, columns, cat.id, catTotal);

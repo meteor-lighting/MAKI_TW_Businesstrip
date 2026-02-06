@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
 import { Hourglass } from 'lucide-react';
 
@@ -22,6 +23,7 @@ interface GiftFormProps {
 }
 
 export default function GiftForm({ reportId, headerRate, onSubmitSuccess, onLoadingChange, disabled = false }: GiftFormProps) {
+    const { t } = useTranslation();
     const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<GiftFormData>({
         defaultValues: {
             currency: 'TWD',
@@ -116,17 +118,17 @@ export default function GiftForm({ reportId, headerRate, onSubmitSuccess, onLoad
             {loading && (
                 <div className="absolute inset-0 bg-white/60 z-10 flex flex-col items-center justify-center rounded">
                     <Hourglass className="w-10 h-10 text-blue-600 animate-spin" />
-                    <span className="text-sm text-blue-600 font-medium mt-2">Processing...</span>
+                    <span className="text-sm text-blue-600 font-medium mt-2">{t('processing')}...</span>
                 </div>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">日期 (YYYY/MM/DD)</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('date')} (YYYY/MM/DD)</label>
                     <input
                         type="date"
                         {...register('date', {
-                            required: '請輸入日期',
+                            required: t('please_enter_date'),
                         })}
                         disabled={loading || disabled}
                         className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.date ? 'border-red-500' : ''}`}
@@ -134,7 +136,7 @@ export default function GiftForm({ reportId, headerRate, onSubmitSuccess, onLoad
                     {errors.date && <span className="text-red-500 text-sm">{errors.date.message}</span>}
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">地區</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('region')}</label>
                     <input
                         type="text"
                         {...register('region')}
@@ -143,7 +145,7 @@ export default function GiftForm({ reportId, headerRate, onSubmitSuccess, onLoad
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">幣別</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('currency')}</label>
                     <select {...register('currency')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100">
                         <option value="TWD">TWD</option>
                         <option value="USD">USD</option>
@@ -153,12 +155,12 @@ export default function GiftForm({ reportId, headerRate, onSubmitSuccess, onLoad
                     </select>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">金額</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('amount')}</label>
                     <input
                         type="number"
                         step="0.01"
                         {...register('amount', {
-                            required: '請輸入金額',
+                            required: t('please_enter_amount'),
                             min: 0
                         })}
                         disabled={loading || disabled}
@@ -169,16 +171,16 @@ export default function GiftForm({ reportId, headerRate, onSubmitSuccess, onLoad
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">匯率</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('exchange_rate')}</label>
                     <input type="number" step="0.0001" {...register('rate')} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100" />
                     {rateLoading && <span className="text-xs text-blue-500">Updating...</span>}
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">TWD 金額</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('twd_amount')}</label>
                     <input type="number" {...register('twdAmount')} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100 font-bold text-blue-600" />
                 </div>
                 <div className="col-span-2">
-                    <label className="block text-sm font-medium text-gray-700">備註</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('remark')}</label>
                     <input type="text" {...register('note')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
                 </div>
             </div>
@@ -192,10 +194,10 @@ export default function GiftForm({ reportId, headerRate, onSubmitSuccess, onLoad
                     {loading ? (
                         <>
                             <Hourglass className="w-4 h-4 animate-spin" />
-                            <span>Saving...</span>
+                            <span>{t('saving')}...</span>
                         </>
                     ) : (
-                        '新增'
+                        t('add')
                     )}
                 </button>
             </div>

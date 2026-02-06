@@ -3,11 +3,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import SummaryCards from './SummaryCards';
 import ExpenseCharts from './ExpenseCharts';
 import DetailTable from './DetailTable';
+import { useTranslation } from 'react-i18next';
 
 import { ArrowLeft, LogOut } from 'lucide-react';
 import { ReportData } from '../../types/report';
 
 const ExpenseReportPage: React.FC = () => {
+    const { t } = useTranslation();
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -20,12 +22,12 @@ const ExpenseReportPage: React.FC = () => {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center">
-                    <h2 className="text-xl font-bold mb-4">No Report Data Found</h2>
+                    <h2 className="text-xl font-bold mb-4">{t('no_data')}</h2>
                     <button
                         onClick={() => navigate('/report')}
                         className="text-blue-600 hover:underline"
                     >
-                        Return to Report Page
+                        {t('return_to_report')}
                     </button>
                 </div>
             </div>
@@ -46,13 +48,13 @@ const ExpenseReportPage: React.FC = () => {
                 <div className="flex justify-between items-center mb-6 bg-white p-4 shadow-sm rounded-lg border border-slate-200">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">
-                            商務旅行費用報告 (Business Travel Expense Report) - {reportData.reportId}
+                            {t('app_title')} (Business Travel Expense Report) - {reportData.reportId}
                         </h1>
                         <div className="text-sm text-gray-500 mt-1 flex gap-4">
-                            <span>用戶: <span className="font-medium text-gray-700">{reportData.user}</span></span>
-                            <span>商旅天數: {reportData.summary.days}天</span>
-                            <span>USD匯率: {reportData.summary.rateUSD}</span>
-                            <span>期間: {reportData.summary.period}</span>
+                            <span>{t('user')}: <span className="font-medium text-gray-700">{reportData.user}</span></span>
+                            <span>{t('days')}: {reportData.summary.days}</span>
+                            <span>{t('rate_usd')}: {reportData.summary.rateUSD}</span>
+                            <span>{t('period')}: {reportData.summary.period}</span>
                         </div>
                     </div>
                     <div className="flex gap-3">
@@ -61,14 +63,14 @@ const ExpenseReportPage: React.FC = () => {
                             className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                         >
                             <ArrowLeft size={18} />
-                            返回
+                            {t('back')}
                         </button>
                         <button
                             onClick={handleLogout}
                             className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-red-200"
                         >
                             <LogOut size={18} />
-                            登出
+                            {t('logout')}
                         </button>
                     </div>
                 </div>
@@ -84,18 +86,18 @@ const ExpenseReportPage: React.FC = () => {
                      Image: Left side "費用總結" table, Right side 3 Cards.
                   */}
                         <div className="md:col-span-1 bg-slate-600 text-white rounded-xl overflow-hidden shadow-md">
-                            <div className="bg-slate-800 p-3 text-center font-bold border-b border-slate-500">費用總結</div>
+                            <div className="bg-slate-800 p-3 text-center font-bold border-b border-slate-500">{t('expense_summary')}</div>
                             <div className="p-4 grid grid-cols-1 gap-4 text-sm">
                                 <div className="flex justify-between border-b border-slate-500 pb-2">
-                                    <span>TWD金額:</span>
+                                    <span>{t('total_twd')}:</span>
                                     <div className="text-right">
-                                        <span>{reportData.summary.personalTWD.toLocaleString()} (個人)</span>
+                                        <span>{reportData.summary.personalTWD.toLocaleString()} ({t('personal')})</span>
                                         <span className="mx-1">/</span>
-                                        <span>{reportData.summary.totalTWD.toLocaleString()} (總體)</span>
+                                        <span>{reportData.summary.totalTWD.toLocaleString()} ({t('overall')})</span>
                                     </div>
                                 </div>
                                 <div className="flex justify-between border-b border-slate-500 pb-2">
-                                    <span>avg/day (TWD):</span>
+                                    <span>{t('avg_day_twd')}:</span>
                                     <div className="text-right">
                                         <span>{(reportData.summary.personalTWD / reportData.summary.days).toFixed(1)}</span>
                                         <span className="mx-1">/</span>
@@ -103,7 +105,7 @@ const ExpenseReportPage: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="flex justify-between border-b border-slate-500 pb-2">
-                                    <span>合計 USD:</span>
+                                    <span>{t('total_usd')}:</span>
                                     <div className="text-right">
                                         <span>{(reportData.summary.personalTWD / reportData.summary.rateUSD).toFixed(2)}</span>
                                         <span className="mx-1">/</span>
@@ -111,7 +113,7 @@ const ExpenseReportPage: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span>avg/day (USD):</span>
+                                    <span>{t('avg_day_usd')}:</span>
                                     <div className="text-right">
                                         <span>{((reportData.summary.personalTWD / reportData.summary.rateUSD) / reportData.summary.days).toFixed(2)}</span>
                                         <span className="mx-1">/</span>
