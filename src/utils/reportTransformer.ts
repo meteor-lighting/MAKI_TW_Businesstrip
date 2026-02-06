@@ -28,7 +28,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     // Aggregating Totals from Categories (for Charts)
     const catTotals: Record<string, number> = {
         Flight: Number(header['機票費總額'] || 0),
-        Accommodation: Number(header['住宿費總額'] || 0),
+        Accommodation: 0, // Will be updated later with calculated total
         Taxi: Number(header['計程車費總額'] || 0),
         Internet: Number(header['網路費總額'] || 0),
         Social: Number(header['交際費總額'] || 0),
@@ -95,6 +95,9 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     const accommodationItems = raw.items['Accommodation'] || [];
     const accommodationTotalTWD = accommodationItems.reduce((sum, item) => sum + Number(item['TWD總體金額'] || 0), 0);
 
+    // Update catTotals for Accommodation to ensure Charts pick it up
+    catTotals['Accommodation'] = accommodationTotalTWD;
+
     createSection('Accommodation', '住宿明細 (Accommodation Details)', [
         { header: '日期', accessorKey: '日期', width: 12, type: 'date' },
         { header: '地區', accessorKey: '地區', width: 10 },
@@ -114,6 +117,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: '地區', accessorKey: '地區', width: 15 },
         { header: '幣別', accessorKey: '幣別', width: 10 },
         { header: '金額', accessorKey: '金額', width: 10, type: 'currency' },
+        { header: '匯率', accessorKey: '匯率', width: 10 },
         { header: 'TWD金額', accessorKey: 'TWD金額', width: 10, type: 'currency' },
         { header: '備註', accessorKey: '備註', width: 25 }
     ], 'taxi');
