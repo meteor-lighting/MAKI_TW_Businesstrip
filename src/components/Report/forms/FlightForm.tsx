@@ -163,7 +163,7 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
                 reportId,
                 category: 'Flight',
                 itemData: {
-                    '日期': data.date, // Already formatted as YYYY/MM/DD
+                    '日期': data.date.replace(/-/g, '/'),
                     '航班代號': data.flightCode,
                     '出發地': data.departure,
                     '抵達地': data.arrival,
@@ -209,27 +209,7 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
                         type="date"
                         {...register('date', {
                             required: '請輸入日期',
-                            pattern: {
-                                value: /^\d{4}\/\d{2}\/\d{2}$/,
-                                message: '日期格式錯誤 (YYYY/MM/DD)'
-                            },
-                            validate: (value) => {
-                                const date = new Date(value);
-                                return !isNaN(date.getTime()) || '日期格式錯誤 (YYYY/MM/DD)';
-                            }
                         })}
-                        placeholder="YYYY/MM/DD"
-                        maxLength={10}
-                        onChange={(e) => {
-                            let val = e.target.value.replace(/[^0-9/]/g, '');
-                            if (val.length === 5 && !val.includes('/')) {
-                                val = val.slice(0, 4) + '/' + val.slice(4);
-                            }
-                            // Simple auto-slash logic could go here, but let's just restrict chars for now 
-                            // to avoid fighting user editing.
-                            // to avoid fighting user editing.
-                            setValue('date', val, { shouldValidate: true });
-                        }}
                         disabled={loading || disabled}
                         className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.date ? 'border-red-500' : ''}`}
                     />

@@ -132,7 +132,7 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                 reportId,
                 category: 'Accommodation',
                 itemData: {
-                    '日期': data.date,
+                    '日期': data.date.replace(/-/g, '/'),
                     '地區': data.region,
                     '天數': data.nights,
                     '幣別': data.currency,
@@ -181,21 +181,7 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                         type="text"
                         {...register('date', {
                             required: '請輸入日期',
-                            pattern: {
-                                value: /^\d{4}\/\d{2}\/\d{2}$/,
-                                message: '日期格式錯誤 (YYYY/MM/DD)'
-                            },
-                            validate: (value) => {
-                                const date = new Date(value);
-                                return !isNaN(date.getTime()) || '日期格式錯誤 (YYYY/MM/DD)';
-                            }
                         })}
-                        placeholder="YYYY/MM/DD"
-                        maxLength={10}
-                        onChange={(e) => {
-                            let val = e.target.value.replace(/[^0-9/]/g, '');
-                            setValue('date', val, { shouldValidate: true });
-                        }}
                         disabled={loading || disabled}
                         className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.date ? 'border-red-500' : ''}`}
                     />

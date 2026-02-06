@@ -90,7 +90,7 @@ export default function SocialForm({ reportId, headerRate, onSubmitSuccess, onLo
                 reportId,
                 category: 'Social',
                 itemData: {
-                    '日期': data.date,
+                    '日期': data.date.replace(/-/g, '/'),
                     '地區': data.region,
                     '幣別': data.currency,
                     '金額': data.amount,
@@ -127,20 +127,7 @@ export default function SocialForm({ reportId, headerRate, onSubmitSuccess, onLo
                         type="date"
                         {...register('date', {
                             required: '請輸入日期',
-                            pattern: {
-                                value: /^\d{4}\/\d{2}\/\d{2}$/,
-                                message: '日期格式錯誤'
-                            }
                         })}
-                        placeholder="YYYY/MM/DD"
-                        maxLength={10}
-                        onChange={(e) => {
-                            let val = e.target.value.replace(/[^0-9/]/g, '');
-                            if (val.length === 5 && !val.includes('/')) {
-                                val = val.slice(0, 4) + '/' + val.slice(4);
-                            }
-                            setValue('date', val, { shouldValidate: true });
-                        }}
                         disabled={loading || disabled}
                         className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.date ? 'border-red-500' : ''}`}
                     />
