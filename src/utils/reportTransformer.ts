@@ -88,19 +88,21 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: '幣別', accessorKey: '幣別', width: 10 },
         { header: '金額', accessorKey: '金額', width: 10, type: 'number' },
         { header: '匯率', accessorKey: '匯率', width: 15 },
-        { header: 'TWD', accessorKey: 'TWD金額', width: 10, type: 'currency' }
+        { header: 'TWD金額', accessorKey: 'TWD金額', width: 10, type: 'currency' }
     ], 'flight');
 
     // Accommodation Sheet Headers: ..., TWD個人金額, TWD代墊金額, 總體金額, TWD總體金額...
     createSection('Accommodation', '住宿明細 (Accommodation Details)', [
-        { header: '日期', accessorKey: '日期', width: 15, type: 'date' },
-        { header: '地區', accessorKey: '地區', width: 15 },
+        { header: '日期', accessorKey: '日期', width: 12, type: 'date' },
+        { header: '地區', accessorKey: '地區', width: 10 },
         { header: '天數', accessorKey: '天數', width: 5 },
-        { header: 'TWD個人', accessorKey: 'TWD個人金額', width: 10, type: 'currency' },
-        { header: '代墊', accessorKey: 'TWD代墊金額', width: 10, type: 'currency' },
-        { header: '總額', accessorKey: 'TWD總體金額', width: 10, type: 'currency' },
-        { header: '金額(外幣)', accessorKey: '總體金額', width: 10, type: 'currency' },
-        { header: 'TWD金額', accessorKey: 'TWD總體金額', width: 10, type: 'currency' }
+        { header: '幣別', accessorKey: '幣別', width: 8 },
+        { header: '個人金額', accessorKey: '個人金額', width: 10, type: 'currency' },
+        { header: '總體金額', accessorKey: '總體金額', width: 10, type: 'currency' },
+        { header: '每人每天金額', accessorKey: '每人每天金額', width: 12, type: 'currency' },
+        { header: '匯率', accessorKey: '匯率', width: 8 },
+        { header: 'TWD個人金額', accessorKey: 'TWD個人金額', width: 12, type: 'currency' },
+        { header: 'TWD總體金額', accessorKey: 'TWD總體金額', width: 12, type: 'currency' }
     ], 'accommodation');
 
     // Taxi Sheet Headers: ..., 幣別, 金額, TWD金額, 匯率, 備註
