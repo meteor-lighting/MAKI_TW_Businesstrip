@@ -62,7 +62,7 @@ const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
                         >
                             <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                             <XAxis type="number" />
-                            <YAxis dataKey="name" type="category" width={100} />
+                            <YAxis dataKey="name" type="category" width={100} interval={0} />
                             <Tooltip content={<CustomTooltip />} />
                             <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20} />
                         </BarChart>
