@@ -124,14 +124,14 @@ export default function Report() {
         <div className="min-h-screen bg-gray-100 p-4 md:p-8 pb-32">
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-800">{t('app_title')} - {reportId}</h1>
+                    <h1 className="text-2xl font-bold text-gray-800">商務旅行報告輸入 - {reportId}</h1>
                     <div className="flex items-center gap-4">
                         {reportData && (
                             <button
                                 onClick={handleConfirmSave}
                                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors shadow-sm flex items-center gap-2"
                             >
-                                <span>確認</span>
+                                <span>確認完成</span>
                             </button>
                         )}
                         <span className="text-gray-600">{t('welcome')}, {user?.name}</span>
