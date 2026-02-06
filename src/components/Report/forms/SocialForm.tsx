@@ -124,7 +124,7 @@ export default function SocialForm({ reportId, headerRate, onSubmitSuccess, onLo
                 <div>
                     <label className="block text-sm font-medium text-gray-700">日期 (YYYY/MM/DD)</label>
                     <input
-                        type="text"
+                        type="date"
                         {...register('date', {
                             required: '請輸入日期',
                             pattern: {
