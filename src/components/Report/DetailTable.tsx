@@ -17,10 +17,6 @@ const DetailTable: React.FC<DetailTableProps> = ({ title, total, columns, data }
             {/* Table Header / Title */}
             <div className="bg-slate-800 text-white px-4 py-2 flex justify-between items-center rounded-t-sm">
                 <div className="flex items-center gap-2">
-                    <div className="bg-white text-slate-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
-                        {/* Icon placeholder or just generic bullet */}
-                        -
-                    </div>
                     <h3 className="font-bold">{title}</h3>
                 </div>
                 {/* Total in title bar if needed? Image doesn't show it here, but below table usually. 
