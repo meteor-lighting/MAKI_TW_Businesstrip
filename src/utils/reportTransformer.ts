@@ -115,10 +115,13 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     // For now, assuming other sheets roughly follow logic.
     ['Internet', 'Social', 'Gift', 'HandingFee', 'PerDiem', 'Others'].forEach(cat => {
         createSection(cat, `${cat} Details`, [
-            { header: '日期', accessorKey: '日期', width: 20, type: 'date' },
-            { header: '說明', accessorKey: '說明', width: 30 }, // Description often '備註' or '說明'
-            { header: 'TWD', accessorKey: 'TWD總體金額', width: 20, type: 'currency' }, // Assuming TWD總體金額 exists
-            { header: '備註', accessorKey: '備註', width: 30 }
+            { header: '日期', accessorKey: '日期', width: 15, type: 'date' },
+            { header: '地區', accessorKey: '地區', width: 15 },
+            { header: '幣別', accessorKey: '幣別', width: 10 },
+            { header: '金額', accessorKey: '金額', width: 10, type: 'currency' },
+            { header: '匯率', accessorKey: '匯率', width: 10 },
+            { header: 'TWD金額', accessorKey: 'TWD金額', width: 10, type: 'currency' },
+            { header: '備註', accessorKey: '備註', width: 25 }
         ], cat.toLowerCase());
     });
 
