@@ -74,5 +74,18 @@ export const zh = {
         "total_amount_text": "總額",
         "personal_total": "個人總額",
         "overall_total": "總體總額",
+        "departure_time": "出發時間",
+        "arrival_time": "抵達時間",
+        "processing": "處理中",
+        "saving": "儲存中",
+        "add": "新增",
+        "please_enter_date": "請輸入日期",
+        "please_enter_amount": "請輸入金額",
+        "amount_cannot_be_negative": "金額不能為負數",
+        "people_count_error": "代墊金額大於0時，代墊人數必須大於0",
+        "expense_details": "費用明細",
+        "twd_personal_amount": "TWD個人金額",
+        "twd_advance_amount": "TWD代墊金額",
+        "twd_overall_amount": "TWD總體金額",
     }
 };

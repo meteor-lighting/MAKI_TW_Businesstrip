@@ -74,5 +74,18 @@ export const en = {
         "total_amount_text": "Total Amount",
         "personal_total": "Personal Total",
         "overall_total": "Overall Total",
+        "departure_time": "Departure Time",
+        "arrival_time": "Arrival Time",
+        "processing": "Processing",
+        "saving": "Saving",
+        "add": "Add",
+        "please_enter_date": "Please enter date",
+        "please_enter_amount": "Please enter amount",
+        "amount_cannot_be_negative": "Amount cannot be negative",
+        "people_count_error": "People count must be greater than 0 if advance amount is greater than 0",
+        "expense_details": "Expense Details",
+        "twd_personal_amount": "TWD Personal Amount",
+        "twd_advance_amount": "TWD Advance Amount",
+        "twd_overall_amount": "TWD Overall Amount",
     }
 };
