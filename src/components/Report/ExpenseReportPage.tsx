@@ -118,7 +118,7 @@ const ExpenseReportPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="md:col-span-3">
+                        <div className="md:col-span-3 h-full">
                             <SummaryCards summary={reportData.summary} />
                         </div>
                     </div>

@@ -15,9 +15,9 @@ const formatCurrency = (amount: number) => {
 
 const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
             {/* Total Card */}
-            <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+            <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm h-full">
                 <div>
                     <h3 className="text-gray-600 font-bold mb-1">總支出</h3>
                     <div className="text-sm text-gray-500 mb-2">(Total TWD)</div>
@@ -29,7 +29,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
             </div>
 
             {/* Personal Card */}
-            <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+            <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm h-full">
                 <div>
                     <h3 className="text-gray-600 font-bold mb-1">個人負擔</h3>
                     <div className="text-sm text-gray-500 mb-2">(Personal TWD)</div>
@@ -41,7 +41,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
             </div>
 
             {/* Avg/Day Card */}
-            <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+            <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm h-full">
                 <div>
                     <h3 className="text-gray-600 font-bold mb-1">日均支出</h3>
                     <div className="text-sm text-gray-500 mb-2">(Avg/Day TWD)</div>
