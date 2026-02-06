@@ -135,7 +135,16 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
             avgDayUSD,
             period,
             days,
-            rateUSD
+            rateUSD,
+            headerDetails: {
+                currency: header['幣別'] || '', // Assuming '幣別' exists
+                personalAmount: header['合計個人此幣別金額'] || header['個人金額'] || '0',
+                totalAmount: header['合計總體此幣別金額'] || header['總體金額'] || '0',
+                avgDailyAmount: header['平均此幣別金額'] || header['每人每天金額'] || '0',
+                rate: header['匯率'] || header['USD匯率'] || '0',
+                twdPersonalAmount: header['合計TWD個人總額'] || '0',
+                twdTotalAmount: header['合計TWD總體總額'] || '0'
+            }
         },
         charts: {
             pie: pieData,

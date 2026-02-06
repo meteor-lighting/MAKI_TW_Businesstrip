@@ -83,37 +83,52 @@ const ExpenseReportPage: React.FC = () => {
                         <div className="md:col-span-1 bg-slate-600 text-white rounded-xl overflow-hidden shadow-md">
                             <div className="bg-slate-800 p-3 text-center font-bold border-b border-slate-500">費用總結</div>
                             <div className="p-4 grid grid-cols-1 gap-4 text-sm">
+                                {/* Row 1: TWD 金額 */}
                                 <div className="flex justify-between border-b border-slate-500 pb-2">
-                                    <span>合計 TWD:</span>
+                                    <span>TWD金額:</span>
                                     <div className="text-right">
                                         <span>{reportData.summary.personalTWD.toLocaleString()} (個人)</span>
                                         <span className="mx-1">/</span>
                                         <span>{reportData.summary.totalTWD.toLocaleString()} (總體)</span>
                                     </div>
                                 </div>
-                                <div className="flex justify-between border-b border-slate-500 pb-2">
-                                    <span>avg/day (TWD):</span>
-                                    <div className="text-right">
-                                        <span>{(reportData.summary.personalTWD / reportData.summary.days).toFixed(1)}</span>
-                                        <span className="mx-1">/</span>
-                                        <span>{reportData.summary.avgDayTWD.toLocaleString()}</span>
-                                    </div>
-                                </div>
-                                <div className="flex justify-between border-b border-slate-500 pb-2">
-                                    <span>合計 USD:</span>
-                                    <div className="text-right">
-                                        <span>{(reportData.summary.personalTWD / reportData.summary.rateUSD).toFixed(2)}</span>
-                                        <span className="mx-1">/</span>
-                                        <span>{reportData.summary.totalUSD.toLocaleString()}</span>
-                                    </div>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span>avg/day (USD):</span>
-                                    <div className="text-right">
-                                        <span>{((reportData.summary.personalTWD / reportData.summary.rateUSD) / reportData.summary.days).toFixed(2)}</span>
-                                        <span className="mx-1">/</span>
-                                        <span>{reportData.summary.avgDayUSD.toLocaleString()}</span>
-                                    </div>
+
+                                {/* Row 2: Header Details List */}
+                                <div className="mt-2 text-xs space-y-2">
+                                    {reportData.summary.headerDetails ? (
+                                        <>
+                                            <div className="grid grid-cols-2 gap-2 border-b border-slate-500 pb-2">
+                                                <span className="text-slate-300">幣別:</span>
+                                                <span className="text-right">{reportData.summary.headerDetails.currency}</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 border-b border-slate-500 pb-2">
+                                                <span className="text-slate-300">個人金額:</span>
+                                                <span className="text-right">{Number(reportData.summary.headerDetails.personalAmount).toLocaleString()}</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 border-b border-slate-500 pb-2">
+                                                <span className="text-slate-300">總體金額:</span>
+                                                <span className="text-right">{Number(reportData.summary.headerDetails.totalAmount).toLocaleString()}</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 border-b border-slate-500 pb-2">
+                                                <span className="text-slate-300">每人每天金額:</span>
+                                                <span className="text-right">{Number(reportData.summary.headerDetails.avgDailyAmount).toLocaleString()}</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 border-b border-slate-500 pb-2">
+                                                <span className="text-slate-300">匯率:</span>
+                                                <span className="text-right">{reportData.summary.headerDetails.rate}</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 border-b border-slate-500 pb-2">
+                                                <span className="text-slate-300">TWD個人金額:</span>
+                                                <span className="text-right">{Number(reportData.summary.headerDetails.twdPersonalAmount).toLocaleString()}</span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <span className="text-slate-300">TWD總體金額:</span>
+                                                <span className="text-right">{Number(reportData.summary.headerDetails.twdTotalAmount).toLocaleString()}</span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="text-center text-gray-400">No Header Details</div>
+                                    )}
                                 </div>
                             </div>
                         </div>

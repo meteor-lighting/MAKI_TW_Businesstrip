@@ -7,6 +7,15 @@ export interface ReportSummary {
     period: string;
     days: number;
     rateUSD: number;
+    headerDetails?: {
+        currency: string;
+        personalAmount: string;
+        totalAmount: string;
+        avgDailyAmount: string;
+        rate: string;
+        twdPersonalAmount: string; // TWD個人金額
+        twdTotalAmount: string; // TWD總體金額
+    };
 }
 
 export interface ChartData {
