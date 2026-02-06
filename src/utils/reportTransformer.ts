@@ -26,16 +26,18 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     const period = `${header['商旅起始日'] || ''} - ${header['商旅結束日'] || ''}`;
 
     // Aggregating Totals from Categories (for Charts)
+    // Aggregating Totals from Categories (for Charts)
+    // Initialize with 0 or header values, but we will overwrite them with calculated totals from items
     const catTotals: Record<string, number> = {
-        Flight: Number(header['機票費總額'] || 0),
-        Accommodation: 0, // Will be updated later with calculated total
-        Taxi: Number(header['計程車費總額'] || 0),
-        Internet: Number(header['網路費總額'] || 0),
-        Social: Number(header['交際費總額'] || 0),
-        Gift: Number(header['禮品費總額'] || 0),
-        HandingFee: Number(header['手續費總額'] || 0),
-        PerDiem: Number(header['日支費總額'] || 0),
-        Others: Number(header['其他費總額'] || 0),
+        Flight: 0,
+        Accommodation: 0,
+        Taxi: 0,
+        Internet: 0,
+        Social: 0,
+        Gift: 0,
+        'Handing Fee': 0, // Key matches backend
+        'Per Diem': 0,    // Key matches backend
+        Others: 0,
     };
 
     // Use Header values for Summary Totals as per user request
@@ -69,6 +71,11 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
 
     // Define columns mapping matching Google Sheet Headers
     // Flight Sheet Headers: 報告編號, 次序, 日期, 航班代號, 出發地, 抵達地, 出發時間, 抵達時間, 幣別, 金額, TWD金額, 匯率, 備註
+    // Flight Sheet Headers
+    const flightItems = raw.items['Flight'] || [];
+    const flightTotalTWD = flightItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
+    catTotals['Flight'] = flightTotalTWD;
+
     createSection('Flight', '機票明細 (Flight Details)', [
         { header: '日期', accessorKey: '日期', width: 15, type: 'date' },
         { header: '航班', accessorKey: '航班代號', width: 15 },
@@ -78,7 +85,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: '金額', accessorKey: '金額', width: 10, type: 'number' },
         { header: '匯率', accessorKey: '匯率', width: 15 },
         { header: 'TWD金額', accessorKey: 'TWD金額', width: 10, type: 'currency' }
-    ], 'flight');
+    ], 'flight', flightTotalTWD);
 
     // Accommodation Sheet Headers: ..., TWD個人金額, TWD代墊金額, 總體金額, TWD總體金額...
     const accommodationItems = raw.items['Accommodation'] || [];
@@ -101,6 +108,11 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     ], 'accommodation', accommodationTotalTWD);
 
     // Taxi Sheet Headers: ..., 幣別, 金額, TWD金額, 匯率, 備註
+    // Taxi Sheet Headers
+    const taxiItems = raw.items['Taxi'] || [];
+    const taxiTotalTWD = taxiItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
+    catTotals['Taxi'] = taxiTotalTWD;
+
     createSection('Taxi', '計程車明細 (Taxi Details)', [
         { header: '日期', accessorKey: '日期', width: 15, type: 'date' },
         { header: '地區', accessorKey: '地區', width: 15 },
@@ -109,12 +121,26 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: '匯率', accessorKey: '匯率', width: 10 },
         { header: 'TWD金額', accessorKey: 'TWD金額', width: 10, type: 'currency' },
         { header: '備註', accessorKey: '備註', width: 25 }
-    ], 'taxi');
+    ], 'taxi', taxiTotalTWD);
 
-    // Others - using generic keys, assuming similar structure or falling back strictly if needed.
-    // For now, assuming other sheets roughly follow logic.
-    ['Internet', 'Social', 'Gift', 'HandingFee', 'PerDiem', 'Others'].forEach(cat => {
-        createSection(cat, `${cat} Details`, [
+    // Others - using generic keys
+    // Mapping keys to IDs. Backend uses 'Handing Fee' and 'Per Diem' with spaces.
+    const otherCats = [
+        { key: 'Internet', id: 'internet' },
+        { key: 'Social', id: 'social' },
+        { key: 'Gift', id: 'gift' },
+        { key: 'Handing Fee', id: 'handingFee' },
+        { key: 'Per Diem', id: 'perDiem' },
+        { key: 'Others', id: 'others' }
+    ];
+
+    otherCats.forEach(cat => {
+        const catItems = raw.items[cat.key] || [];
+        // Assuming 'TWD金額' is the column for total in these sections as per format standardization
+        const catTotal = catItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
+        catTotals[cat.key] = catTotal;
+
+        createSection(cat.key, `${cat.key} Details`, [
             { header: '日期', accessorKey: '日期', width: 15, type: 'date' },
             { header: '地區', accessorKey: '地區', width: 15 },
             { header: '幣別', accessorKey: '幣別', width: 10 },
@@ -122,7 +148,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
             { header: '匯率', accessorKey: '匯率', width: 10 },
             { header: 'TWD金額', accessorKey: 'TWD金額', width: 10, type: 'currency' },
             { header: '備註', accessorKey: '備註', width: 25 }
-        ], cat.toLowerCase());
+        ], cat.id, catTotal);
     });
 
     return {
