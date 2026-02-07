@@ -87,5 +87,7 @@ export const zh = {
         "twd_personal_amount": "TWD個人金額",
         "twd_advance_amount": "TWD代墊金額",
         "twd_overall_amount": "TWD總體金額",
+        "action_expand": "輸入",
+        "action_collapse": "收合",
     }
 };

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 
 interface SectionAccordionProps {
@@ -26,10 +27,16 @@ export default function SectionAccordion({
     children,
     onExpand,
     onCollapse,
-    actionButtonText = { expand: '輸入', collapse: '收合' },
+    actionButtonText,
     disabled = false
 }: SectionAccordionProps & { disabled?: boolean }) {
+    const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
+
+    const buttonText = actionButtonText || {
+        expand: t('action_expand'),
+        collapse: t('action_collapse')
+    };
 
     const toggle = () => {
         if (disabled) return;
@@ -71,11 +78,11 @@ export default function SectionAccordion({
                     >
                         {isOpen ? (
                             <>
-                                {actionButtonText.collapse} <ChevronUp size={16} />
+                                {buttonText.collapse} <ChevronUp size={16} />
                             </>
                         ) : (
                             <>
-                                {actionButtonText.expand} <ChevronDown size={16} />
+                                {buttonText.expand} <ChevronDown size={16} />
                             </>
                         )}
                     </button>

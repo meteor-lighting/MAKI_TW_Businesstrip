@@ -87,5 +87,7 @@ export const en = {
         "twd_personal_amount": "TWD Personal Amount",
         "twd_advance_amount": "TWD Advance Amount",
         "twd_overall_amount": "TWD Overall Amount",
+        "action_expand": "Input",
+        "action_collapse": "Collapse",
     }
 };
