@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
+import CityAutocomplete from '../CityAutocomplete';
 import { Hourglass } from 'lucide-react';
 
 interface OthersFormData {
@@ -25,7 +26,7 @@ interface OthersFormProps {
 
 export default function OthersForm({ reportId, headerRate, onSubmitSuccess, onLoadingChange, disabled = false }: OthersFormProps) {
     const { t } = useTranslation();
-    const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<OthersFormData>({
+    const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<OthersFormData>({
         defaultValues: {
             currency: 'TWD',
             amount: '',
@@ -151,11 +152,18 @@ export default function OthersForm({ reportId, headerRate, onSubmitSuccess, onLo
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('region')}</label>
-                    <input
-                        type="text"
-                        {...register('region')}
-                        disabled={loading || disabled}
-                        className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white"
+                    <Controller
+                        control={control}
+                        name="region"
+                        render={({ field }) => (
+                            <CityAutocomplete
+                                value={field.value}
+                                onChange={field.onChange}
+                                onBlur={field.onBlur}
+                                disabled={loading || disabled}
+                                className={errors.region ? 'border-red-500' : ''}
+                            />
+                        )}
                     />
                 </div>
                 <div>
