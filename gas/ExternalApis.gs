@@ -75,18 +75,110 @@ function searchCity(payload) {
   }
 }
 
-function getExchangeRate(payload) {
-  // payload: { currency, date }
-  // If currency is TWD, return 1.
-  if (payload.currency === 'TWD') return { rate: 1.0 };
-  
-  // Scraping BOT or using other API.
-  // Mocking:
-  const rates = {
-    'USD': 0,
-    'JPY': 0.21,
-    'EUR': 35.0
-  };
-  
-  return { rate: rates[payload.currency] || 1.0 };
+    return { rate: rates[payload.currency] || 1.0 };
+}
+
+function searchFlight(payload) {
+  // payload: { code, date }
+  // date format: YYYY/MM/DD or YYYY-MM-DD
+  const code = (payload.code || '').toUpperCase().trim();
+  const dateStr = payload.date || '';
+
+  if (!code || !dateStr) return { data: null };
+
+  try {
+    const sheet = getSheet('Flights');
+    // Headers Assumption based on user request:
+    // Flight Code, Day, Dep, Arr, Dep Time, Arr Time
+    // Row 1 is headers. Data from Row 2.
+    
+    // We need to determine the "Day" from the date.
+    // 1=Mon, 2=Tue, ... 7=Sun (ISO) or 0=Sun in JS.
+    // Let's assume the sheet uses 1-7 (1=Mon) or English abbreviations.
+    // Let's try to match flexible formats.
+    
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return { data: null, message: 'Invalid Date' };
+    
+    // JS getDay(): 0 = Sunday, 1 = Monday, ... 6 = Saturday
+    const jsDay = date.getDay(); 
+    // Convert to ISO Day used often in flight schedules (1=Mon, 7=Sun)
+    const isoDay = jsDay === 0 ? 7 : jsDay;
+    
+    const data = sheetDataToJson('Flights'); // Helper from Database.gs
+    
+    // Helper to normalize day from sheet
+    const normalizeSheetDay = (val) => {
+        if (!val) return [];
+        const s = String(val).trim();
+        // If it's a number/string "1", "2"...
+        if (!isNaN(s)) return [parseInt(s)];
+        // If it's a range "1,3,5" or "1-5" (Too complex for now, assume single day per row or comma separated)
+        if (s.includes(',')) return s.split(',').map(d => parseInt(d.trim()));
+        // If keys "Mon", "Tue"
+        // ... (Skipping complex parsing unless needed)
+        // Let's assume exact match of ISO day (1-7) for simplicity first.
+        return [parseInt(s)];
+    };
+
+    // Filter by Flight Code first
+    const flightRows = data.filter(r => 
+        String(r['Flight Code']).toUpperCase().trim() === code
+    );
+
+    // Find row matching day
+    // TODO: Improve day matching if user confirms sheet format.
+    // For now assuming the sheet has a 'Day' column with 1-7. 
+    // And assuming we just default to the first match if 'Day' is missing or we can't parse.
+    // Actually, flight schedules usually differ by day.
+    
+    let match = flightRows.find(r => {
+        const rowDays = normalizeSheetDay(r['Day']); // e.g. [1, 3, 5]
+        return rowDays.includes(isoDay);
+    });
+    
+    // If no specific day match found, check if there's a daily flight (Day = "Daily" or empty or 0?)
+    if (!match) {
+        match = flightRows.find(r => !r['Day'] || String(r['Day']).toLowerCase() === 'daily');
+    }
+    
+    // If still no match, but we have rows for this code, maybe just take the first one?
+    // User requirement: "automatically convert date to weekday, then from Flights auto bring..."
+    // This implies day matching is important.
+    // If not found, return null. 
+    // Fallback: If only 1 row exists for this code, return it regardless of day?
+    if (!match && flightRows.length === 1) {
+        match = flightRows[0];
+    }
+
+    if (match) {
+        // Return format expected by frontend
+        return {
+            status: 'success',
+            data: {
+                departure: match['Dep'] || match['Departure'] || '',
+                arrival: match['Arr'] || match['Arrival'] || '',
+                depTime: formatTime(match['Dep Time']),
+                arrTime: formatTime(match['Arr Time'])
+            }
+        };
+    }
+    
+    return { status: 'success', data: null, message: 'Flight not found for this date' };
+
+  } catch (e) {
+    console.log('Error searching flight: ' + e);
+    return { status: 'error', message: e.toString() };
+  }
+}
+
+// Helper to format time object from sheet (which might be a Date object) to HH:mm string
+function formatTime(val) {
+    if (!val) return '';
+    if (val instanceof Date) {
+        const h = String(val.getHours()).padStart(2, '0');
+        const m = String(val.getMinutes()).padStart(2, '0');
+        return `${h}:${m}`;
+    }
+    return String(val); // If it's already a string
 }

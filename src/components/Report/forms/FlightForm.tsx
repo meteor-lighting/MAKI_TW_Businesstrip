@@ -136,25 +136,38 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
     }, [currency, amount, date, setValue, headerRate, hasFlights]);
 
     // Flight Info Auto-fill
-    const handleFlightBlur = async () => {
+    useEffect(() => {
         const flightCode = watch('flightCode');
         const flightDate = watch('date');
 
-        if (flightCode && flightDate) {
-            try {
-                // Call API to get departure/arrival info
-                const res = await sendRequest('searchFlight', { code: flightCode, date: flightDate });
+        if (flightCode && flightDate && flightDate.length === 10) {
+            const timer = setTimeout(async () => {
+                try {
+                    // Call API to get departure/arrival info
 
-                if (res.status === 'success' && res.data) {
-                    setValue('departure', res.data.departure);
-                    setValue('arrival', res.data.arrival);
-                    setValue('depTime', res.data.depTime);
-                    setValue('arrTime', res.data.arrTime);
+                    setLoading(true);
+                    const res = await sendRequest('searchFlight', { code: flightCode, date: flightDate });
+
+                    if (res.status === 'success' && res.data) {
+                        setValue('departure', res.data.departure);
+                        setValue('arrival', res.data.arrival);
+                        setValue('depTime', res.data.depTime);
+                        setValue('arrTime', res.data.arrTime);
+                    }
+                } catch (e) {
+                    console.warn('Flight search failed', e);
+                } finally {
+                    setLoading(false);
                 }
-            } catch (e) {
-                console.warn('Flight search failed', e);
-            }
+            }, 500); // Debounce 500ms
+
+            return () => clearTimeout(timer);
         }
+    }, [watch('flightCode'), watch('date'), setValue]);
+
+    const handleFlightBlur = () => {
+        // Obsolete manually trigger, handled by useEffect now. 
+        // Keeping empty or removing onBlur from input.
     };
 
     const onSubmit = async (data: FlightFormData) => {
