@@ -117,73 +117,47 @@ function getExchangeRate(payload) {
       
       try {
           // Bank of Taiwan Historical Rate URL
-          // https://rate.bot.com.tw/xrt/history/YYYY-MM-DD
-          // Actually, specific day URL format is: https://rate.bot.com.tw/xrt/quote/YYYY-MM-DD/{CURRENCY}/spot
-          // OR the daily all-currency list: https://rate.bot.com.tw/xrt/all/YYYY-MM-DD
-          // Let's use the all-currency list for the specific day.
           const url = `https://rate.bot.com.tw/xrt/all/${queryDate}`;
           
           const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
           if (response.getResponseCode() === 200) {
               const html = response.getContentText();
-              // Look for currency (e.g. "USD") and "Spot Selling" rate.
-              // Pattern in HTML table:
-              // <td data-table="幣別">...USD...</td>
-              // ...
-              // <td data-table="本行現金賣出">...</td>
-              // <td data-table="本行即期買入">...</td>
-              // <td data-table="本行即期賣出">31.48</td>
+
+              // Improvement: Split by table rows using English class names or structure
+              // Each currency row starts with a cell containing the currency code (e.g. USD)
+              // We can split by `<tr>` or just find the row regex.
+              // Simpler: Regex to find the row with the currency, then find the rate cell within it.
               
-              // We can regex for the specific currency row.
-              // Simplified Regex approach:
-              // Find the currency label, then find the rate values after it.
-              // Note: raw HTML might be messy.
+              // Regex Explanation:
+              // 1. Find `(USD)` (currency code in parens)
+              // 2. Followed by any chars until `rate-content-sight` (Spot Rate class)
+              // 3. We want the *second* `rate-content-sight` cell (Spot Selling). The first is Spot Buying.
+              //    Actually, let's find the row first.
               
-              // Structure usually:
-              // <tr> ... Currency (USD) ... </tr>
-              // Inside tr: multiple tds.
-              // 0: Currency
-              // 1: Cash Buy
-              // 2: Cash Sell
-              // 3: Spot Buy
-              // 4: Spot Sell (Target!)
+              // Find row content between <tr> and </tr> that contains (USD)
+              const rowRegex = new RegExp(`<tr[^>]*>[\\s\\S]*?\\(${currency}\\)[\\s\\S]*?<\\/tr>`, 'i');
+              const rowMatch = html.match(rowRegex);
               
-              // Let's find the row for the currency.
-              // Use regex to capture the row containing the currency code.
-              // Example: <div class="visible-phone print_hide">美金 (USD)</div>
-              
-              // Improvement: Split by table rows or specific currency cell structure to avoid matching links in header.
-              // Each row starts within the main table.
-              // Row indicator: <td data-table="幣別" ...>
-              // We can split the HTML by `data-table="幣別"`.
-              
-              const rows = html.split('data-table="幣別"');
-              
-              // Skip the first part (header/before table)
-              for (let i = 1; i < rows.length; i++) {
-                  const rowHtml = rows[i];
-                  // Check if this row is for our currency
-                  // The currency code (e.g. USD) should be within the first cell content.
-                  if (rowHtml.includes(`(${currency})`)) {
-                      // Found the row!
-                      // Extract Spot Sell Rate
-                      const rateRegex = /data-table="本行即期賣出"[^>]*>([\d.]+)<\/td>/;
-                      const rateMatch = rowHtml.match(rateRegex);
-                      
-                      if (rateMatch && rateMatch[1]) {
-                          const r = parseFloat(rateMatch[1]);
-                          if (!isNaN(r)) {
-                              rate = r;
-                              usedDate = queryDate;
-                              break; // Found it
-                          }
+              if (rowMatch) {
+                  const rowHtml = rowMatch[0];
+                  // Inside the row, find all `rate-content-sight` cells
+                  // Pattern: <td ... class="...rate-content-sight..." ...>RATE</td>
+                  
+                  const cellRegex = /class="[^"]*rate-content-sight[^"]*"[^>]*>([\d.]+)<\/td>/g;
+                  let result;
+                  const rates = [];
+                  while ((result = cellRegex.exec(rowHtml)) !== null) {
+                      rates.push(result[1]);
+                  }
+                  
+                  // rates[0] = Spot Buy, rates[1] = Spot Sell
+                  if (rates.length >= 2) {
+                      const r = parseFloat(rates[1]);
+                      if (!isNaN(r)) {
+                          rate = r;
+                          usedDate = queryDate;
                       }
                   }
-              }
-
-              // Legacy fallback check (if split fail or structure change)
-              if (rate === null && html.includes(currency)) {
-                  // ... logic removed to avoid false positives from header links
               }
           }
       } catch (e) {
@@ -209,10 +183,10 @@ function getExchangeRate(payload) {
           'USD': 30.0, 'JPY': 0.21, 'EUR': 32.5, 'CNY': 4.2, 'TWD': 1.0
       };
       return { 
-          status: 'success', // Determine if we should return error or fallback. User workflow depends on this. keeping fallback safe.
+          status: 'success', 
           rate: fallbackRates[currency] || 1.0, 
           isFallback: true,
-          message: 'Fallback rate used' 
+          message: `Fallback rate used. Could not find rate for ${currency} starting from ${targetDate.toISOString().split('T')[0]} (Checked ${attempts} days)` 
       };
   }
 }
