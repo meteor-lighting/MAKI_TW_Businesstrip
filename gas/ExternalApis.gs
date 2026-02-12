@@ -75,6 +75,16 @@ function searchCity(payload) {
   }
 }
 
+function getExchangeRate(payload) {
+    // Mock rates or fetch from API/Sheet
+    // simple mock for now
+    const rates = {
+        'USD': 30.0,
+        'JPY': 0.21,
+        'EUR': 32.5,
+        'CNY': 4.2,
+        'TWD': 1.0
+    };
     return { rate: rates[payload.currency] || 1.0 };
 }
 

@@ -59,6 +59,9 @@ function doPost(e) {
       case 'getExchangeRate':
         result = getExchangeRate(payload);
         break;
+      case 'searchFlight':
+        result = searchFlight(payload);
+        break;
 
       default:
         throw new Error(`Unknown action: ${action}`);
