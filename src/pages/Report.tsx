@@ -154,7 +154,7 @@ export default function Report() {
 
                 {/* Flight */}
                 <SectionAccordion
-                    title={`${t('flight')} (Flight)`}
+                    title={t('flight')}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['機票費總額'] || 0)}
                     disabled={loadingCount > 0}
@@ -214,7 +214,7 @@ export default function Report() {
 
                 {/* Accommodation */}
                 <SectionAccordion
-                    title={`${t('accommodation')} (Accommodation)`}
+                    title={t('accommodation')}
                     totalAmountText={t('personal_total')}
                     totalAmount={Number(reportData?.header['個人住宿費總額'] || 0)}
                     secondaryTotalAmountText={t('overall_total')}
@@ -275,7 +275,7 @@ export default function Report() {
 
                 {/* Taxi */}
                 <SectionAccordion
-                    title={`${t('taxi')} (Taxi)`}
+                    title={t('taxi')}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['計程車費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -328,7 +328,7 @@ export default function Report() {
 
                 {/* Internet */}
                 <SectionAccordion
-                    title={`${t('internet')} (Internet)`}
+                    title={t('internet')}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['網路費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -381,7 +381,7 @@ export default function Report() {
 
                 {/* Social */}
                 <SectionAccordion
-                    title={`${t('social')} (Social)`}
+                    title={t('social')}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['社交費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -434,7 +434,7 @@ export default function Report() {
 
                 {/* Gift */}
                 <SectionAccordion
-                    title={`${t('gift')} (Gift)`}
+                    title={t('gift')}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['禮品費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -487,7 +487,7 @@ export default function Report() {
 
                 {/* Handing Fee */}
                 <SectionAccordion
-                    title={`${t('handing_fee')} (Handing Fee)`}
+                    title={t('handing_fee')}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['手續費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -540,7 +540,7 @@ export default function Report() {
 
                 {/* Per Diem */}
                 <SectionAccordion
-                    title={`${t('per_diem')} (Per Diem)`}
+                    title={t('per_diem')}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['日支費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -593,7 +593,7 @@ export default function Report() {
 
                 {/* Others */}
                 <SectionAccordion
-                    title={`${t('others')} (Others)`}
+                    title={t('others')}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['其他費用總額'] || 0)}
                     disabled={isOtherFormsDisabled}
