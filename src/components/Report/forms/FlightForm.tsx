@@ -67,34 +67,23 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
 
             const numericAmount = Number(amount);
 
-            // Special Logic: If First Flight !hasFlights, fetch rate from Previous Day
+            // Special Logic: If First Flight !hasFlights, fetch rate from Previous Day (Backend handles T-1 now)
             if (currency === 'USD' && !hasFlights && date && date.length === 10) {
-                // Determine previous day
+                if (isActive) setRateLoading(true);
                 try {
-                    const currentD = new Date(date);
-                    if (!isNaN(currentD.getTime())) {
-                        const prevD = new Date(currentD);
-                        prevD.setDate(prevD.getDate() - 1);
-                        // Fix for Timezone issue: toISOString() uses UTC, causing -1 day shift in Asia
-                        const yyyy = prevD.getFullYear();
-                        const mm = String(prevD.getMonth() + 1).padStart(2, '0');
-                        const dd = String(prevD.getDate()).padStart(2, '0');
-                        const prevDateStr = `${yyyy}/${mm}/${dd}`;
+                    const res = await sendRequest('getExchangeRate', { currency, date });
+                    if (!isActive) return;
+                    setRateLoading(false);
 
-                        if (isActive) setRateLoading(true);
-                        const res = await sendRequest('getExchangeRate', { currency, date: prevDateStr });
-                        if (!isActive) return;
-                        setRateLoading(false);
-
-                        if (res.status === 'success' || res.rate) {
-                            const rate = res.data?.rate || res.rate || 1;
-                            setValue('rate', rate);
-                            setValue('twdAmount', Number((numericAmount * rate).toFixed(0)));
-                            return;
-                        }
+                    if (res.status === 'success' || res.rate) {
+                        const rate = res.data?.rate || res.rate || 1;
+                        setValue('rate', rate);
+                        setValue('twdAmount', Number((numericAmount * rate).toFixed(0)));
+                        return;
                     }
                 } catch (e) {
-                    console.error('Error fetching prev day rate', e);
+                    console.error('Error fetching rate', e);
+                    setRateLoading(false);
                 }
             }
 
