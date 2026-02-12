@@ -196,6 +196,11 @@ function getExchangeRate(payload) {
   }
 }
 
+// Alias for legacy/mismatched calls
+function getBotRate(payload) {
+    return getExchangeRate(payload);
+}
+
 function searchFlight(payload) {
   // payload: { code, date }
   // date format: YYYY/MM/DD or YYYY-MM-DD
