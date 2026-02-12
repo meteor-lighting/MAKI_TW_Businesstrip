@@ -109,7 +109,10 @@ function getExchangeRate(payload) {
   const debugLog = [];
   // Loop up to 5 days back
   while (rate === null && attempts < 5) {
-      const queryDate = `${currentSearchDate.getFullYear()}/${currentSearchDate.getMonth()+1}/${currentSearchDate.getDate()}`;
+      const yyyy = currentSearchDate.getFullYear();
+      const mm = String(currentSearchDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(currentSearchDate.getDate()).padStart(2, '0');
+      const queryDate = `${yyyy}-${mm}-${dd}`; // BOT uses YYYY-MM-DD in URL
       console.log(`Fetching rate for ${currency} on ${queryDate} (Attempt ${attempts + 1})`);
       
       try {
