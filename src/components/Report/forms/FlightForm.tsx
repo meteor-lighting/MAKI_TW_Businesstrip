@@ -235,25 +235,6 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
                     <input type="text" {...register('flightCode')} onBlur={handleFlightBlur} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 uppercase disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white" placeholder="e.g. BR123" />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">{t('departure')}</label>
-                    <input type="text" {...register('departure')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 uppercase disabled:bg-gray-100" maxLength={3} />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">{t('arrival')}</label>
-                    <input type="text" {...register('arrival')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 uppercase disabled:bg-gray-100" maxLength={3} />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">{t('departure_time')}</label>
-                    <input type="time" {...register('depTime')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">{t('arrival_time')}</label>
-                    <input type="time" {...register('arrTime')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
-                </div>
-            </div>
-
-            <div className="border-t border-gray-200 pt-4 mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
                     <label className="block text-sm font-medium text-gray-700">{t('currency')}</label>
                     <select {...register('currency')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100">
                         <option value="TWD">TWD</option>
@@ -277,6 +258,26 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
                     />
                     {errors.amount && <span className="text-red-500 text-sm">{errors.amount.message}</span>}
                 </div>
+
+                {/* Row 2 */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">{t('departure')}</label>
+                    <input type="text" {...register('departure')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 uppercase disabled:bg-gray-100" maxLength={3} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">{t('arrival')}</label>
+                    <input type="text" {...register('arrival')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 uppercase disabled:bg-gray-100" maxLength={3} />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">{t('departure_time')}</label>
+                    <input type="time" {...register('depTime')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">{t('arrival_time')}</label>
+                    <input type="time" {...register('arrTime')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
+                </div>
+
+                {/* Row 3 - Calculated Fields */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('exchange_rate')}</label>
                     <input type="number" step="0.0001" {...register('rate', { valueAsNumber: true })} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100" />
