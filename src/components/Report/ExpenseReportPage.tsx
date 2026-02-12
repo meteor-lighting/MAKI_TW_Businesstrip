@@ -59,7 +59,6 @@ const ExpenseReportPage: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex gap-3 items-center">
-                        <LanguageSwitcher />
                         <button
                             onClick={() => navigate('/report')}
                             className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
@@ -74,6 +73,7 @@ const ExpenseReportPage: React.FC = () => {
                             <LogOut size={18} />
                             {t('logout')}
                         </button>
+                        <LanguageSwitcher />
                     </div>
                 </div>
 
