@@ -438,6 +438,13 @@ function recalculateHeader(reportId) {
       if (colStart > -1) headerSheet.getRange(rowIndex, colStart + 1).setValue(startDateStr);
       if (colEnd > -1) headerSheet.getRange(rowIndex, colEnd + 1).setValue(endDateStr);
 
+      // Write TWD Totals
+      const colTotalPersonalTWD = headers.indexOf('合計TWD個人總額');
+      if (colTotalPersonalTWD > -1) headerSheet.getRange(rowIndex, colTotalPersonalTWD + 1).setValue(totalPersonalTWD);
+      
+      const colTotalOverallTWD = headers.indexOf('合計TWD總體總額');
+      if (colTotalOverallTWD > -1) headerSheet.getRange(rowIndex, colTotalOverallTWD + 1).setValue(totalOverallTWD);
+
       // Now calculate USD totals and Averages
       let totalPersonalUSD = 0;
       let totalOverallUSD = 0;
