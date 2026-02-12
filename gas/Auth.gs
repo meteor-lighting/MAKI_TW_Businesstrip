@@ -150,3 +150,58 @@ function handleForgotPassword(payload) {
     return { status: 'error', message: 'Server busy' };
   }
 }
+
+function handleChangePassword(payload) {
+  // payload: { username, oldPassword, newPassword }
+  const username = payload.username;
+  const oldPassword = payload.oldPassword;
+  const newPassword = payload.newPassword;
+  
+  const lock = LockService.getScriptLock();
+  
+  if (lock.tryLock(10000)) {
+    try {
+      const sheet = getSheet('Member');
+      const data = sheet.getDataRange().getValues();
+      
+      let rowIndex = -1;
+      let storedPasswordHash = '';
+      
+      // Find user
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][1] === username) {
+          rowIndex = i + 1;
+          storedPasswordHash = data[i][2];
+          break;
+        }
+      }
+      
+      if (rowIndex === -1) {
+        return { status: 'error', message: '找不到此用戶！' };
+      }
+      
+      // Verify Old Password
+      const oldPasswordHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, oldPassword)
+        .map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('');
+        
+      if (oldPasswordHash !== storedPasswordHash) {
+        return { status: 'error', message: '舊密碼錯誤！' };
+      }
+      
+      // Update New Password
+      const newPasswordHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, newPassword)
+        .map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('');
+        
+      sheet.getRange(rowIndex, 3).setValue(newPasswordHash);
+      
+      return { status: 'success', message: '密碼修改成功！' };
+      
+    } catch (e) {
+      throw e;
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { status: 'error', message: 'Server busy' };
+  }
+}

@@ -17,6 +17,7 @@ import GiftForm from '../components/Report/forms/GiftForm';
 import HandingFeeForm from '../components/Report/forms/HandingFeeForm';
 import PerDiemForm from '../components/Report/forms/PerDiemForm';
 import OthersForm from '../components/Report/forms/OthersForm';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 
 
 // Define types for state
@@ -38,6 +39,7 @@ export default function Report() {
     const [reportData, setReportData] = useState<ReportData | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadingCount, setLoadingCount] = useState(0);
+    const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
 
     const handleLoadingChange = useCallback((isLoading: boolean) => {
         setLoadingCount(prev => isLoading ? prev + 1 : Math.max(0, prev - 1));
@@ -123,6 +125,7 @@ export default function Report() {
 
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8 pb-32">
+            <ChangePasswordModal isOpen={isChangePasswordModalOpen} onClose={() => setIsChangePasswordModalOpen(false)} />
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-gray-800">{t('app_title')} - {reportId}</h1>
@@ -135,7 +138,15 @@ export default function Report() {
                                 <span>{t('confirm_finish')}</span>
                             </button>
                         )}
-                        <span className="text-gray-600">{t('welcome')}, {user?.name}</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-gray-600">{t('welcome')}, {user?.name}</span>
+                            <button
+                                onClick={() => setIsChangePasswordModalOpen(true)}
+                                className="text-sm text-indigo-600 hover:text-indigo-800 underline"
+                            >
+                                {t('change_password')}
+                            </button>
+                        </div>
                     </div>
                 </div>
 

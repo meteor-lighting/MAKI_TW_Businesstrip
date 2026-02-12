@@ -96,5 +96,13 @@ export const zh = {
         "password_reset_sent": "重設密碼信件已寄出。",
         "user_not_found": "找不到此用戶。",
         "send_reset_email": "發送重設信",
+        "change_password": "修改密碼",
+        "old_password": "舊密碼",
+        "new_password": "新密碼",
+        "confirm_new_password": "確認新密碼",
+        "password_changed_success": "密碼修改成功。",
+        "password_mismatch": "新密碼不一致。",
+        "password_min_length": "密碼長度至少需8位。",
+        "cancel": "取消",
     }
 };

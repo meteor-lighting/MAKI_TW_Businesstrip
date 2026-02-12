@@ -96,5 +96,13 @@ export const en = {
         "password_reset_sent": "Password reset email has been sent.",
         "user_not_found": "User not found.",
         "send_reset_email": "Send Reset Email",
+        "change_password": "Change Password",
+        "old_password": "Old Password",
+        "new_password": "New Password",
+        "confirm_new_password": "Confirm New Password",
+        "password_changed_success": "Password changed successfully.",
+        "password_mismatch": "New passwords do not match.",
+        "password_min_length": "Password must be at least 8 characters.",
+        "cancel": "Cancel",
     }
 };
