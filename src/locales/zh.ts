@@ -17,7 +17,7 @@ export const zh = {
         "confirm_finish": "完成",
         "no_data": "無報告資料",
         "return_to_report": "返回報告頁面",
-        "expense_summary": "費用總結",
+        "expense_summary": "費用總結 (Summary)",
         "days": "天數",
         "period": "期間",
         "rate_usd": "USD匯率",
