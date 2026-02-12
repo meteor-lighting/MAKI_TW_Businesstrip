@@ -652,9 +652,9 @@ export default function Report() {
                         <table className="min-w-full divide-y divide-gray-300 border border-gray-300">
                             <thead className="bg-gray-100">
                                 <tr>
-                                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-r border-gray-300">{t('item')} Item</th>
-                                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider border-r border-gray-300">{t('personal')} Personal</th>
-                                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('overall')} Overall</th>
+                                    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-r border-gray-300">{t('item')}</th>
+                                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider border-r border-gray-300">{t('personal')}</th>
+                                    <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">{t('overall')}</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
