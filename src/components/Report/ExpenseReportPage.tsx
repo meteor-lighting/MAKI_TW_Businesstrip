@@ -8,6 +8,7 @@ import LanguageSwitcher from '../LanguageSwitcher';
 
 import { ArrowLeft, LogOut } from 'lucide-react';
 import { ReportData } from '../../types/report';
+import { useAuth } from '../../context/AuthContext';
 
 const ExpenseReportPage: React.FC = () => {
     const { t } = useTranslation();
@@ -35,10 +36,10 @@ const ExpenseReportPage: React.FC = () => {
         );
     }
 
+    const { signOut } = useAuth();
+
     const handleLogout = () => {
-        // Clear auth tokens
-        localStorage.removeItem('token');
-        sessionStorage.removeItem('token');
+        signOut();
         navigate('/');
     };
 

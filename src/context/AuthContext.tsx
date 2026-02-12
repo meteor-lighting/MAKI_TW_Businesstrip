@@ -69,6 +69,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const signOut = () => {
         setUser(null);
         localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('activeReportId');
         // window.location.href = '/'; // Optional redirect
     };
 
