@@ -106,62 +106,64 @@ function getExchangeRate(payload) {
   let attempts = 0;
   let rate = null;
   let usedDate = '';
-
-  while (attempts < 7 && rate === null) {
-      const yyyy = currentSearchDate.getFullYear();
-      const mm = String(currentSearchDate.getMonth() + 1).padStart(2, '0');
-      const dd = String(currentSearchDate.getDate()).padStart(2, '0');
-      const queryDate = `${yyyy}-${mm}-${dd}`; // BOT uses YYYY-MM-DD in URL
-
+  const debugLog = [];
+  // Loop up to 5 days back
+  while (rate === null && attempts < 5) {
+      const queryDate = `${currentSearchDate.getFullYear()}/${currentSearchDate.getMonth()+1}/${currentSearchDate.getDate()}`;
       console.log(`Fetching rate for ${currency} on ${queryDate} (Attempt ${attempts + 1})`);
       
       try {
-          // Bank of Taiwan Historical Rate URL
           const url = `https://rate.bot.com.tw/xrt/all/${queryDate}`;
-          
           const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-          if (response.getResponseCode() === 200) {
+          
+          if (response.getResponseCode() !== 200) {
+              debugLog.push(`[${queryDate}] HTTP ${response.getResponseCode()}`);
+          } else {
               const html = response.getContentText();
-
-              // Improvement: Split by table rows using English class names or structure
-              // Each currency row starts with a cell containing the currency code (e.g. USD)
-              // We can split by `<tr>` or just find the row regex.
-              // Simpler: Regex to find the row with the currency, then find the rate cell within it.
               
-              // Regex Explanation:
-              // 1. Find `(USD)` (currency code in parens)
-              // 2. Followed by any chars until `rate-content-sight` (Spot Rate class)
-              // 3. We want the *second* `rate-content-sight` cell (Spot Selling). The first is Spot Buying.
-              //    Actually, let's find the row first.
+              // Robust parsing: Split by table rows
+              const rows = html.split('<tr');
+              let foundRow = false;
               
-              // Find row content between <tr> and </tr> that contains (USD)
-              const rowRegex = new RegExp(`<tr[^>]*>[\\s\\S]*?\\(${currency}\\)[\\s\\S]*?<\\/tr>`, 'i');
-              const rowMatch = html.match(rowRegex);
-              
-              if (rowMatch) {
-                  const rowHtml = rowMatch[0];
-                  // Inside the row, find all `rate-content-sight` cells
-                  // Pattern: <td ... class="...rate-content-sight..." ...>RATE</td>
-                  
-                  const cellRegex = /class="[^"]*rate-content-sight[^"]*"[^>]*>([\d.]+)<\/td>/g;
-                  let result;
-                  const rates = [];
-                  while ((result = cellRegex.exec(rowHtml)) !== null) {
-                      rates.push(result[1]);
-                  }
-                  
-                  // rates[0] = Spot Buy, rates[1] = Spot Sell
-                  if (rates.length >= 2) {
-                      const r = parseFloat(rates[1]);
-                      if (!isNaN(r)) {
-                          rate = r;
-                          usedDate = queryDate;
+              for (const rowFragment of rows) {
+                  // Re-add <tr to make it look like tag if needed, but not strictly necessary for content check
+                  // Check if this row fragment contains our currency code in parens e.g. (USD)
+                  if (rowFragment.includes(`(${currency})`)) {
+                      foundRow = true;
+                      
+                      // Find all `rate-content-sight` cells in this row
+                      // Pattern: <td ... class="...rate-content-sight..." ...>RATE</td>
+                      const cellRegex = /class="[^"]*rate-content-sight[^"]*"[^>]*>([\d.]+)<\/td>/g;
+                      let result;
+                      const cellValues = [];
+                      
+                      while ((result = cellRegex.exec(rowFragment)) !== null) {
+                          cellValues.push(result[1]);
                       }
+                      
+                      // Typically: cellValues[0] = Spot Buy, cellValues[1] = Spot Sell
+                      if (cellValues.length >= 2) {
+                          const r = parseFloat(cellValues[1]);
+                          if (!isNaN(r)) {
+                              rate = r;
+                              usedDate = queryDate;
+                          } else {
+                              debugLog.push(`[${queryDate}] Rate parsing NaN: ${cellValues[1]}`);
+                          }
+                      } else {
+                          debugLog.push(`[${queryDate}] Insufficient cells found: ${cellValues.length}`);
+                      }
+                      break; // Stop looking at other rows
                   }
+              }
+              
+              if (!foundRow) {
+                  debugLog.push(`[${queryDate}] Row for (${currency}) not found`);
               }
           }
       } catch (e) {
           console.warn(`Fetch error for ${queryDate}: ${e}`);
+          debugLog.push(`[${queryDate}] Exception: ${e.toString()}`);
       }
 
       // If failed (rate is still null), go back 1 more day
@@ -186,7 +188,7 @@ function getExchangeRate(payload) {
           status: 'success', 
           rate: fallbackRates[currency] || 1.0, 
           isFallback: true,
-          message: `Fallback rate used. Could not find rate for ${currency} starting from ${targetDate.toISOString().split('T')[0]} (Checked ${attempts} days)` 
+          message: `Fallback used. Debug: ${debugLog.join('; ')}` 
       };
   }
 }
