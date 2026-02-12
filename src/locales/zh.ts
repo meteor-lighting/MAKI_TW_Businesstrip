@@ -89,5 +89,12 @@ export const zh = {
         "twd_overall_amount": "TWD總體金額",
         "action_expand": "輸入",
         "action_collapse": "收合",
+        "forgot_password": "忘記密碼？",
+        "reset_password": "重設密碼",
+        "enter_email": "請輸入您的電子郵件地址以重設密碼",
+        "back_to_login": "返回登入",
+        "password_reset_sent": "重設密碼信件已寄出。",
+        "user_not_found": "找不到此用戶。",
+        "send_reset_email": "發送重設信",
     }
 };

@@ -89,5 +89,12 @@ export const en = {
         "twd_overall_amount": "TWD Overall Amount",
         "action_expand": "Input",
         "action_collapse": "Collapse",
+        "forgot_password": "Forgot Password?",
+        "reset_password": "Reset Password",
+        "enter_email": "Enter your email address to reset password",
+        "back_to_login": "Back to Login",
+        "password_reset_sent": "Password reset email has been sent.",
+        "user_not_found": "User not found.",
+        "send_reset_email": "Send Reset Email",
     }
 };

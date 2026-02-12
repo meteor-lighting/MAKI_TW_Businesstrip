@@ -23,6 +23,9 @@ function doPost(e) {
       case 'signin':
         result = handleSignIn(payload);
         break;
+      case 'forgotPassword':
+        result = handleForgotPassword(payload);
+        break;
       
       // Report
       case 'createReport': // Initialize new report

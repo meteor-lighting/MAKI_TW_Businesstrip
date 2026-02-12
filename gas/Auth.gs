@@ -87,3 +87,66 @@ function handleSignIn(payload) {
     }
   };
 }
+
+function handleForgotPassword(payload) {
+  // payload: { email }
+  const email = payload.email;
+  const lock = LockService.getScriptLock();
+  
+  if (lock.tryLock(10000)) {
+    try {
+      const sheet = getSheet('Member');
+      const data = sheet.getDataRange().getValues(); // Get all data
+      
+      // Headers are in row 1 (index 0). Data starts row 2 (index 1).
+      // Columns: 用戶編號(0), 用戶名稱(1), 用戶密碼(2), 用戶電郵地址(3)
+      
+      let rowIndex = -1;
+      let userName = '';
+      
+      // Find user by email
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][3] === email) {
+          rowIndex = i + 1; // 1-based row index
+          userName = data[i][1];
+          break;
+        }
+      }
+      
+      if (rowIndex === -1) {
+        return { status: 'error', message: '找不到此用戶電郵地址！' };
+      }
+      
+      // Generate new password
+      const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let newPassword = "";
+      for (let i = 0; i < 8; i++) {
+        newPassword += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      
+      // Hash new password
+      const passwordHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, newPassword)
+        .map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('');
+        
+      // Update password in sheet (Column 3 corresponds to index 2, but getRange uses 1-based indexing)
+      // Password column is C (3rd column)
+      sheet.getRange(rowIndex, 3).setValue(passwordHash);
+      
+      // Send Email
+      MailApp.sendEmail({
+        to: email,
+        subject: 'Business Travel Expense Report - Password Reset (密碼重設)',
+        body: `Dear ${userName},\n\nYour password has been reset.\nNew Password: ${newPassword}\n\nPlease log in and change your password if needed.\n\nBest Regards,\nAdmin`
+      });
+      
+      return { status: 'success', message: '重設密碼信件已寄出！' };
+      
+    } catch (e) {
+      throw e;
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { status: 'error', message: 'Server busy' };
+  }
+}
