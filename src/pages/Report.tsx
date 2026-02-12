@@ -157,7 +157,6 @@ export default function Report() {
                 {/* Header Info */}
                 {reportData && (
                     <ReportHeader
-                        userId={user?.id || ''}
                         days={Number(reportData.header['商旅天數'] || 0)}
                         rate={Number(reportData.header['USD匯率'] || 0)}
                         startDate={reportData.header['商旅起始日']} // Backend calculation needed
