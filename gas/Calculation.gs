@@ -210,6 +210,43 @@ function recalculateHeader(reportId) {
         headerSheet.getRange(rowIndex, colIdx + 1).setValue(val);
       }
     }
+
+    // Auto-update Exchange Rate if 0.00
+    const idxRate = headers.indexOf('USD匯率');
+    if (idxRate > -1) {
+       const currentRateVal = headerSheet.getRange(rowIndex, idxRate + 1).getValue();
+       if (!currentRateVal || Number(currentRateVal) === 0) {
+           // Try to find first flight date
+           try {
+               const flightSheet = getSheet('Flight');
+               const flightData = sheetDataToJson('Flight');
+               // Find first flight for this report
+               const myFlights = flightData.filter(r => String(r['報告編號']) === String(reportId));
+               // Sort by sequence to find first
+               myFlights.sort((a,b) => parseInt(a['次序']) - parseInt(b['次序']));
+               
+               if (myFlights.length > 0 && myFlights[0]['日期']) {
+                   const firstDate = myFlights[0]['日期'];
+                   // Fetch rate
+                   // Note: 'date' in sheet might be Date object or string. 
+                   // ExternalApis.getExchangeRate handles date string? 
+                   // If date object, convert to YYYY/MM/DD
+                   let dateStr = firstDate;
+                   if (firstDate instanceof Date) {
+                       dateStr = `${firstDate.getFullYear()}/${firstDate.getMonth()+1}/${firstDate.getDate()}`;
+                   }
+                   
+                   const rateRes = getExchangeRate({ currency: 'USD', date: dateStr });
+                   if ((rateRes.status === 'success' || rateRes.rate) && rateRes.rate > 0) {
+                       const newRate = rateRes.data?.rate || rateRes.rate;
+                       headerSheet.getRange(rowIndex, idxRate + 1).setValue(newRate);
+                   }
+               }
+           } catch (e) {
+               console.warn('Auto-update rate failed: ' + e);
+           }
+       }
+    }
     
     // Update Grand Totals (TWD/USD)
     // Read fresh row data to get current days/rate
