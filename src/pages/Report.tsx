@@ -647,7 +647,7 @@ export default function Report() {
 
                 {/* Total Summary Table */}
                 <div className="mt-8 border-t pt-6 bg-gray-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-bold mb-4 text-gray-800">{t('expense_summary')} (Summary)</h3>
+                    <h3 className="text-lg font-bold mb-4 text-gray-800">{t('expense_summary')}</h3>
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-300 border border-gray-300">
                             <thead className="bg-gray-100">
