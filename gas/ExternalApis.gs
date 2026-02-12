@@ -152,61 +152,21 @@ function getExchangeRate(payload) {
               // Use regex to capture the row containing the currency code.
               // Example: <div class="visible-phone print_hide">美金 (USD)</div>
               
-              if (html.includes(currency)) {
-                  // Find the part of HTML after the currency mention
-                  // Be careful with multiple mentions. The table row usually starts with the currency name/code.
-                  
-                  // Strategy: Split by currency code, take the immediate next part which should be the table row data.
-                  // But header also has currency code? No, header is "幣別".
-                  // The row has "美金 (USD)".
-                  
-                  const parts = html.split(currency);
-                  // part[0] is before, part[1] is after first occurrence (could be in dropdown).
-                  // We need the table row.
-                  // Search for pattern: `(USD)</div>` or similar uniqueness.
-                  
-                  // Better: Regex for the table cell content.
-                  // <td class="rate-content-sight text-right print_width" data-table="本行即期賣出">31.48</td>
-                  
-                  // Wait, the page structure for /xrt/all/YYYY-MM-DD might be specific.
-                  // It lists all currencies.
-                  // Row container: <tr>
-                  // Currency cell: contains "USD"
-                  // We need the cell with `data-table="本行即期賣出"` IN THE SAME ROW.
-                  
-                  // Let's rely on the structure that currencies are listed in order.
-                  // RegEx to look for:
-                  // 1. Currency Code (e.g. USD)
-                  // 2. Followed by some chars
-                  // 3. `data-table="本行即期賣出">`
-                  // 4. Rate Capture group
-                  
-                  // But there are multiple columns.
-                  // Column order: Cash Buy, Cash Sell, Spot Buy, Spot Sell.
-                  // Spot Sell is the 4th rate column (index 3 if 0-based rate columns).
-                  
-                  // Let's extract the "Spot Sell" directly if possible? No, we need it for specific currency.
-                  
-                  // Specific Currency Page approach might be safer if /all/ is complex?
-                  // https://rate.bot.com.tw/xrt/quote/YYYY-MM-DD/USD/spot
-                  // This page might just return the rate for that currency?
-                  // Inspecting BOT site structure... 
-                  // /xrt/quote/2026-01-01/USD/spot -> 404 or specific format?
-                  // It seems /xrt/history/USD returns a list.
-                  
-                  // Let's stick to /xrt/all/YYYY-MM-DD
-                  // Regex: 
-                  // Find substring starting with "USD" and ending with </tr>
-                  // Inside that, find `data-table="本行即期賣出">([0-9.]+)</td>`
-                  
-                  // Try to find the row.
-                  const rowRegex = new RegExp(`${currency}.*?</tr>`, 's'); // 's' for dot matches newline
-                  const rowMatch = html.match(rowRegex);
-                  
-                  if (rowMatch) {
-                      const rowHtml = rowMatch[0];
-                      // Find Spot Sell
-                      // <td data-table="本行即期賣出" ...>31.48</td>
+              // Improvement: Split by table rows or specific currency cell structure to avoid matching links in header.
+              // Each row starts within the main table.
+              // Row indicator: <td data-table="幣別" ...>
+              // We can split the HTML by `data-table="幣別"`.
+              
+              const rows = html.split('data-table="幣別"');
+              
+              // Skip the first part (header/before table)
+              for (let i = 1; i < rows.length; i++) {
+                  const rowHtml = rows[i];
+                  // Check if this row is for our currency
+                  // The currency code (e.g. USD) should be within the first cell content.
+                  if (rowHtml.includes(`(${currency})`)) {
+                      // Found the row!
+                      // Extract Spot Sell Rate
                       const rateRegex = /data-table="本行即期賣出"[^>]*>([\d.]+)<\/td>/;
                       const rateMatch = rowHtml.match(rateRegex);
                       
@@ -215,9 +175,15 @@ function getExchangeRate(payload) {
                           if (!isNaN(r)) {
                               rate = r;
                               usedDate = queryDate;
+                              break; // Found it
                           }
                       }
                   }
+              }
+
+              // Legacy fallback check (if split fail or structure change)
+              if (rate === null && html.includes(currency)) {
+                  // ... logic removed to avoid false positives from header links
               }
           }
       } catch (e) {
