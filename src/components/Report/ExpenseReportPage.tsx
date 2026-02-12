@@ -4,6 +4,7 @@ import SummaryCards from './SummaryCards';
 import ExpenseCharts from './ExpenseCharts';
 import DetailTable from './DetailTable';
 import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../LanguageSwitcher';
 
 import { ArrowLeft, LogOut } from 'lucide-react';
 import { ReportData } from '../../types/report';
@@ -57,7 +58,8 @@ const ExpenseReportPage: React.FC = () => {
                             <span>{t('period')}: {reportData.summary.period}</span>
                         </div>
                     </div>
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 items-center">
+                        <LanguageSwitcher />
                         <button
                             onClick={() => navigate('/report')}
                             className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
