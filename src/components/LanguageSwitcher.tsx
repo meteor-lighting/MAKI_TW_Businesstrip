@@ -13,7 +13,7 @@ const LanguageSwitcher: React.FC = () => {
     return (
         <button
             onClick={toggleLanguage}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/20 hover:bg-white/30 transition-colors text-sm font-medium"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors text-sm font-medium shadow-lg"
             title="Switch Language / 切換語言"
         >
             <Globe size={18} />
