@@ -18,6 +18,7 @@ import HandingFeeForm from '../components/Report/forms/HandingFeeForm';
 import PerDiemForm from '../components/Report/forms/PerDiemForm';
 import OthersForm from '../components/Report/forms/OthersForm';
 import ChangePasswordModal from '../components/ChangePasswordModal';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 
 // Define types for state
@@ -146,6 +147,9 @@ export default function Report() {
                             >
                                 {t('change_password')}
                             </button>
+                            <div className="ml-2">
+                                <LanguageSwitcher />
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -6,7 +6,6 @@ import Report from './pages/Report';
 import ExpenseReportPage from './components/Report/ExpenseReportPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './i18n';
-import LanguageSwitcher from './components/LanguageSwitcher';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
     const { isAuthenticated, isLoading } = useAuth();
@@ -21,9 +20,6 @@ function App() {
     return (
         <Router>
             <AuthProvider>
-                <div className="fixed top-4 right-4 z-[9999]">
-                    <LanguageSwitcher />
-                </div>
                 <Routes>
                     <Route path="/" element={<SignIn />} />
                     <Route path="/signup" element={<SignUp />} />
