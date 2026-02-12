@@ -76,39 +76,204 @@ function searchCity(payload) {
 }
 
 function getExchangeRate(payload) {
-    // Mock rates or fetch from API/Sheet
-    // simple mock for now
-    const rates = {
-        'USD': 30.0,
-        'JPY': 0.21,
-        'EUR': 32.5,
-        'CNY': 4.2,
-        'TWD': 1.0
-    };
-    return { rate: rates[payload.currency] || 1.0 };
+  // payload: { currency, date }
+  // date: YYYY/MM/DD or YYYY-MM-DD
+  const currency = (payload.currency || 'USD').toUpperCase();
+  let dateStr = payload.date;
+
+  if (currency === 'TWD') return { status: 'success', rate: 1.0 };
+
+  // If no date, use today? Or return error? 
+  // For now default to today if missing, but usually provided.
+  if (!dateStr) {
+      const today = new Date();
+      dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+  }
+
+  // Target: Previous Day (T-1)
+  // If T-1 is holiday, keep going back up to 5 days.
+  
+  const targetDate = new Date(dateStr);
+  if (isNaN(targetDate.getTime())) return { status: 'error', message: 'Invalid Date' };
+
+  // Note: We need T-1 relative to the Input Date.
+  // We will loop back starting from T-1.
+  
+  // Start from T-1
+  let currentSearchDate = new Date(targetDate);
+  currentSearchDate.setDate(currentSearchDate.getDate() - 1);
+  
+  let attempts = 0;
+  let rate = null;
+  let usedDate = '';
+
+  while (attempts < 7 && rate === null) {
+      const yyyy = currentSearchDate.getFullYear();
+      const mm = String(currentSearchDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(currentSearchDate.getDate()).padStart(2, '0');
+      const queryDate = `${yyyy}-${mm}-${dd}`; // BOT uses YYYY-MM-DD in URL
+
+      console.log(`Fetching rate for ${currency} on ${queryDate} (Attempt ${attempts + 1})`);
+      
+      try {
+          // Bank of Taiwan Historical Rate URL
+          // https://rate.bot.com.tw/xrt/history/YYYY-MM-DD
+          // Actually, specific day URL format is: https://rate.bot.com.tw/xrt/quote/YYYY-MM-DD/{CURRENCY}/spot
+          // OR the daily all-currency list: https://rate.bot.com.tw/xrt/all/YYYY-MM-DD
+          // Let's use the all-currency list for the specific day.
+          const url = `https://rate.bot.com.tw/xrt/all/${queryDate}`;
+          
+          const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+          if (response.getResponseCode() === 200) {
+              const html = response.getContentText();
+              // Look for currency (e.g. "USD") and "Spot Selling" rate.
+              // Pattern in HTML table:
+              // <td data-table="幣別">...USD...</td>
+              // ...
+              // <td data-table="本行現金賣出">...</td>
+              // <td data-table="本行即期買入">...</td>
+              // <td data-table="本行即期賣出">31.48</td>
+              
+              // We can regex for the specific currency row.
+              // Simplified Regex approach:
+              // Find the currency label, then find the rate values after it.
+              // Note: raw HTML might be messy.
+              
+              // Structure usually:
+              // <tr> ... Currency (USD) ... </tr>
+              // Inside tr: multiple tds.
+              // 0: Currency
+              // 1: Cash Buy
+              // 2: Cash Sell
+              // 3: Spot Buy
+              // 4: Spot Sell (Target!)
+              
+              // Let's find the row for the currency.
+              // Use regex to capture the row containing the currency code.
+              // Example: <div class="visible-phone print_hide">美金 (USD)</div>
+              
+              if (html.includes(currency)) {
+                  // Find the part of HTML after the currency mention
+                  // Be careful with multiple mentions. The table row usually starts with the currency name/code.
+                  
+                  // Strategy: Split by currency code, take the immediate next part which should be the table row data.
+                  // But header also has currency code? No, header is "幣別".
+                  // The row has "美金 (USD)".
+                  
+                  const parts = html.split(currency);
+                  // part[0] is before, part[1] is after first occurrence (could be in dropdown).
+                  // We need the table row.
+                  // Search for pattern: `(USD)</div>` or similar uniqueness.
+                  
+                  // Better: Regex for the table cell content.
+                  // <td class="rate-content-sight text-right print_width" data-table="本行即期賣出">31.48</td>
+                  
+                  // Wait, the page structure for /xrt/all/YYYY-MM-DD might be specific.
+                  // It lists all currencies.
+                  // Row container: <tr>
+                  // Currency cell: contains "USD"
+                  // We need the cell with `data-table="本行即期賣出"` IN THE SAME ROW.
+                  
+                  // Let's rely on the structure that currencies are listed in order.
+                  // RegEx to look for:
+                  // 1. Currency Code (e.g. USD)
+                  // 2. Followed by some chars
+                  // 3. `data-table="本行即期賣出">`
+                  // 4. Rate Capture group
+                  
+                  // But there are multiple columns.
+                  // Column order: Cash Buy, Cash Sell, Spot Buy, Spot Sell.
+                  // Spot Sell is the 4th rate column (index 3 if 0-based rate columns).
+                  
+                  // Let's extract the "Spot Sell" directly if possible? No, we need it for specific currency.
+                  
+                  // Specific Currency Page approach might be safer if /all/ is complex?
+                  // https://rate.bot.com.tw/xrt/quote/YYYY-MM-DD/USD/spot
+                  // This page might just return the rate for that currency?
+                  // Inspecting BOT site structure... 
+                  // /xrt/quote/2026-01-01/USD/spot -> 404 or specific format?
+                  // It seems /xrt/history/USD returns a list.
+                  
+                  // Let's stick to /xrt/all/YYYY-MM-DD
+                  // Regex: 
+                  // Find substring starting with "USD" and ending with </tr>
+                  // Inside that, find `data-table="本行即期賣出">([0-9.]+)</td>`
+                  
+                  // Try to find the row.
+                  const rowRegex = new RegExp(`${currency}.*?</tr>`, 's'); // 's' for dot matches newline
+                  const rowMatch = html.match(rowRegex);
+                  
+                  if (rowMatch) {
+                      const rowHtml = rowMatch[0];
+                      // Find Spot Sell
+                      // <td data-table="本行即期賣出" ...>31.48</td>
+                      const rateRegex = /data-table="本行即期賣出"[^>]*>([\d.]+)<\/td>/;
+                      const rateMatch = rowHtml.match(rateRegex);
+                      
+                      if (rateMatch && rateMatch[1]) {
+                          const r = parseFloat(rateMatch[1]);
+                          if (!isNaN(r)) {
+                              rate = r;
+                              usedDate = queryDate;
+                          }
+                      }
+                  }
+              }
+          }
+      } catch (e) {
+          console.warn(`Fetch error for ${queryDate}: ${e}`);
+      }
+
+      // If failed (rate is still null), go back 1 more day
+      currentSearchDate.setDate(currentSearchDate.getDate() - 1);
+      attempts++;
+  }
+
+  if (rate !== null) {
+      return { 
+          status: 'success', 
+          rate: rate, 
+          date: usedDate, 
+          message: `Rate for ${currency} on ${usedDate}` 
+      };
+  } else {
+      // Fallback to mock/default if all fail
+      console.warn(`Could not find rate for ${currency} around ${dateStr}, using fallback.`);
+      const fallbackRates = {
+          'USD': 30.0, 'JPY': 0.21, 'EUR': 32.5, 'CNY': 4.2, 'TWD': 1.0
+      };
+      return { 
+          status: 'success', // Determine if we should return error or fallback. User workflow depends on this. keeping fallback safe.
+          rate: fallbackRates[currency] || 1.0, 
+          isFallback: true,
+          message: 'Fallback rate used' 
+      };
+  }
 }
 
 function searchFlight(payload) {
   // payload: { code, date }
   // date format: YYYY/MM/DD or YYYY-MM-DD
-  const code = (payload.code || '').toUpperCase().trim();
+  let code = (payload.code || '').toUpperCase().trim();
   const dateStr = payload.date || '';
 
-  if (!code || !dateStr) return { data: null };
+  // Remove spaces from code (e.g. "BR 892" -> "BR892")
+  code = code.replace(/\s+/g, '');
+
+  if (!code || !dateStr) return { status: 'success', data: null, message: 'Missing code or date' };
 
   try {
-    const sheet = getSheet('Flights');
-    // Headers Assumption based on user request:
-    // Flight Code, Day, Dep, Arr, Dep Time, Arr Time
-    // Row 1 is headers. Data from Row 2.
-    
-    // We need to determine the "Day" from the date.
-    // 1=Mon, 2=Tue, ... 7=Sun (ISO) or 0=Sun in JS.
-    // Let's assume the sheet uses 1-7 (1=Mon) or English abbreviations.
-    // Let's try to match flexible formats.
-    
+    // Try to get sheet, handle error gracefully if it doesn't exist
+    let sheet;
+    try {
+        sheet = getSheet('Flights');
+    } catch (e) {
+        console.warn('Flights sheet not found');
+        return { status: 'success', data: null, message: 'Flights sheet not found' };
+    }
+
     const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return { data: null, message: 'Invalid Date' };
+    if (isNaN(date.getTime())) return { status: 'success', data: null, message: 'Invalid Date' };
     
     // JS getDay(): 0 = Sunday, 1 = Monday, ... 6 = Saturday
     const jsDay = date.getDay(); 
@@ -117,64 +282,88 @@ function searchFlight(payload) {
     
     const data = sheetDataToJson('Flights'); // Helper from Database.gs
     
-    // Helper to normalize day from sheet
-    const normalizeSheetDay = (val) => {
-        if (!val) return [];
-        const s = String(val).trim();
-        // If it's a number/string "1", "2"...
-        if (!isNaN(s)) return [parseInt(s)];
-        // If it's a range "1,3,5" or "1-5" (Too complex for now, assume single day per row or comma separated)
-        if (s.includes(',')) return s.split(',').map(d => parseInt(d.trim()));
-        // If keys "Mon", "Tue"
-        // ... (Skipping complex parsing unless needed)
-        // Let's assume exact match of ISO day (1-7) for simplicity first.
-        return [parseInt(s)];
-    };
+    if (!data || data.length === 0) {
+        return { status: 'success', data: null, message: 'No flight data' };
+    }
+
+    // Identify keys based on first row to support different headers
+    const firstRow = data[0];
+    const keys = Object.keys(firstRow);
+    
+    // Helper to find key case-insensitively
+    const findKey = (candidates) => keys.find(k => candidates.some(c => k.toLowerCase().includes(c.toLowerCase())));
+
+    const keyCode = findKey(['Flight Code', 'FlightNumber', 'Code', '航班代號']);
+    const keyDay = findKey(['Day', 'Week', 'Days', '星期']);
+    const keyDep = findKey(['Departure', 'Dep', 'Origin', 'From', 'DepartureAirportID', '出發地']);
+    const keyArr = findKey(['Arrival', 'Arr', 'Destination', 'To', 'ArrivalAirportID', '抵達地']);
+    const keyDepTime = findKey(['Dep Time', 'DepartureTime', 'STD', '出發時間']);
+    const keyArrTime = findKey(['Arr Time', 'ArrivalTime', 'STA', '抵達時間']);
+
+    if (!keyCode) {
+         console.warn('Flight Code column not found');
+         return { status: 'success', data: null, message: 'Flight Code column not found' };
+    }
+
+    console.log(`Searching for flight: ${code} on day ${isoDay} (ISO)`);
+    console.log(`Keys mapped: Code=${keyCode}, Day=${keyDay}, Dep=${keyDep}, Arr=${keyArr}`);
 
     // Filter by Flight Code first
-    const flightRows = data.filter(r => 
-        String(r['Flight Code']).toUpperCase().trim() === code
-    );
-
-    // Find row matching day
-    // TODO: Improve day matching if user confirms sheet format.
-    // For now assuming the sheet has a 'Day' column with 1-7. 
-    // And assuming we just default to the first match if 'Day' is missing or we can't parse.
-    // Actually, flight schedules usually differ by day.
-    
-    let match = flightRows.find(r => {
-        const rowDays = normalizeSheetDay(r['Day']); // e.g. [1, 3, 5]
-        return rowDays.includes(isoDay);
+    const flightRows = data.filter(r => {
+        const rowCode = String(r[keyCode]).toUpperCase().replace(/\s+/g, '');
+        return rowCode === code;
     });
-    
-    // If no specific day match found, check if there's a daily flight (Day = "Daily" or empty or 0?)
-    if (!match) {
-        match = flightRows.find(r => !r['Day'] || String(r['Day']).toLowerCase() === 'daily');
+
+    if (flightRows.length === 0) {
+        return { status: 'success', data: null, message: `Flight ${code} not found` };
     }
-    
-    // If still no match, but we have rows for this code, maybe just take the first one?
-    // User requirement: "automatically convert date to weekday, then from Flights auto bring..."
-    // This implies day matching is important.
-    // If not found, return null. 
-    // Fallback: If only 1 row exists for this code, return it regardless of day?
-    if (!match && flightRows.length === 1) {
+
+    let match = null;
+
+    // Day matching logic
+    if (keyDay) {
+        match = flightRows.find(r => {
+            const val = r[keyDay];
+            if (!val) return false;
+            const s = String(val).trim();
+            
+            // Check for "Daily"
+            if (s.toLowerCase() === 'daily') return true;
+
+            // Check if day matches
+            // Support: "1", "1,3,5", "Mon", "1-5" (simple range not fully supported yet but comma is)
+            if (s.includes(',')) {
+                return s.split(',').map(d => parseInt(d.trim())).includes(isoDay);
+            }
+            // Support exact number match
+            if (parseInt(s) === isoDay) return true;
+            
+            return false;
+        });
+    }
+
+    // Fallback: If no match found by day, or no day column, use the first row for this code
+    // Prioritize day match if possible
+    if (!match) {
+        // If we have rows but no day match, maybe the schedule is simpler or day col is missing/complex
+        // Just take the first one as a best guess
+        console.log('No specific day match found, returning first row for flight code.');
         match = flightRows[0];
     }
 
     if (match) {
-        // Return format expected by frontend
         return {
             status: 'success',
             data: {
-                departure: match['Dep'] || match['Departure'] || '',
-                arrival: match['Arr'] || match['Arrival'] || '',
-                depTime: formatTime(match['Dep Time']),
-                arrTime: formatTime(match['Arr Time'])
+                departure: match[keyDep] || '',
+                arrival: match[keyArr] || '',
+                depTime: formatTime(match[keyDepTime]),
+                arrTime: formatTime(match[keyArrTime])
             }
         };
     }
     
-    return { status: 'success', data: null, message: 'Flight not found for this date' };
+    return { status: 'success', data: null, message: 'Flight found but no schedule match' };
 
   } catch (e) {
     console.log('Error searching flight: ' + e);
