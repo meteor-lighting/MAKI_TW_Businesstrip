@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Coins, User, Calendar } from 'lucide-react';
+import { CircleDollarSign, UserCheck, Timer } from 'lucide-react';
 import { ReportSummary } from '../../types/report';
 
 interface SummaryCardsProps {
@@ -27,7 +27,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
                     <div className="text-5xl font-bold text-gray-800">{formatCurrency(summary.totalTWD)}</div>
                 </div>
                 <div className="text-teal-600">
-                    <Coins size={64} strokeWidth={1.5} />
+                    <CircleDollarSign size={64} strokeWidth={1.5} />
                 </div>
             </div>
 
@@ -39,7 +39,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
                     <div className="text-5xl font-bold text-gray-800">{formatCurrency(summary.personalTWD)}</div>
                 </div>
                 <div className="text-blue-500">
-                    <User size={64} strokeWidth={1.5} />
+                    <UserCheck size={64} strokeWidth={1.5} />
                 </div>
             </div>
 
@@ -51,7 +51,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
                     <div className="text-5xl font-bold text-gray-800">{formatCurrency(summary.avgDayTWD)}</div>
                 </div>
                 <div className="text-teal-600">
-                    <Calendar size={64} strokeWidth={1.5} />
+                    <Timer size={64} strokeWidth={1.5} />
                 </div>
             </div>
         </div>
