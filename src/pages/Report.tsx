@@ -218,7 +218,7 @@ export default function Report() {
                                     { key: '抵達地', header: t('arrival') },
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount') },
-                                    { key: 'TWD金額', header: 'TWD' },
+                                    { key: 'TWD金額', header: t('twd_amount') },
                                     { key: '備註', header: t('remark') },
                                 ]}
                             />
@@ -318,22 +318,22 @@ export default function Report() {
                                 onLoadingChange={handleLoadingChange}
                                 disabled={isOtherFormsDisabled}
                                 columns={[
-                                    { key: '次序', header: '次序', width: '60px' },
+                                    { key: '次序', header: t('sequence'), width: '60px' },
                                     {
                                         key: '日期',
-                                        header: '日期',
+                                        header: t('date'),
                                         render: (item: any) => {
                                             if (!item['日期']) return '';
                                             const d = new Date(item['日期']);
                                             return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
                                         }
                                     },
-                                    { key: '地區', header: '地區' },
-                                    { key: '幣別', header: '幣別' },
-                                    { key: '金額', header: '金額', render: (item: any) => item['金額'] ?? 0 },
-                                    { key: 'TWD金額', header: 'TWD金額', render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: '匯率', render: (item: any) => item['匯率'] ?? 0 },
-                                    { key: '備註', header: '備註' },
+                                    { key: '地區', header: t('region') },
+                                    { key: '幣別', header: t('currency') },
+                                    { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
+                                    { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '備註', header: t('remark') },
                                 ]}
                             />
                         </div>
@@ -371,22 +371,22 @@ export default function Report() {
                                 onLoadingChange={handleLoadingChange}
                                 disabled={isOtherFormsDisabled}
                                 columns={[
-                                    { key: '次序', header: '次序', width: '60px' },
+                                    { key: '次序', header: t('sequence'), width: '60px' },
                                     {
                                         key: '日期',
-                                        header: '日期',
+                                        header: t('date'),
                                         render: (item: any) => {
                                             if (!item['日期']) return '';
                                             const d = new Date(item['日期']);
                                             return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
                                         }
                                     },
-                                    { key: '地區', header: '地區' },
-                                    { key: '幣別', header: '幣別' },
-                                    { key: '金額', header: '金額', render: (item: any) => item['金額'] ?? 0 },
-                                    { key: 'TWD金額', header: 'TWD金額', render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: '匯率', render: (item: any) => item['匯率'] ?? 0 },
-                                    { key: '備註', header: '備註' },
+                                    { key: '地區', header: t('region') },
+                                    { key: '幣別', header: t('currency') },
+                                    { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
+                                    { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '備註', header: t('remark') },
                                 ]}
                             />
                         </div>
@@ -424,22 +424,22 @@ export default function Report() {
                                 onLoadingChange={handleLoadingChange}
                                 disabled={isOtherFormsDisabled}
                                 columns={[
-                                    { key: '次序', header: '次序', width: '60px' },
+                                    { key: '次序', header: t('sequence'), width: '60px' },
                                     {
                                         key: '日期',
-                                        header: '日期',
+                                        header: t('date'),
                                         render: (item: any) => {
                                             if (!item['日期']) return '';
                                             const d = new Date(item['日期']);
                                             return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
                                         }
                                     },
-                                    { key: '地區', header: '地區' },
-                                    { key: '幣別', header: '幣別' },
-                                    { key: '金額', header: '金額', render: (item: any) => item['金額'] ?? 0 },
-                                    { key: 'TWD金額', header: 'TWD金額', render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: '匯率', render: (item: any) => item['匯率'] ?? 0 },
-                                    { key: '備註', header: '備註' },
+                                    { key: '地區', header: t('region') },
+                                    { key: '幣別', header: t('currency') },
+                                    { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
+                                    { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '備註', header: t('remark') },
                                 ]}
                             />
                         </div>
@@ -477,22 +477,22 @@ export default function Report() {
                                 onLoadingChange={handleLoadingChange}
                                 disabled={isOtherFormsDisabled}
                                 columns={[
-                                    { key: '次序', header: '次序', width: '60px' },
+                                    { key: '次序', header: t('sequence'), width: '60px' },
                                     {
                                         key: '日期',
-                                        header: '日期',
+                                        header: t('date'),
                                         render: (item: any) => {
                                             if (!item['日期']) return '';
                                             const d = new Date(item['日期']);
                                             return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
                                         }
                                     },
-                                    { key: '地區', header: '地區' },
-                                    { key: '幣別', header: '幣別' },
-                                    { key: '金額', header: '金額', render: (item: any) => item['金額'] ?? 0 },
-                                    { key: 'TWD金額', header: 'TWD金額', render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: '匯率', render: (item: any) => item['匯率'] ?? 0 },
-                                    { key: '備註', header: '備註' },
+                                    { key: '地區', header: t('region') },
+                                    { key: '幣別', header: t('currency') },
+                                    { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
+                                    { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '備註', header: t('remark') },
                                 ]}
                             />
                         </div>
@@ -530,22 +530,22 @@ export default function Report() {
                                 onLoadingChange={handleLoadingChange}
                                 disabled={isOtherFormsDisabled}
                                 columns={[
-                                    { key: '次序', header: '次序', width: '60px' },
+                                    { key: '次序', header: t('sequence'), width: '60px' },
                                     {
                                         key: '日期',
-                                        header: '日期',
+                                        header: t('date'),
                                         render: (item: any) => {
                                             if (!item['日期']) return '';
                                             const d = new Date(item['日期']);
                                             return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
                                         }
                                     },
-                                    { key: '地區', header: '地區' },
-                                    { key: '幣別', header: '幣別' },
-                                    { key: '金額', header: '金額', render: (item: any) => item['金額'] ?? 0 },
-                                    { key: 'TWD金額', header: 'TWD金額', render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: '匯率', render: (item: any) => item['匯率'] ?? 0 },
-                                    { key: '備註', header: '備註' },
+                                    { key: '地區', header: t('region') },
+                                    { key: '幣別', header: t('currency') },
+                                    { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
+                                    { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '備註', header: t('remark') },
                                 ]}
                             />
                         </div>
@@ -583,22 +583,22 @@ export default function Report() {
                                 onLoadingChange={handleLoadingChange}
                                 disabled={isOtherFormsDisabled}
                                 columns={[
-                                    { key: '次序', header: '次序', width: '60px' },
+                                    { key: '次序', header: t('sequence'), width: '60px' },
                                     {
                                         key: '日期',
-                                        header: '日期',
+                                        header: t('date'),
                                         render: (item: any) => {
                                             if (!item['日期']) return '';
                                             const d = new Date(item['日期']);
                                             return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
                                         }
                                     },
-                                    { key: '地區', header: '地區' },
-                                    { key: '幣別', header: '幣別' },
-                                    { key: '金額', header: '金額', render: (item: any) => item['金額'] ?? 0 },
-                                    { key: 'TWD金額', header: 'TWD金額', render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: '匯率', render: (item: any) => item['匯率'] ?? 0 },
-                                    { key: '備註', header: '備註' },
+                                    { key: '地區', header: t('region') },
+                                    { key: '幣別', header: t('currency') },
+                                    { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
+                                    { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '備註', header: t('remark') },
                                 ]}
                             />
                         </div>
@@ -636,23 +636,23 @@ export default function Report() {
                                 onLoadingChange={handleLoadingChange}
                                 disabled={isOtherFormsDisabled}
                                 columns={[
-                                    { key: '次序', header: '次序', width: '60px' },
-                                    { key: '分類', header: '分類' },
+                                    { key: '次序', header: t('sequence'), width: '60px' },
+                                    { key: '分類', header: t('category') },
                                     {
                                         key: '日期',
-                                        header: '日期',
+                                        header: t('date'),
                                         render: (item: any) => {
                                             if (!item['日期']) return '';
                                             const d = new Date(item['日期']);
                                             return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
                                         }
                                     },
-                                    { key: '地區', header: '地區' },
-                                    { key: '幣別', header: '幣別' },
-                                    { key: '金額', header: '金額', render: (item: any) => item['金額'] ?? 0 },
-                                    { key: 'TWD金額', header: 'TWD金額', render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: '匯率', render: (item: any) => item['匯率'] ?? 0 },
-                                    { key: '備註', header: '備註' },
+                                    { key: '地區', header: t('region') },
+                                    { key: '幣別', header: t('currency') },
+                                    { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
+                                    { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '備註', header: t('remark') },
                                 ]}
                             />
                         </div>
