@@ -52,7 +52,7 @@ const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
 
             {/* Bar Chart */}
             <div className="md:col-span-2 bg-white p-4">
-                <h3 className="text-lg font-bold text-gray-700 mb-2">費用類別比較</h3>
+
                 <div className="h-64 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart

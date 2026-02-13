@@ -23,7 +23,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
             <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm h-full">
                 <div>
                     <h3 className="text-gray-600 font-bold mb-1">{t('total_amount_text')}</h3>
-                    <div className="text-sm text-gray-500 mb-2">(Total TWD)</div>
+
                     <div className="text-5xl font-bold text-gray-800">{formatCurrency(summary.totalTWD)}</div>
                 </div>
                 <div className="text-teal-600">
@@ -35,7 +35,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
             <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm h-full">
                 <div>
                     <h3 className="text-gray-600 font-bold mb-1">{t('personal_total')}</h3>
-                    <div className="text-sm text-gray-500 mb-2">(Personal TWD)</div>
+
                     <div className="text-5xl font-bold text-gray-800">{formatCurrency(summary.personalTWD)}</div>
                 </div>
                 <div className="text-blue-500">
@@ -47,7 +47,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
             <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm h-full">
                 <div>
                     <h3 className="text-gray-600 font-bold mb-1">{t('avg_day_twd')}</h3>
-                    <div className="text-sm text-gray-500 mb-2">(Avg/Day TWD)</div>
+
                     <div className="text-5xl font-bold text-gray-800">{formatCurrency(summary.avgDayTWD)}</div>
                 </div>
                 <div className="text-teal-600">
