@@ -370,11 +370,6 @@ function recalculateHeader(reportId) {
                      else { const t=parseTimeStr(depT); dh=t.h; dm=t.m; }
                      let depTs = dateObj.getTime() + dh*3600000 + dm*60000;
                      
-                     if (depTs < minFlightTs) {
-                         minFlightTs = depTs;
-                         earliestFlightHour = dh + (dm/60);
-                     }
-                     
                      // Arr
                      let arrT = f['抵達時間'];
                      let ah=0, am=0;
@@ -396,6 +391,7 @@ function recalculateHeader(reportId) {
               Logger.log('Flight time adjustment error: ' + e);
           }
       }
+      
       
       // Update Date Columns
       const colDays = headers.indexOf('商旅天數');
@@ -507,16 +503,6 @@ function updateExchangeRateAndRecalculate(reportId) {
 
         if (minDateObj) {
             // Target: Earliest - 1 Day
-            // Format for getExchangeRate (it expects YYYY/MM/DD or YYYY-MM-DD string, or we can construct it)
-            // But wait, the getExchangeRate function typically takes the Date OF the transaction, 
-            // and internally looks back to T-1. 
-            // However, the requirement is specific: "Update using the rate of the day BEFORE the earliest flight".
-            // If getExchangeRate already does T-1 internally, we should pass the Flight Date.
-            // Let's verify getExchangeRate logic: 
-            // "Note: We need T-1 relative to the Input Date...  currentSearchDate.setDate(currentSearchDate.getDate() - 1);"
-            // YES, getExchangeRate ALREADY subtracts 1 day.
-            // So we should pass the Flight Date directly.
-            
             const yyyy = minDateObj.getFullYear();
             const mm = String(minDateObj.getMonth() + 1).padStart(2, '0');
             const dd = String(minDateObj.getDate()).padStart(2, '0');
@@ -551,18 +537,16 @@ function updateExchangeRateAndRecalculate(reportId) {
         const rateCol = headers.indexOf('USD匯率');
         if (rateCol > -1) {
             headerSheet.getRange(headerRowIndex, rateCol + 1).setValue(newRate);
+            SpreadsheetApp.flush(); // Ensure Header update is committed
         }
         
-        // 3. Recalculate ALL sheets if Rate > 0 (or just update to 0 if rate is 0)
-        // If Rate is 0, TWD amounts for USD items become 0.
-        // If Rate > 0, TWD amounts = Amount * Rate.
-        
+        // 3. Recalculate ALL sheets
         const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Others'];
         
         categories.forEach(cat => {
             try {
                 const sheet = getSheet(cat);
-                const data = sheet.getDataRange().getValues();
+                const data = sheet.getDataRange().getValues(); // Refresh data
                 const sheetHeaders = data[0];
                 
                 // Find column indices
@@ -580,16 +564,13 @@ function updateExchangeRateAndRecalculate(reportId) {
                 const idxOverall = sheetHeaders.indexOf('總體金額');
                 const idxTwdOverall = sheetHeaders.indexOf('TWD總體金額');
                 
-                // Loop rows
-                // Optimization: We can write later, or write cell by cell. 
-                // Given GAS limits, reading all, updating in memory, and writing back is best if many updates.
-                // But for simplicity/safety with mixed currencies, iterating and check is okay.
-                
                 let updates = []; // Store {row, col, val}
                 
                 for (let i = 1; i < data.length; i++) {
                      if (String(data[i][idxId]) === String(reportId)) {
                          const currency = String(data[i][idxCurrency]);
+                         
+                         // If USD, update Rate & TWD Amount
                          if (currency === 'USD') {
                              const row = i + 1;
                              
@@ -627,11 +608,9 @@ function updateExchangeRateAndRecalculate(reportId) {
                      }
                 }
                 
-            } catch (e) {
-                // Sheet might not exist or empty
-            }
+            } catch (e) {}
         });
-    }
-}
+        
+        SpreadsheetApp.flush(); // Ensure changes are saved before recalculateHeader runs again
     }
 }
