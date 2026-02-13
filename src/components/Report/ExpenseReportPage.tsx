@@ -60,10 +60,10 @@ const ExpenseReportPage: React.FC = () => {
                 {/* Top Bar */}
                 <div className="flex justify-between items-center mb-6 bg-white p-4 shadow-sm rounded-lg border border-slate-200">
                     <div id="report-header-section"> {/* Added ID for PDF capture */}
-                        <h1 className="text-2xl font-bold text-gray-800">
+                        <h1 className="text-2xl font-bold text-gray-800 mb-2 leading-tight">
                             {t('app_title')} - {reportData.reportId}
                         </h1>
-                        <div className="text-sm text-gray-500 mt-1 flex gap-4">
+                        <div className="text-sm text-gray-500 flex flex-wrap gap-4">
                             <span>{t('user')}: <span className="font-medium text-gray-700">{reportData.user}</span></span>
                             <span>{t('days')}: {reportData.summary.days}</span>
                             <span>{t('rate_usd')}: {reportData.summary.rateUSD}</span>
