@@ -6,7 +6,7 @@ import DetailTable from './DetailTable';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../LanguageSwitcher';
 
-import { ArrowLeft, LogOut } from 'lucide-react';
+import { ArrowLeft, LogOut, ArrowDown } from 'lucide-react';
 import { ReportData } from '../../types/report';
 import { useAuth } from '../../context/AuthContext';
 import { generatePDF } from '../../utils/pdfGenerator'; // Import generator
@@ -75,7 +75,7 @@ const ExpenseReportPage: React.FC = () => {
                             onClick={handleDownloadPDF}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
                         >
-                            <ArrowLeft size={18} className="rotate-90" /> {/* Re-using icon or use a generic download icon if available? Let's use generic text for now or import Download icon */}
+                            <ArrowDown size={18} />
                             {t('download_pdf')}
                         </button>
                         <button
@@ -186,7 +186,7 @@ const ExpenseReportPage: React.FC = () => {
                     {reportData.sections.length > 0 ? (
                         reportData.sections.map((section) => {
                             // Map section ID to translation key
-                            let titleKey = `${section.id} _details`;
+                            let titleKey = `${section.id}_details`;
 
                             // Handle special cases for camelCase IDs from transformer
                             if (section.id === 'handingFee') titleKey = 'handing_fee_details';
