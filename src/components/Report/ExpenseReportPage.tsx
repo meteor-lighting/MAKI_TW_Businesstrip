@@ -139,15 +139,24 @@ const ExpenseReportPage: React.FC = () => {
 
                 {/* Detail Tables - Dynamic */}
                 {reportData.sections.length > 0 ? (
-                    reportData.sections.map((section) => (
-                        <DetailTable
-                            key={section.id}
-                            title={section.title}
-                            total={section.total}
-                            columns={section.columns}
-                            data={section.data}
-                        />
-                    ))
+                    reportData.sections.map((section) => {
+                        // Map section ID to translation key
+                        let titleKey = `${section.id}_details`;
+
+                        // Handle special cases for camelCase IDs from transformer
+                        if (section.id === 'handingFee') titleKey = 'handing_fee_details';
+                        if (section.id === 'perDiem') titleKey = 'per_diem_details';
+
+                        return (
+                            <DetailTable
+                                key={section.id}
+                                title={t(titleKey)}
+                                total={section.total}
+                                columns={section.columns}
+                                data={section.data}
+                            />
+                        );
+                    })
                 ) : (
                     <div className="text-center py-10 text-gray-500">無詳細資料</div>
                 )}
