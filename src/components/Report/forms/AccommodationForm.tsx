@@ -223,7 +223,7 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
             </div>
 
             <div className="border-t border-gray-200 pt-4 mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 bg-blue-50 p-2 rounded">
-                <div className="md:col-span-4 font-semibold text-blue-800">{t('expense_details')}</div>
+
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('personal_amount')}</label>
