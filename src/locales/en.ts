@@ -14,6 +14,7 @@ export const en = {
         "report": "Report",
         "back": "Back",
         "logout": "Logout",
+        "download_pdf": "Download PDF",
         "confirm_finish": "Finish",
         "no_data": "No Report Data Found",
         "return_to_report": "Return to Report Page",

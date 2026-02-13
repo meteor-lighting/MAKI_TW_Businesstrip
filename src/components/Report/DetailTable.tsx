@@ -3,6 +3,7 @@ import { ReportColumn } from '../../types/report';
 import clsx from 'clsx';
 
 interface DetailTableProps {
+    id?: string; // Add id prop
     title: string;
     total: {
         displayString: string;
@@ -11,13 +12,13 @@ interface DetailTableProps {
     data: Record<string, any>[];
 }
 
-import { useTranslation } from 'react-i18next'; // Add import
+import { useTranslation } from 'react-i18next';
 
-const DetailTable: React.FC<DetailTableProps> = ({ title, total, columns, data }) => {
-    const { t } = useTranslation(); // Use hook
+const DetailTable: React.FC<DetailTableProps> = ({ id, title, total, columns, data }) => {
+    const { t } = useTranslation();
 
     return (
-        <div className="mb-6">
+        <div id={id} className="mb-6 report-detail-section"> {/* Add id and class */}
             {/* Table Header / Title */}
             <div className="bg-slate-800 text-white px-4 py-2 flex justify-between items-center rounded-t-sm">
                 <div className="flex items-center gap-2">
