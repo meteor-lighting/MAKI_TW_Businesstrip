@@ -392,21 +392,25 @@ function recalculateHeader(reportId) {
           }
       }
       
-      
+      // Helper to find column index robustly
+      const findCol = (name) => {
+          return headers.findIndex(h => String(h).trim() === name);
+      };
+
       // Update Date Columns
-      const colDays = headers.indexOf('商旅天數');
-      const colStart = headers.indexOf('商旅起始日');
-      const colEnd = headers.indexOf('商旅結束日');
+      const colDays = findCol('商旅天數');
+      const colStart = findCol('商旅起始日');
+      const colEnd = findCol('商旅結束日');
       
       if (colDays > -1) headerSheet.getRange(rowIndex, colDays + 1).setValue(diffDays > 0 ? diffDays : 0);
       if (colStart > -1) headerSheet.getRange(rowIndex, colStart + 1).setValue(startDateStr);
       if (colEnd > -1) headerSheet.getRange(rowIndex, colEnd + 1).setValue(endDateStr);
 
       // Write TWD Totals
-      const colTotalPersonalTWD = headers.indexOf('合計TWD個人總額');
+      const colTotalPersonalTWD = findCol('合計TWD個人總額');
       if (colTotalPersonalTWD > -1) headerSheet.getRange(rowIndex, colTotalPersonalTWD + 1).setValue(totalPersonalTWD);
       
-      const colTotalOverallTWD = headers.indexOf('合計TWD總體總額');
+      const colTotalOverallTWD = findCol('合計TWD總體總額');
       if (colTotalOverallTWD > -1) headerSheet.getRange(rowIndex, colTotalOverallTWD + 1).setValue(totalOverallTWD);
 
       // Now calculate USD totals and Averages
@@ -418,10 +422,10 @@ function recalculateHeader(reportId) {
           totalOverallUSD = totalOverallTWD / rate;
       }
       
-      const colTotalPersonalUSD = headers.indexOf('合計USD個人總額');
+      const colTotalPersonalUSD = findCol('合計USD個人總額');
       if (colTotalPersonalUSD > -1) headerSheet.getRange(rowIndex, colTotalPersonalUSD + 1).setValue(totalPersonalUSD);
       
-      const colTotalOverallUSD = headers.indexOf('合計USD總體總額');
+      const colTotalOverallUSD = findCol('合計USD總體總額');
       if (colTotalOverallUSD > -1) headerSheet.getRange(rowIndex, colTotalOverallUSD + 1).setValue(totalOverallUSD);
       
       // Averages
@@ -437,23 +441,24 @@ function recalculateHeader(reportId) {
           avgOverallUSD = totalOverallUSD / diffDays;
       }
       
-      const colAvgPersonalTWD = headers.indexOf('合計TWD個人平均');
+      const colAvgPersonalTWD = findCol('合計TWD個人平均');
       if (colAvgPersonalTWD > -1) headerSheet.getRange(rowIndex, colAvgPersonalTWD + 1).setValue(avgPersonalTWD);
       
-      const colAvgOverallTWD = headers.indexOf('合計TWD總體平均');
+      const colAvgOverallTWD = findCol('合計TWD總體平均');
       if (colAvgOverallTWD > -1) headerSheet.getRange(rowIndex, colAvgOverallTWD + 1).setValue(avgOverallTWD);
       
-      const colAvgPersonalUSD = headers.indexOf('合計USD個人平均');
+      const colAvgPersonalUSD = findCol('合計USD個人平均');
+      Logger.log(`[AvgCalc] Personal USD Avg: ${avgPersonalUSD}, Col Index: ${colAvgPersonalUSD}`);
       if (colAvgPersonalUSD > -1) headerSheet.getRange(rowIndex, colAvgPersonalUSD + 1).setValue(avgPersonalUSD);
       
-      const colAvgOverallUSD = headers.indexOf('合計USD總體平均');
+      const colAvgOverallUSD = findCol('合計USD總體平均');
       if (colAvgOverallUSD > -1) headerSheet.getRange(rowIndex, colAvgOverallUSD + 1).setValue(avgOverallUSD);
       
       if (diffDays === 0) {
           // Reset Averages
           const resetCols = ['合計TWD個人平均', '合計TWD總體平均', '合計USD個人平均', '合計USD總體平均'];
           resetCols.forEach(colName => {
-              const cIdx = headers.indexOf(colName);
+              const cIdx = findCol(colName);
               if (cIdx > -1) headerSheet.getRange(rowIndex, cIdx + 1).setValue(0);
           });
       }
