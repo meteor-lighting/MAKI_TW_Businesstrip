@@ -1,4 +1,3 @@
-```javascript
 import React, { useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SummaryCards from './SummaryCards';
@@ -114,10 +113,10 @@ const ExpenseReportPage: React.FC = () => {
                        
                        Better Strategy: Wrap the info part of the Top Bar in a div with ID 'report-header-section'.
                     */}
-                    
+
                     {/* We need to separate the header info from buttons for the PDF capture */}
                     <div className="hidden" id="report-header-section">
-                         {/* This hidden section is for PDF only? 
+                        {/* This hidden section is for PDF only? 
                              No, html-to-image captures rendered element. If it's hidden (display:none), it might render empty.
                              Safest way: Capture the visible header info.
                              Let's add ID to the left part of the top bar.
@@ -130,7 +129,7 @@ const ExpenseReportPage: React.FC = () => {
                        
                        Let's wrap the "Header Info" inside the top bar with the ID.
                     */}
-                    
+
                     {/* Summary Cards */}
                     <div id="report-summary-section" className="mb-6 bg-slate-200 p-4 rounded-xl">
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -187,16 +186,16 @@ const ExpenseReportPage: React.FC = () => {
                     {reportData.sections.length > 0 ? (
                         reportData.sections.map((section) => {
                             // Map section ID to translation key
-                            let titleKey = `${ section.id } _details`;
-                            
+                            let titleKey = `${section.id} _details`;
+
                             // Handle special cases for camelCase IDs from transformer
                             if (section.id === 'handingFee') titleKey = 'handing_fee_details';
                             if (section.id === 'perDiem') titleKey = 'per_diem_details';
-                            
+
                             return (
                                 <DetailTable
                                     key={section.id}
-                                    id={`report - section - ${ section.id } `}
+                                    id={`report - section - ${section.id} `}
                                     title={t(titleKey)}
                                     total={section.total}
                                     columns={section.columns}
@@ -214,4 +213,4 @@ const ExpenseReportPage: React.FC = () => {
 };
 
 export default ExpenseReportPage;
-```
+
