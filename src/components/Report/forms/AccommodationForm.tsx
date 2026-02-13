@@ -276,6 +276,10 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                     <input type="number" {...register('totalAmount')} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100 font-semibold" />
                 </div>
                 <div>
+                    <label className="block text-sm font-medium text-gray-700">{t('twd_personal_amount')}</label>
+                    <input type="number" {...register('twdPersonalAmount', { valueAsNumber: true })} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100 font-semibold" />
+                </div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700">{t('twd_overall_amount')}</label>
                     <input type="number" {...register('twdTotalAmount')} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100 font-semibold" />
                 </div>
@@ -290,16 +294,8 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">{t('twd_personal_amount')} (Auto)</label>
-                    <input type="number" {...register('twdPersonalAmount', { valueAsNumber: true })} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100 font-bold text-gray-600" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">{t('twd_advance_amount')} (Auto)</label>
-                    <input type="number" {...register('twdAdvanceAmount', { valueAsNumber: true })} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100 font-bold text-gray-600" />
-                </div>
-            </div>
+            {/* Hidden field for TWD Advance Amount as it is still used in calculations/submission */}
+            <input type="hidden" {...register('twdAdvanceAmount', { valueAsNumber: true })} />
 
             <div>
                 <label className="block text-sm font-medium text-gray-700">{t('remark')}</label>
