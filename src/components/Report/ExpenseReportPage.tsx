@@ -147,7 +147,7 @@ const ExpenseReportPage: React.FC = () => {
                                     <div className="flex justify-between border-b border-slate-500 pb-2">
                                         <span>{t('avg_day_twd')}:</span>
                                         <div className="text-right">
-                                            <span>{(reportData.summary.personalTWD / reportData.summary.days).toFixed(1)}</span>
+                                            <span>{reportData.summary.days > 0 ? (reportData.summary.personalTWD / reportData.summary.days).toFixed(1) : '0.0'}</span>
                                             <span className="mx-1">/</span>
                                             <span>{reportData.summary.avgDayTWD.toLocaleString()}</span>
                                         </div>
@@ -155,7 +155,7 @@ const ExpenseReportPage: React.FC = () => {
                                     <div className="flex justify-between border-b border-slate-500 pb-2">
                                         <span>{t('total_usd')}:</span>
                                         <div className="text-right">
-                                            <span>{(reportData.summary.personalTWD / reportData.summary.rateUSD).toFixed(2)}</span>
+                                            <span>{reportData.summary.rateUSD > 0 ? (reportData.summary.personalTWD / reportData.summary.rateUSD).toFixed(2) : '0.00'}</span>
                                             <span className="mx-1">/</span>
                                             <span>{reportData.summary.totalUSD.toLocaleString()}</span>
                                         </div>
@@ -163,7 +163,7 @@ const ExpenseReportPage: React.FC = () => {
                                     <div className="flex justify-between">
                                         <span>{t('avg_day_usd')}:</span>
                                         <div className="text-right">
-                                            <span>{((reportData.summary.personalTWD / reportData.summary.rateUSD) / reportData.summary.days).toFixed(2)}</span>
+                                            <span>{(reportData.summary.rateUSD > 0 && reportData.summary.days > 0) ? ((reportData.summary.personalTWD / reportData.summary.rateUSD) / reportData.summary.days).toFixed(2) : '0.00'}</span>
                                             <span className="mx-1">/</span>
                                             <span>{reportData.summary.avgDayUSD.toLocaleString()}</span>
                                         </div>
