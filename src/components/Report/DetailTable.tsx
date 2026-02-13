@@ -11,7 +11,11 @@ interface DetailTableProps {
     data: Record<string, any>[];
 }
 
+import { useTranslation } from 'react-i18next'; // Add import
+
 const DetailTable: React.FC<DetailTableProps> = ({ title, total, columns, data }) => {
+    const { t } = useTranslation(); // Use hook
+
     return (
         <div className="mb-6">
             {/* Table Header / Title */}
@@ -19,10 +23,6 @@ const DetailTable: React.FC<DetailTableProps> = ({ title, total, columns, data }
                 <div className="flex items-center gap-2">
                     <h3 className="font-bold">{title}</h3>
                 </div>
-                {/* Total in title bar if needed? Image doesn't show it here, but below table usually. 
-             Wait, image shows "Total Flight 9,444" below table.
-             Top bar has "機票明細 (Flight Details)"
-         */}
             </div>
 
             <div className="overflow-x-auto">
@@ -31,7 +31,7 @@ const DetailTable: React.FC<DetailTableProps> = ({ title, total, columns, data }
                         <tr>
                             {columns.map((col, index) => (
                                 <th key={index} scope="col" className="px-4 py-2 border-r border-slate-600 last:border-r-0">
-                                    {col.header}
+                                    {col.headerKey ? t(col.headerKey) : col.header}
                                 </th>
                             ))}
                         </tr>

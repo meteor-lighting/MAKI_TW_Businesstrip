@@ -25,6 +25,7 @@ export interface ChartData {
 
 export interface ReportColumn {
     header: string;
+    headerKey?: string; // Translation key
     accessorKey: string;
     type?: 'text' | 'number' | 'currency' | 'date';
     width?: number; // Percentage or separate unit for DOCX
