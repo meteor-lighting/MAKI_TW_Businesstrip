@@ -684,10 +684,16 @@ export default function Report() {
                                 <tr className="bg-gray-50">
                                     <td className="px-4 py-3 text-sm font-medium text-gray-900 border-r border-gray-300">{t('avg_day_twd')}</td>
                                     <td className="px-4 py-3 text-sm text-gray-900 text-right border-r border-gray-300 font-mono">
-                                        {Number(reportData?.header['合計TWD個人平均'] || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                                        {(() => {
+                                            const val = Number(reportData?.header['合計TWD個人平均'] || 0);
+                                            return isFinite(val) ? val.toLocaleString(undefined, { maximumFractionDigits: 1 }) : '0.0';
+                                        })()}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-gray-900 text-right font-mono">
-                                        {Number(reportData?.header['合計TWD總體平均'] || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                                        {(() => {
+                                            const val = Number(reportData?.header['合計TWD總體平均'] || 0);
+                                            return isFinite(val) ? val.toLocaleString(undefined, { maximumFractionDigits: 1 }) : '0.0';
+                                        })()}
                                     </td>
                                 </tr>
                                 <tr>
@@ -702,10 +708,16 @@ export default function Report() {
                                 <tr className="bg-gray-50">
                                     <td className="px-4 py-3 text-sm font-medium text-gray-900 border-r border-gray-300">{t('avg_day_usd')}</td>
                                     <td className="px-4 py-3 text-sm text-gray-900 text-right border-r border-gray-300 font-mono">
-                                        {Number(reportData?.header['合計USD個人平均'] || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                        {(() => {
+                                            const val = Number(reportData?.header['合計USD個人平均'] || 0);
+                                            return isFinite(val) ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0.00';
+                                        })()}
                                     </td>
                                     <td className="px-4 py-3 text-sm text-gray-900 text-right font-mono">
-                                        {Number(reportData?.header['合計USD總體平均'] || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                        {(() => {
+                                            const val = Number(reportData?.header['合計USD總體平均'] || 0);
+                                            return isFinite(val) ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0.00';
+                                        })()}
                                     </td>
                                 </tr>
                             </tbody>
