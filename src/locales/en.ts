@@ -71,7 +71,7 @@ export const en = {
         "delete": "Delete",
         "edit": "Edit",
         "sequence": "Seq",
-        "total_amount_text": "Amount",
+        "total_amount_text": "Overall",
         "personal_total": "Personal",
         "overall_total": "Overall",
         "departure_time": "Departure Time",
