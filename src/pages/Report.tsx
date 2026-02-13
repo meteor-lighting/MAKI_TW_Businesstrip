@@ -188,7 +188,7 @@ export default function Report() {
 
                         {/* List */}
                         <div className="mt-4">
-                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')} ({t('flight')})</h4>
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Flight || []}
@@ -245,7 +245,7 @@ export default function Report() {
                         />
 
                         <div className="mt-4">
-                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')} ({t('accommodation')})</h4>
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Accommodation || []}
@@ -304,7 +304,7 @@ export default function Report() {
                         />
 
                         <div className="mt-4">
-                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')} ({t('taxi')})</h4>
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Taxi || []}
@@ -357,7 +357,7 @@ export default function Report() {
                         />
 
                         <div className="mt-4">
-                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')} ({t('internet')})</h4>
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Internet || []}
@@ -410,7 +410,7 @@ export default function Report() {
                         />
 
                         <div className="mt-4">
-                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')} ({t('social')})</h4>
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Social || []}
@@ -463,7 +463,7 @@ export default function Report() {
                         />
 
                         <div className="mt-4">
-                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')} ({t('gift')})</h4>
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Gift || []}
@@ -516,7 +516,7 @@ export default function Report() {
                         />
 
                         <div className="mt-4">
-                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')} ({t('handing_fee')})</h4>
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.['Handing Fee'] || []}
@@ -569,7 +569,7 @@ export default function Report() {
                         />
 
                         <div className="mt-4">
-                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')} ({t('per_diem')})</h4>
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.['Per Diem'] || []}
@@ -622,7 +622,7 @@ export default function Report() {
                         />
 
                         <div className="mt-4">
-                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')} ({t('others')})</h4>
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Others || []}
