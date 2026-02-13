@@ -61,7 +61,7 @@ export const zh = {
         "personal_amount": "個人金額",
         "overall_amount": "總體金額",
         "per_person_per_day": "每人每天金額",
-        "advance_payment": "代墊金額",
+        "advance_payment": "代墊",
         "advance_payment_people": "代墊人數",
         "twd_personal": "TWD個人",
         "twd_overall": "TWD總額",
