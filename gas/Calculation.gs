@@ -256,8 +256,9 @@ function recalculateHeader(reportId) {
       }
       
       // [Sync Rate] Logic
-      // If header rate is default (<=1), try to find a valid USD flight rate to sync from
-      if (rate <= 1 && rateCell) {
+      // Always try to sync from Flight first, or reset if no flight
+      let flightRateFound = false;
+      if (rateCell) {
         try {
           const flightData = sheetDataToJson('Flight');
           const myFlights = flightData
@@ -268,9 +269,16 @@ function recalculateHeader(reportId) {
           if (validFlight) {
               rate = Number(validFlight['匯率']);
               rateCell.setValue(rate);
+              flightRateFound = true;
               Logger.log(`Synced Header Rate from Flight: ${rate}`);
           }
         } catch(e) {}
+        
+        // If no Flight Rate found, reset to 0 so Auto-Rate can assume control or stay 0
+        if (!flightRateFound) {
+            rate = 0;
+            rateCell.setValue(0);
+        }
       }
       
       // --- Calculate Date Range & Duration (And Auto-fetch Rate) ---
