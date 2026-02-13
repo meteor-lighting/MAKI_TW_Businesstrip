@@ -95,6 +95,13 @@ function addReportItem(payload) {
           
           // 3. Recalculate Header Totals
           recalculateHeader(reportId);
+
+          // [NEW] If Category is Flight, we might need to update Exchange Rate & Recalculate everything
+          if (category === 'Flight') {
+              updateExchangeRateAndRecalculate(reportId);
+              // Recalculate Header AGAIN because amounts changed
+              recalculateHeader(reportId);
+          }
           
           return { status: 'success', sequence: nextSeq };
       } finally {
@@ -136,6 +143,14 @@ function deleteReportItem(payload) {
         if (deleteRowIndex > 0) {
             sheet.deleteRow(deleteRowIndex);
             recalculateHeader(reportId);
+            
+            // [NEW] If Category is Flight, update Rate & Recalculate
+            if (category === 'Flight') {
+                updateExchangeRateAndRecalculate(reportId);
+                // Recalculate Header AGAIN
+                recalculateHeader(reportId);
+            }
+
             return { status: 'success', message: 'Deleted' };
         } else {
              return { status: 'error', message: 'Item not found' };
@@ -257,31 +272,10 @@ function recalculateHeader(reportId) {
       
       // [Sync Rate] Logic
       // Always try to sync from Flight first, or reset if no flight
-      let flightRateFound = false;
-      if (rateCell) {
-        try {
-          const flightData = sheetDataToJson('Flight');
-          const myFlights = flightData
-              .filter(r => String(r['報告編號']) === String(reportId))
-              .sort((a, b) => parseInt(a['次序']) - parseInt(b['次序']));
-          
-          const validFlight = myFlights.find(f => f['幣別'] === 'USD' && Number(f['匯率']) > 1);
-          if (validFlight) {
-              rate = Number(validFlight['匯率']);
-              rateCell.setValue(rate);
-              flightRateFound = true;
-              Logger.log(`Synced Header Rate from Flight: ${rate}`);
-          }
-        } catch(e) {}
-        
-        // If no Flight Rate found, reset to 0 so Auto-Rate can assume control or stay 0
-        if (!flightRateFound) {
-            rate = 0;
-            rateCell.setValue(0);
-        }
-      }
+      // Logic moved to updateExchangeRateAndRecalculate, but we keep basic rate read here
+      // to support UI display. The actual heavy lifting is done in updateExchangeRateAndRecalculate
       
-      // --- Calculate Date Range & Duration (And Auto-fetch Rate) ---
+      // Calculate Date Range & Duration (And Auto-fetch Rate)
       let allDates = [];
       categories.forEach(cat => {
         try {
@@ -327,33 +321,6 @@ function recalculateHeader(reportId) {
           startDateStr = formatDate(minDate);
           endDateStr = formatDate(maxDate);
           
-          
-          // [Auto-Rate Logic] Update USD Rate if it's default/empty
-          // Original logic: Fetch Rate for T-1.
-          // Note: getExchangeRate/getBotRate now handles decrementing T-1 internally.
-          // So we pass the actual Date.
-          if ((!rate || rate <= 1) && minDate && rateCell) {
-              const yyyy = minDate.getFullYear();
-              const mm = String(minDate.getMonth() + 1).padStart(2, '0');
-              const dd = String(minDate.getDate()).padStart(2, '0');
-              const dateStr = `${yyyy}-${mm}-${dd}`;
-              
-              // Fixed: Call with object payload + Date without manual -1
-              try {
-                  const res = getBotRate({ currency: 'USD', date: dateStr });
-                  if (res && (res.status === 'success' || res.rate)) {
-                      const botRate = res.data?.rate || res.rate;
-                      if (botRate && botRate > 1) {
-                           rateCell.setValue(botRate);
-                           rate = botRate; // Update local rate var for calculation below
-                           Logger.log(`[Auto-Rate] Set Header Rate to ${botRate} from ${dateStr}`);
-                      }
-                  }
-              } catch(e) {
-                  Logger.log('Auto-rate fetch error: ' + e);
-              }
-          }
-          
           // Calculate Days (inclusive)
           const utc1 = Date.UTC(minDate.getFullYear(), minDate.getMonth(), minDate.getDate());
           const utc2 = Date.UTC(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
@@ -370,7 +337,6 @@ function recalculateHeader(reportId) {
              let maxFlightTs = -Infinity;
              
              myFlights.forEach(f => {
-                 // ... (Detailed time parsing logic) ...
                  let d = f['日期'];
                  let dateObj = null;
                  if (d instanceof Date) dateObj = d;
@@ -381,7 +347,6 @@ function recalculateHeader(reportId) {
                  }
                  
                  if (dateObj && !isNaN(dateObj.getTime())) {
-                     // Helper
                      const parseTimeStr = (tStr) => {
                          let h = 0, m = 0;
                          if (!tStr) return {h, m};
@@ -416,11 +381,6 @@ function recalculateHeader(reportId) {
                      if (arrT instanceof Date) { ah=arrT.getHours(); am=arrT.getMinutes(); }
                      else { const t=parseTimeStr(arrT); ah=t.h; am=t.m; }
                      
-                     // Determining if arrival is "Last". Logic: Latest Departure implies Last Leg usually.
-                     // We track max Departure TS for sorting logic, but we need ARRIVAL time of that leg.
-                     // Actually simplest: Track max arrival TS? But Arrival Date isn't always distinct.
-                     // Let's assume Flight Date matches. 
-                     // Logic: Flight with max (Date+DepTime) is the last flight.
                      if (depTs > maxFlightTs) {
                          maxFlightTs = depTs;
                          latestFlightArrivalHour = ah + (am/60);
@@ -457,7 +417,7 @@ function recalculateHeader(reportId) {
       let totalPersonalUSD = 0;
       let totalOverallUSD = 0;
       
-      if (rate > 0) {
+      if (rate && rate > 0) {
           totalPersonalUSD = totalPersonalTWD / rate;
           totalOverallUSD = totalOverallTWD / rate;
       }
@@ -501,5 +461,177 @@ function recalculateHeader(reportId) {
               if (cIdx > -1) headerSheet.getRange(rowIndex, cIdx + 1).setValue(0);
           });
       }
+    }
+}
+
+/**
+ * Updates Exchange Rate and Recalculates all dependent TWD amounts
+ * Logic:
+ * 1. Find earliest flight date.
+ * 2. Update Header Rate = Rate of (Earliest Flight Date - 1).
+ * 3. Iterate ALL sheets, if currency is USD, update Rate and TWD amounts.
+ * 4. If no flights, reset Header Rate to 0.
+ */
+function updateExchangeRateAndRecalculate(reportId) {
+    // 1. Find flights
+    const flightSheet = getSheet('Flight');
+    // Read all data to find flights for this report
+    const flightData = sheetDataToJson('Flight');
+    const myFlights = flightData.filter(r => String(r['報告編號']) === String(reportId));
+    
+    let newRate = 0;
+    
+    if (myFlights.length > 0) {
+        // Find Earliest Date
+        let minDateTs = Infinity;
+        let minDateObj = null;
+
+        myFlights.forEach(f => {
+             let d = f['日期'];
+             let dateObj = null;
+             if (d instanceof Date) dateObj = d;
+             else if (typeof d === 'string') {
+                 // Try parsing YYYY-MM-DD or YYYY/MM/DD
+                 let p = d.split(/[-/]/);
+                 if (p.length === 3) dateObj = new Date(p[0], parseInt(p[1], 10) - 1, p[2]);
+                 else dateObj = new Date(d);
+             }
+             
+             if (dateObj && !isNaN(dateObj.getTime())) {
+                 if (dateObj.getTime() < minDateTs) {
+                     minDateTs = dateObj.getTime();
+                     minDateObj = dateObj;
+                 }
+             }
+        });
+
+        if (minDateObj) {
+            // Target: Earliest - 1 Day
+            // Format for getExchangeRate (it expects YYYY/MM/DD or YYYY-MM-DD string, or we can construct it)
+            // But wait, the getExchangeRate function typically takes the Date OF the transaction, 
+            // and internally looks back to T-1. 
+            // However, the requirement is specific: "Update using the rate of the day BEFORE the earliest flight".
+            // If getExchangeRate already does T-1 internally, we should pass the Flight Date.
+            // Let's verify getExchangeRate logic: 
+            // "Note: We need T-1 relative to the Input Date...  currentSearchDate.setDate(currentSearchDate.getDate() - 1);"
+            // YES, getExchangeRate ALREADY subtracts 1 day.
+            // So we should pass the Flight Date directly.
+            
+            const yyyy = minDateObj.getFullYear();
+            const mm = String(minDateObj.getMonth() + 1).padStart(2, '0');
+            const dd = String(minDateObj.getDate()).padStart(2, '0');
+            const dateStr = `${yyyy}/${mm}/${dd}`;
+            
+            const res = getExchangeRate({ currency: 'USD', date: dateStr });
+            if (res && res.status === 'success' && res.rate) {
+                newRate = res.rate;
+                Logger.log(`[RateUpdate] New Rate ${newRate} (from ${dateStr} T-1 logic)`);
+            }
+        }
+    } else {
+        // No flights -> Reset Rate
+        newRate = 0;
+        Logger.log(`[RateUpdate] No flights, resetting rate to 0`);
+    }
+
+    // 2. Update Header Rate
+    const headerSheet = getSheet('Report Header');
+    const headerData = headerSheet.getDataRange().getValues();
+    let headerRowIndex = -1;
+    // Assume Row 1 is header
+    for (let i = 1; i < headerData.length; i++) {
+        if (String(headerData[i][0]) === String(reportId)) {
+            headerRowIndex = i + 1; 
+            break;
+        }
+    }
+    
+    if (headerRowIndex > -1) {
+        const headers = headerData[0];
+        const rateCol = headers.indexOf('USD匯率');
+        if (rateCol > -1) {
+            headerSheet.getRange(headerRowIndex, rateCol + 1).setValue(newRate);
+        }
+        
+        // 3. Recalculate ALL sheets if Rate > 0 (or just update to 0 if rate is 0)
+        // If Rate is 0, TWD amounts for USD items become 0.
+        // If Rate > 0, TWD amounts = Amount * Rate.
+        
+        const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Others'];
+        
+        categories.forEach(cat => {
+            try {
+                const sheet = getSheet(cat);
+                const data = sheet.getDataRange().getValues();
+                const sheetHeaders = data[0];
+                
+                // Find column indices
+                const idxId = sheetHeaders.indexOf('報告編號');
+                const idxCurrency = sheetHeaders.indexOf('幣別');
+                const idxRate = sheetHeaders.indexOf('匯率');
+                const idxAmount = sheetHeaders.indexOf('金額');
+                const idxTwdAmount = sheetHeaders.indexOf('TWD金額');
+                
+                // specific for Accommodation
+                const idxPersonal = sheetHeaders.indexOf('個人金額');
+                const idxTwdPersonal = sheetHeaders.indexOf('TWD個人金額');
+                const idxAdvance = sheetHeaders.indexOf('代墊金額');
+                const idxTwdAdvance = sheetHeaders.indexOf('TWD代墊金額');
+                const idxOverall = sheetHeaders.indexOf('總體金額');
+                const idxTwdOverall = sheetHeaders.indexOf('TWD總體金額');
+                
+                // Loop rows
+                // Optimization: We can write later, or write cell by cell. 
+                // Given GAS limits, reading all, updating in memory, and writing back is best if many updates.
+                // But for simplicity/safety with mixed currencies, iterating and check is okay.
+                
+                let updates = []; // Store {row, col, val}
+                
+                for (let i = 1; i < data.length; i++) {
+                     if (String(data[i][idxId]) === String(reportId)) {
+                         const currency = String(data[i][idxCurrency]);
+                         if (currency === 'USD') {
+                             const row = i + 1;
+                             
+                             // Update Row Rate
+                             if (idxRate > -1) sheet.getRange(row, idxRate + 1).setValue(newRate);
+                             
+                             const rateToUse = newRate;
+                             
+                             // Update TWD Amounts
+                             if (cat === 'Accommodation') {
+                                 // Personal
+                                 if (idxPersonal > -1 && idxTwdPersonal > -1) {
+                                     const val = Number(data[i][idxPersonal]) || 0;
+                                     sheet.getRange(row, idxTwdPersonal + 1).setValue(val * rateToUse);
+                                 }
+                                 // Advance
+                                 if (idxAdvance > -1 && idxTwdAdvance > -1) {
+                                     const val = Number(data[i][idxAdvance]) || 0;
+                                     sheet.getRange(row, idxTwdAdvance + 1).setValue(val * rateToUse);
+                                 }
+                                 // Overall
+                                 if (idxOverall > -1 && idxTwdOverall > -1) {
+                                     const val = Number(data[i][idxOverall]) || 0;
+                                     sheet.getRange(row, idxTwdOverall + 1).setValue(val * rateToUse);
+                                 }
+                                 
+                             } else {
+                                 // Standard forms
+                                 if (idxAmount > -1 && idxTwdAmount > -1) {
+                                      const val = Number(data[i][idxAmount]) || 0;
+                                      sheet.getRange(row, idxTwdAmount + 1).setValue(val * rateToUse);
+                                 }
+                             }
+                         }
+                     }
+                }
+                
+            } catch (e) {
+                // Sheet might not exist or empty
+            }
+        });
+    }
+}
     }
 }
