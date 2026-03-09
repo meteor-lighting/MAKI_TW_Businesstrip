@@ -191,6 +191,7 @@ const ExpenseReportPage: React.FC = () => {
                             // Handle special cases for camelCase IDs from transformer
                             if (section.id === 'handingFee') titleKey = 'handing_fee_details';
                             if (section.id === 'perDiem') titleKey = 'per_diem_details';
+                            if (section.id === 'advancePayment') titleKey = 'advance_payment_details';
 
                             return (
                                 <DetailTable
