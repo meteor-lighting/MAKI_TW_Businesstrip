@@ -185,7 +185,7 @@ function getExchangeRate(payload) {
       // Fallback to mock/default if all fail
       console.warn(`Could not find rate for ${currency} around ${dateStr}, using fallback.`);
       const fallbackRates = {
-          'USD': 30.0, 'JPY': 0.21, 'EUR': 32.5, 'CNY': 4.2, 'TWD': 1.0
+          'USD': 30.0, 'JPY': 0.21, 'EUR': 32.5, 'CNY': 4.2, 'TWD': 1.0, 'THB': 0.9
       };
       return { 
           status: 'success', 

@@ -160,6 +160,7 @@ export default function InternetForm({ reportId, headerRate, onSubmitSuccess, on
                         <option value="JPY">JPY</option>
                         <option value="EUR">EUR</option>
                         <option value="CNY">CNY</option>
+                        <option value="THB">THB</option>
                     </select>
                 </div>
                 <div>
