@@ -192,8 +192,8 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         },
         charts: {
             // 2. Charts Data (Generated after all totals are finalized)
-            pie: Object.entries(catTotals).filter(([, v]) => v > 0).map(([k, v]) => ({ name: k, value: v })) as ChartData[],
-            bar: Object.entries(catTotals).filter(([, v]) => v > 0).map(([k, v]) => ({ name: k, value: v })) as ChartData[]
+            pie: Object.entries(catTotals).filter(([k, v]) => v > 0 && k !== 'Advance Payment').map(([k, v]) => ({ name: k, value: v })) as ChartData[],
+            bar: Object.entries(catTotals).filter(([k, v]) => v > 0 && k !== 'Advance Payment').map(([k, v]) => ({ name: k, value: v })) as ChartData[]
         },
         sections
     };

@@ -15,7 +15,8 @@ interface SectionAccordionProps {
     actionButtonText?: {
         expand: string;
         collapse: string;
-    }
+    };
+    valueColorClass?: string;
 }
 
 export default function SectionAccordion({
@@ -28,6 +29,7 @@ export default function SectionAccordion({
     onExpand,
     onCollapse,
     actionButtonText,
+    valueColorClass,
     disabled = false
 }: SectionAccordionProps & { disabled?: boolean }) {
     const { t } = useTranslation();
@@ -56,10 +58,10 @@ export default function SectionAccordion({
 
                 <div className="flex items-center gap-6">
                     <div className="text-gray-600 font-medium">
-                        {totalAmountText}: <span className="text-blue-600 ml-1">{totalAmount.toLocaleString('en-US', { minimumFractionDigits: 0 })}</span>
+                        {totalAmountText}: <span className={clsx("ml-1", valueColorClass || "text-blue-600")}>{totalAmount.toLocaleString('en-US', { minimumFractionDigits: 0 })}</span>
                         {secondaryTotalAmountText !== undefined && secondaryTotalAmount !== undefined && (
                             <span className="ml-4 pl-4 border-l border-gray-300">
-                                {secondaryTotalAmountText}: <span className="text-blue-600 ml-1">{secondaryTotalAmount.toLocaleString('en-US', { minimumFractionDigits: 0 })}</span>
+                                {secondaryTotalAmountText}: <span className={clsx("ml-1", valueColorClass || "text-blue-600")}>{secondaryTotalAmount.toLocaleString('en-US', { minimumFractionDigits: 0 })}</span>
                             </span>
                         )}
                     </div>

@@ -256,7 +256,7 @@ function recalculateHeader(reportId) {
              else if (cat === 'Gift') { totalPersonalTWD += totals['禮品費總額']; totalOverallTWD += totals['禮品費總額']; }
              else if (cat === 'Handing Fee') { totalPersonalTWD += totals['手續費總額']; totalOverallTWD += totals['手續費總額']; }
              else if (cat === 'Per Diem') { totalPersonalTWD += totals['日支費總額']; totalOverallTWD += totals['日支費總額']; }
-             else if (cat === 'Advance Payment') { totalPersonalTWD += totals['預支費用總額']; totalOverallTWD += totals['預支費用總額']; }
+             else if (cat === 'Advance Payment') { totalPersonalTWD -= totals['預支費用總額']; totalOverallTWD -= totals['預支費用總額']; }
              else if (cat === 'Others') { totalPersonalTWD += totals['其他費用總額']; totalOverallTWD += totals['其他費用總額']; }
              else if (cat === 'Accommodation') {
                  totalPersonalTWD += totals['個人住宿費總額'];

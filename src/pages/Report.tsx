@@ -612,6 +612,7 @@ export default function Report() {
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['預支費用總額'] || 0)}
                     disabled={isOtherFormsDisabled}
+                    valueColorClass="text-red-500"
                 >
                     <div className="space-y-6">
                         <AdvancePaymentForm
