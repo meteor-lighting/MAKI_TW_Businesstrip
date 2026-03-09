@@ -42,6 +42,7 @@ function createNewReport(payload) {
                      case '禮品費總額':
                      case '手續費總額':
                      case '日支費總額':
+                     case '預支費用總額':
                      case '其他費用總額':
                      case '合計TWD個人總額':
                      case '合計TWD總體總額':
@@ -166,7 +167,7 @@ function deleteReportItem(payload) {
 
 function recalculateHeader(reportId) {
     // Sum up all categories for this reportId
-    const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Others'];
+    const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
     
     let totals = {
         '機票費總額': 0,
@@ -178,6 +179,7 @@ function recalculateHeader(reportId) {
         '禮品費總額': 0,
         '手續費總額': 0,
         '日支費總額': 0,
+        '預支費用總額': 0,
         '其他費用總額': 0
     };
     
@@ -213,6 +215,7 @@ function recalculateHeader(reportId) {
             if (cat === 'Gift') totals['禮品費總額'] = sum;
             if (cat === 'Handing Fee') totals['手續費總額'] = sum;
             if (cat === 'Per Diem') totals['日支費總額'] = sum;
+            if (cat === 'Advance Payment') totals['預支費用總額'] = sum;
             if (cat === 'Others') totals['其他費用總額'] = sum;
         } catch (e) {
             // ignore missing sheets
@@ -253,6 +256,7 @@ function recalculateHeader(reportId) {
              else if (cat === 'Gift') { totalPersonalTWD += totals['禮品費總額']; totalOverallTWD += totals['禮品費總額']; }
              else if (cat === 'Handing Fee') { totalPersonalTWD += totals['手續費總額']; totalOverallTWD += totals['手續費總額']; }
              else if (cat === 'Per Diem') { totalPersonalTWD += totals['日支費總額']; totalOverallTWD += totals['日支費總額']; }
+             else if (cat === 'Advance Payment') { totalPersonalTWD += totals['預支費用總額']; totalOverallTWD += totals['預支費用總額']; }
              else if (cat === 'Others') { totalPersonalTWD += totals['其他費用總額']; totalOverallTWD += totals['其他費用總額']; }
              else if (cat === 'Accommodation') {
                  totalPersonalTWD += totals['個人住宿費總額'];
@@ -546,7 +550,7 @@ function updateExchangeRateAndRecalculate(reportId) {
         }
         
         // 3. Recalculate ALL sheets
-        const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Others'];
+        const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
         
         categories.forEach(cat => {
             try {

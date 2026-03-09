@@ -13,6 +13,7 @@ export interface RawReportData {
         Gift?: any[];
         HandingFee?: any[];
         PerDiem?: any[];
+        'Advance Payment'?: any[];
         Others?: any[];
         [key: string]: any[] | undefined;
     };
@@ -38,6 +39,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         Gift: 0,
         'Handing Fee': 0, // Key matches backend
         'Per Diem': 0,    // Key matches backend
+        'Advance Payment': 0,
         Others: 0,
     };
 
@@ -132,6 +134,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { key: 'Gift', id: 'gift', title: `${t('gift_details')} (Gift Details)` },
         { key: 'Handing Fee', id: 'handingFee', title: `${t('handing_fee_details')} (Handing Fee Details)` },
         { key: 'Per Diem', id: 'perDiem', title: `${t('per_diem_details')} (Per Diem Details)` },
+        { key: 'Advance Payment', id: 'advancePayment', title: `${t('advance_payment_details')} (Advance Payment Details)` },
         { key: 'Others', id: 'others', title: `${t('others_details')} (Others Details)` }
     ];
 

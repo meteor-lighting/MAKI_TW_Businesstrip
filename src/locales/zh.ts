@@ -57,6 +57,8 @@ export const zh = {
         "handing_fee_details": "💸 手續費明細",
         "per_diem": "📅 日支費 (Per Diem)",
         "per_diem_details": "📅 日支費明細",
+        "advance_payment_category": "💸 預支費用 (Advance Payment)",
+        "advance_payment_details": "💸 預支費用明細",
         "others": "📝 其他 (Others)",
         "others_details": "📝 其他費用明細",
         "personal_amount": "個人金額",

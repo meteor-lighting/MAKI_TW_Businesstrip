@@ -32,6 +32,7 @@ export const exportToExcel = (reportData: ReportData, reportId: string) => {
         ['禮品費', reportData.header['禮品費總額']],
         ['手續費', reportData.header['手續費總額']],
         ['日支費', reportData.header['日支費總額']],
+        ['預支費用', reportData.header['預支費用總額']],
         ['其他', reportData.header['其他費用總額']],
         ['合計 (TWD)', reportData.header['合計TWD個人總額']],
         ['合計 (USD)', reportData.header['合計USD個人總額']]
@@ -40,8 +41,7 @@ export const exportToExcel = (reportData: ReportData, reportId: string) => {
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
     XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
 
-    // 2. Create Sheets for each Category
-    const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Others'];
+    const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
 
     categories.forEach(cat => {
         const items = reportData.items[cat];

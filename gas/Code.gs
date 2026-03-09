@@ -93,7 +93,7 @@ function getReportFullData(payload) {
   
   // 2. Get All Items
   const items = {};
-  const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Others'];
+  const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
   
   categories.forEach(cat => {
       try {

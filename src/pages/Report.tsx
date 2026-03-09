@@ -16,6 +16,7 @@ import SocialForm from '../components/Report/forms/SocialForm';
 import GiftForm from '../components/Report/forms/GiftForm';
 import HandingFeeForm from '../components/Report/forms/HandingFeeForm';
 import PerDiemForm from '../components/Report/forms/PerDiemForm';
+import AdvancePaymentForm from '../components/Report/forms/AdvancePaymentForm';
 import OthersForm from '../components/Report/forms/OthersForm';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import LanguageSwitcher from '../components/LanguageSwitcher';
@@ -577,6 +578,59 @@ export default function Report() {
                                     return sendRequest('deleteItem', {
                                         reportId,
                                         category: 'Per Diem',
+                                        sequence: item.次序
+                                    }).then(handleItemChanged);
+                                }}
+                                onLoadingChange={handleLoadingChange}
+                                disabled={isOtherFormsDisabled}
+                                columns={[
+                                    { key: '次序', header: t('sequence'), width: '60px' },
+                                    {
+                                        key: '日期',
+                                        header: t('date'),
+                                        render: (item: any) => {
+                                            if (!item['日期']) return '';
+                                            const d = new Date(item['日期']);
+                                            return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+                                        }
+                                    },
+                                    { key: '地區', header: t('region') },
+                                    { key: '幣別', header: t('currency') },
+                                    { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
+                                    { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '備註', header: t('remark') },
+                                ]}
+                            />
+                        </div>
+                    </div>
+                </SectionAccordion>
+
+                {/* Advance Payment */}
+                <SectionAccordion
+                    title={t('advance_payment_category')}
+                    totalAmountText={t('total_amount_text')}
+                    totalAmount={Number(reportData?.header['預支費用總額'] || 0)}
+                    disabled={isOtherFormsDisabled}
+                >
+                    <div className="space-y-6">
+                        <AdvancePaymentForm
+                            reportId={reportId}
+                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            onSubmitSuccess={handleItemChanged}
+                            onLoadingChange={handleLoadingChange}
+                            disabled={isOtherFormsDisabled}
+                        />
+
+                        <div className="mt-4">
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            <DataGrid
+                                keyField="次序"
+                                data={reportData?.items?.['Advance Payment'] || []}
+                                onDelete={(item) => {
+                                    return sendRequest('deleteItem', {
+                                        reportId,
+                                        category: 'Advance Payment',
                                         sequence: item.次序
                                     }).then(handleItemChanged);
                                 }}

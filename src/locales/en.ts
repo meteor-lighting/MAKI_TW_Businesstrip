@@ -57,6 +57,8 @@ export const en = {
         "handing_fee_details": "💸 Handing Fee Details",
         "per_diem": "📅 Per Diem (日支費)",
         "per_diem_details": "📅 Per Diem Details",
+        "advance_payment_category": "💸 Advance Payment (預支費用)",
+        "advance_payment_details": "💸 Advance Payment Details",
         "others": "📝 Others (其他)",
         "others_details": "📝 Others Details",
         "personal_amount": "Personal Amount",
