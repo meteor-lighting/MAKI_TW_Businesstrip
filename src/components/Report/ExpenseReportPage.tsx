@@ -201,6 +201,7 @@ const ExpenseReportPage: React.FC = () => {
                                     total={section.total}
                                     columns={section.columns}
                                     data={section.data}
+                                    totalColorClass={section.id === 'advancePayment' ? 'text-red-500' : undefined}
                                 />
                             );
                         })

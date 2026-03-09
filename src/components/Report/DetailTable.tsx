@@ -10,11 +10,12 @@ interface DetailTableProps {
     };
     columns: ReportColumn[];
     data: Record<string, any>[];
+    totalColorClass?: string;
 }
 
 import { useTranslation } from 'react-i18next';
 
-const DetailTable: React.FC<DetailTableProps> = ({ id, title, total, columns, data }) => {
+const DetailTable: React.FC<DetailTableProps> = ({ id, title, total, columns, data, totalColorClass }) => {
     const { t } = useTranslation();
 
     return (
@@ -73,7 +74,7 @@ const DetailTable: React.FC<DetailTableProps> = ({ id, title, total, columns, da
             {/* Footer Total */}
             <div className="flex justify-between items-center bg-white px-4 py-2 border-b border-x border-slate-200">
                 <div className="font-bold text-gray-700">Total</div>
-                <div className="font-bold text-xl text-gray-800">{total.displayString}</div>
+                <div className={clsx("font-bold text-xl", totalColorClass || "text-gray-800")}>{total.displayString}</div>
             </div>
         </div>
     );
