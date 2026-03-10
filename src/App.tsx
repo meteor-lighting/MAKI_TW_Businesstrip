@@ -4,6 +4,7 @@ import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Report from './pages/Report';
 import ExpenseReportPage from './components/Report/ExpenseReportPage';
+import Dashboard from './pages/Dashboard';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './i18n';
 
@@ -23,6 +24,22 @@ function App() {
                 <Routes>
                     <Route path="/" element={<SignIn />} />
                     <Route path="/signup" element={<SignUp />} />
+                    <Route
+                        path="/dashboard"
+                        element={
+                            <ProtectedRoute>
+                                <Dashboard />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/dashboard"
+                        element={
+                            <ProtectedRoute>
+                                <Dashboard />
+                            </ProtectedRoute>
+                        }
+                    />
                     <Route
                         path="/report"
                         element={

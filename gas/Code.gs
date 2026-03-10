@@ -37,6 +37,9 @@ function doPost(e) {
       case 'getReport': // Get header and all details
         result = getReportFullData(payload);
         break;
+      case 'getUserReports': // Get all reports for a user
+        result = getUserReports(payload);
+        break;
       
       // Items CRUD
       case 'addItem':
@@ -116,4 +119,39 @@ function getReportFullData(payload) {
           items: items
       }
   };
+}
+
+// -----------------------------------------------------------------------------
+
+function getUserReports(payload) {
+  const userId = payload.userId;
+  if (!userId) {
+    return { status: 'error', message: 'Missing userId' };
+  }
+
+  try {
+    const headerData = sheetDataToJson('Report Header');
+    const userReports = headerData
+      .filter(r => String(r['用戶編號']) === String(userId))
+      .map(r => ({
+        reportId: r['報告編號'],
+        days: r['商旅天數'],
+        startDate: r['商旅起始日'],
+        endDate: r['商旅結束日'],
+        createdAt: r['建立時間']
+      }))
+      // Sort by creation date descending
+      .sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateB - dateA; // latest first
+      });
+
+    return {
+      status: 'success',
+      data: userReports
+    };
+  } catch (e) {
+    return { status: 'error', message: e.toString() };
+  }
 }
