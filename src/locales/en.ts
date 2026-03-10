@@ -61,6 +61,7 @@ export const en = {
         "advance_payment_details": "💸 Advance Payment Details",
         "others": "📝 Others (其他)",
         "others_details": "📝 Others Details",
+        "hotel": "Hotel",
         "personal_amount": "Personal Amount",
         "overall_amount": "Overall Amount",
         "per_person_per_day": "Per Person Per Day",
