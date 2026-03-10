@@ -217,6 +217,8 @@ export default function Report() {
                                     { key: '航班代號', header: t('flight_code') },
                                     { key: '出發地', header: t('departure') },
                                     { key: '抵達地', header: t('arrival') },
+                                    { key: '出發時間', header: t('departure_time') },
+                                    { key: '抵達時間', header: t('arrival_time') },
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount') },
                                     { key: 'TWD金額', header: t('twd_amount') },

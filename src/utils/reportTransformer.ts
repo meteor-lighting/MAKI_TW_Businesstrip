@@ -84,6 +84,8 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: t('flight_code'), headerKey: 'flight_code', accessorKey: '航班代號', width: 15 },
         { header: t('departure'), headerKey: 'departure', accessorKey: '出發地', width: 10 },
         { header: t('arrival'), headerKey: 'arrival', accessorKey: '抵達地', width: 10 },
+        { header: t('departure_time'), headerKey: 'departure_time', accessorKey: '出發時間', width: 10, type: 'time' },
+        { header: t('arrival_time'), headerKey: 'arrival_time', accessorKey: '抵達時間', width: 10, type: 'time' },
         { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
         { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'number' },
         { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 15 },
