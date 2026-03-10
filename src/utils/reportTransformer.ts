@@ -100,6 +100,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     createSection('Accommodation', `${t('accommodation_details')} (Accommodation Details)`, [
         { header: t('date'), headerKey: 'date', accessorKey: '日期', width: 12, type: 'date' },
         { header: t('region'), headerKey: 'region', accessorKey: '地區', width: 10 },
+        { header: t('hotel'), headerKey: 'hotel', accessorKey: '飯店', width: 10 }, // Added Hotel column
         { header: t('days'), headerKey: 'days', accessorKey: '天數', width: 5 },
         { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 8 },
         { header: t('personal_amount'), headerKey: 'personal_amount', accessorKey: '個人金額', width: 10, type: 'currency' },
@@ -147,6 +148,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         const columns = [
             { header: t('date'), headerKey: 'date', accessorKey: '日期', width: 15, type: 'date' },
             { header: t('region'), headerKey: 'region', accessorKey: '地區', width: 15 },
+            { header: t('hotel'), headerKey: 'hotel', accessorKey: '飯店', width: 15 }, // Added Hotel column as per instruction
             { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
             { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'currency' },
             { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 10 },

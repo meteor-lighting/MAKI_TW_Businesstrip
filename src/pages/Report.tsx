@@ -271,6 +271,7 @@ export default function Report() {
                                         }
                                     },
                                     { key: '地區', header: t('region') },
+                                    { key: '飯店', header: t('hotel') },
                                     { key: '天數', header: t('days') },
                                     { key: '幣別', header: t('currency') },
                                     { key: '個人金額', header: t('personal') },

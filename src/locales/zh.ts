@@ -61,6 +61,7 @@ export const zh = {
         "advance_payment_details": "💸 預支費用明細",
         "others": "📝 其他 (Others)",
         "others_details": "📝 其他費用明細",
+        "hotel": "飯店",
         "personal_amount": "個人金額",
         "overall_amount": "總體金額",
         "per_person_per_day": "每人每天金額",

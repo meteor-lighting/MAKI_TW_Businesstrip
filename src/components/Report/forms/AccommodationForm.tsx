@@ -8,6 +8,7 @@ import { Hourglass } from 'lucide-react';
 interface AccommodationFormData {
     date: string;
     region: string;
+    hotel: string;
     nights: number;
     currency: string;
     personalAmount: number | string;
@@ -40,6 +41,7 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
             peopleCount: 0,
             nights: 1,
             rate: 1,
+            hotel: '',
             twdPersonalAmount: 0,
             twdAdvanceAmount: 0,
             totalAmount: 0,
@@ -137,6 +139,7 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                 itemData: {
                     '日期': data.date.replace(/-/g, '/'),
                     '地區': data.region,
+                    '飯店': data.hotel,
                     '天數': data.nights,
                     '幣別': data.currency,
                     '個人金額': pAmount || 0,
@@ -153,6 +156,7 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
             });
             await onSubmitSuccess();
             setValue('personalAmount', '');
+            setValue('hotel', '');
             setValue('advanceAmount', 0);
             setValue('peopleCount', 0);
             setValue('twdPersonalAmount', 0);
@@ -207,6 +211,10 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                     />
                 </div>
                 <div>
+                    <label className="block text-sm font-medium text-gray-700">{t('hotel')}</label>
+                    <input type="text" {...register('hotel')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
+                </div>
+                <div>
                     <label className="block text-sm font-medium text-gray-700">{t('days')}</label>
                     <input type="number" {...register('nights')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" min={1} />
                 </div>
@@ -221,6 +229,7 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                         <option value="THB">THB</option>
                     </select>
                 </div>
+                <div className="hidden md:block"></div> {/* Spacer for 4-column layout if needed */}
             </div>
 
             <div className="border-t border-gray-200 pt-4 mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 bg-blue-50 p-2 rounded">
