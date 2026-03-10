@@ -732,7 +732,7 @@ export default function Report() {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 <tr className="bg-red-50 text-red-600">
-                                    <td className="px-4 py-3 text-sm font-medium border-r border-gray-300">{t('advance_payment')}(TWD)</td>
+                                    <td className="px-4 py-3 text-sm font-medium border-r border-gray-300">{t('advance_payment_summary')}(TWD)</td>
                                     <td className="px-4 py-3 text-sm text-right border-r border-gray-300 font-mono">
                                         -
                                     </td>

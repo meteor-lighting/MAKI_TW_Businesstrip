@@ -137,7 +137,7 @@ const ExpenseReportPage: React.FC = () => {
                                 <div className="bg-slate-800 p-3 text-center font-bold border-b border-slate-500">{t('expense_summary')}</div>
                                 <div className="p-4 grid grid-cols-1 gap-4 text-sm">
                                     <div className="flex justify-between border-b border-slate-500 pb-2 text-red-300">
-                                        <span>{t('advance_payment')}(TWD):</span>
+                                        <span>{t('advance_payment_summary')}(TWD):</span>
                                         <div className="text-right">
                                             <span>{reportData.summary.advancePaymentTWD.toLocaleString()}</span>
                                         </div>
