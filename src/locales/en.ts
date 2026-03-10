@@ -36,6 +36,7 @@ export const en = {
         "region": "Region",
         "currency": "Currency",
         "amount": "Amount",
+        "total_amount_per_diem": "Total Amount",
         "exchange_rate": "Rate",
         "twd_amount": "TWD Amount",
         "remark": "Remark",

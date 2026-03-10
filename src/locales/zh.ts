@@ -36,6 +36,7 @@ export const zh = {
         "region": "地區",
         "currency": "幣別",
         "amount": "金額",
+        "total_amount_per_diem": "總計金額",
         "exchange_rate": "匯率",
         "twd_amount": "TWD金額",
         "remark": "備註",
