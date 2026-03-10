@@ -31,6 +31,8 @@ export const en = {
         "overall": "Overall",
         "item": "Item",
         "date": "Date",
+        "start_date": "Start Date",
+        "end_date": "End Date",
         "region": "Region",
         "currency": "Currency",
         "amount": "Amount",

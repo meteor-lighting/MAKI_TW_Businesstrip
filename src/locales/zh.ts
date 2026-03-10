@@ -31,6 +31,8 @@ export const zh = {
         "overall": "總體",
         "item": "項目",
         "date": "日期",
+        "start_date": "開始日期",
+        "end_date": "結束日期",
         "region": "地區",
         "currency": "幣別",
         "amount": "金額",

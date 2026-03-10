@@ -6,7 +6,8 @@ import CityAutocomplete from '../CityAutocomplete';
 import { Hourglass } from 'lucide-react';
 
 interface PerDiemFormData {
-    date: string;
+    startDate: string;
+    endDate: string;
     region: string;
     currency: string;
     amount: number | string;
@@ -40,7 +41,7 @@ export default function PerDiemForm({ reportId, headerRate, onSubmitSuccess, onL
     // Watch fields
     const currency = watch('currency');
     const amount = watch('amount');
-    const date = watch('date');
+    const startDate = watch('startDate');
 
     // Rate Calculation Effect
     useEffect(() => {
@@ -66,11 +67,11 @@ export default function PerDiemForm({ reportId, headerRate, onSubmitSuccess, onL
                 }
             }
 
-            if (!date || (amount === '' || isNaN(numericAmount))) return;
+            if (!startDate || (amount === '' || isNaN(numericAmount))) return;
 
             setRateLoading(true);
             try {
-                const res = await sendRequest('getExchangeRate', { currency, date });
+                const res = await sendRequest('getExchangeRate', { currency, date: startDate });
                 if (res.status === 'success' || res.rate) {
                     const rate = res.data?.rate || res.rate || 1;
                     setValue('rate', rate);
@@ -83,7 +84,7 @@ export default function PerDiemForm({ reportId, headerRate, onSubmitSuccess, onL
             }
         };
         fetchRate();
-    }, [currency, amount, date, setValue, headerRate]);
+    }, [currency, amount, startDate, setValue, headerRate]);
 
     const onSubmit = async (data: PerDiemFormData) => {
         setLoading(true);
@@ -93,7 +94,8 @@ export default function PerDiemForm({ reportId, headerRate, onSubmitSuccess, onL
                 reportId,
                 category: 'Per Diem',
                 itemData: {
-                    '日期': data.date.replace(/-/g, '/'),
+                    '開始日期': data.startDate.replace(/-/g, '/'),
+                    '結束日期': data.endDate.replace(/-/g, '/'),
                     '地區': data.region,
                     '幣別': data.currency,
                     '金額': data.amount,
@@ -125,16 +127,28 @@ export default function PerDiemForm({ reportId, headerRate, onSubmitSuccess, onL
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">{t('date')} (YYYY/MM/DD)</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('start_date')} (YYYY/MM/DD)</label>
                     <input
                         type="date"
-                        {...register('date', {
+                        {...register('startDate', {
                             required: t('please_enter_date'),
                         })}
                         disabled={loading || disabled}
-                        className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.date ? 'border-red-500' : ''}`}
+                        className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.startDate ? 'border-red-500' : ''}`}
                     />
-                    {errors.date && <span className="text-red-500 text-sm">{errors.date.message}</span>}
+                    {errors.startDate && <span className="text-red-500 text-sm">{errors.startDate.message}</span>}
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">{t('end_date')} (YYYY/MM/DD)</label>
+                    <input
+                        type="date"
+                        {...register('endDate', {
+                            required: t('please_enter_date'),
+                        })}
+                        disabled={loading || disabled}
+                        className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.endDate ? 'border-red-500' : ''}`}
+                    />
+                    {errors.endDate && <span className="text-red-500 text-sm">{errors.endDate.message}</span>}
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('region')}</label>

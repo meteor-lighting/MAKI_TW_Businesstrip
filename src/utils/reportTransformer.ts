@@ -136,7 +136,6 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { key: 'Social', id: 'social', title: `${t('social_details')} (Social Details)` },
         { key: 'Gift', id: 'gift', title: `${t('gift_details')} (Gift Details)` },
         { key: 'Handing Fee', id: 'handingFee', title: `${t('handing_fee_details')} (Handing Fee Details)` },
-        { key: 'Per Diem', id: 'perDiem', title: `${t('per_diem_details')} (Per Diem Details)` },
         { key: 'Advance Payment', id: 'advancePayment', title: `${t('advance_payment_details')} (Advance Payment Details)` },
         { key: 'Others', id: 'others', title: `${t('others_details')} (Others Details)` }
     ];
@@ -172,6 +171,25 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         createSection(cat.key, cat.title, columns, cat.id, catTotal);
     });
 
+    // Custom Per Diem Block
+    const perDiemItems = raw.items['Per Diem'] || [];
+    const perDiemTotalTWD = perDiemItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
+    catTotals['Per Diem'] = perDiemTotalTWD;
+
+    createSection('Per Diem', `${t('per_diem_details')} (Per Diem Details)`, [
+        { header: t('start_date'), headerKey: 'start_date', accessorKey: '開始日期', width: 15, type: 'date' },
+        { header: t('end_date'), headerKey: 'end_date', accessorKey: '結束日期', width: 15, type: 'date' },
+        { header: t('region'), headerKey: 'region', accessorKey: '地區', width: 15 },
+        { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
+        { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'currency' },
+        { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 10 },
+        { header: t('twd_amount'), headerKey: 'twd_amount', accessorKey: 'TWD金額', width: 10, type: 'currency' },
+        { header: t('remark'), headerKey: 'remark', accessorKey: '備註', width: 25 }
+    ], 'perDiem', perDiemTotalTWD);
+
+    // End Custom Block
+
+    // Build Chart Data
     return {
         reportId,
         user: userName,
