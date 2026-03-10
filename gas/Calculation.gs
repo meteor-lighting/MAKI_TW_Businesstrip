@@ -307,14 +307,6 @@ function recalculateHeader(reportId) {
                  let obj = parseDateStr(item['日期']);
                  if (obj && !isNaN(obj.getTime())) allDates.push(obj.getTime());
              }
-             if (item['開始日期']) {
-                 let obj = parseDateStr(item['開始日期']);
-                 if (obj && !isNaN(obj.getTime())) allDates.push(obj.getTime());
-             }
-             if (item['結束日期']) {
-                 let obj = parseDateStr(item['結束日期']);
-                 if (obj && !isNaN(obj.getTime())) allDates.push(obj.getTime());
-             }
           });
         } catch(e) {}
       });
