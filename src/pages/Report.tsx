@@ -731,6 +731,15 @@ export default function Report() {
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
+                                <tr className="bg-red-50 text-red-600">
+                                    <td className="px-4 py-3 text-sm font-medium border-r border-gray-300">{t('advance_payment')}(TWD)</td>
+                                    <td className="px-4 py-3 text-sm text-right border-r border-gray-300 font-mono">
+                                        -
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-right font-mono">
+                                        {Number(reportData?.header['預支費用總額'] || 0).toLocaleString()}
+                                    </td>
+                                </tr>
                                 <tr>
                                     <td className="px-4 py-3 text-sm font-medium text-gray-900 border-r border-gray-300">{t('total_twd')}</td>
                                     <td className="px-4 py-3 text-sm text-gray-900 text-right border-r border-gray-300 font-mono">

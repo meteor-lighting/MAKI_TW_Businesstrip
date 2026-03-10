@@ -4,6 +4,7 @@ export interface ReportSummary {
     avgDayTWD: number;
     totalUSD: number;
     avgDayUSD: number;
+    advancePaymentTWD: number;
     period: string;
     days: number;
     rateUSD: number;

@@ -181,6 +181,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
             avgDayTWD,
             totalUSD,
             avgDayUSD,
+            advancePaymentTWD: Number(header['預支費用總額'] || 0),
             period,
             days,
             rateUSD,
