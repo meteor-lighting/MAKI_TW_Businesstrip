@@ -32,7 +32,6 @@ export const exportToExcel = (reportData: ReportData, reportId: string) => {
         ['禮品費', reportData.header['禮品費總額']],
         ['手續費', reportData.header['手續費總額']],
         ['日支費', reportData.header['日支費總額']],
-        ['預支費用', reportData.header['預支費用總額']],
         ['其他', reportData.header['其他費用總額']],
         ['合計 (TWD)', reportData.header['合計TWD個人總額']],
         ['合計 (USD)', reportData.header['合計USD個人總額']]
