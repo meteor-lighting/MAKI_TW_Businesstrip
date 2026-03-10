@@ -749,7 +749,16 @@ export default function Report() {
                                         {Number(reportData?.header['合計TWD總體總額'] || 0).toLocaleString()}
                                     </td>
                                 </tr>
-                                <tr className="bg-gray-50">
+                                <tr className="bg-blue-50 text-blue-700">
+                                    <td className="px-4 py-3 text-sm font-medium border-r border-gray-300">{t('payable_summary')}(TWD)</td>
+                                    <td className="px-4 py-3 text-sm text-right border-r border-gray-300 font-mono">
+                                        -
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-right font-mono font-bold">
+                                        {Number((reportData?.header['合計TWD總體總額'] || 0) - (reportData?.header['預支費用總額'] || 0)).toLocaleString()}
+                                    </td>
+                                </tr>
+                                <tr>
                                     <td className="px-4 py-3 text-sm font-medium text-gray-900 border-r border-gray-300">{t('avg_day_twd')}</td>
                                     <td className="px-4 py-3 text-sm text-gray-900 text-right border-r border-gray-300 font-mono">
                                         {(() => {

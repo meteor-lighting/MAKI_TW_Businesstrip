@@ -150,6 +150,12 @@ const ExpenseReportPage: React.FC = () => {
                                             <span>{reportData.summary.totalTWD.toLocaleString()} ({t('overall')})</span>
                                         </div>
                                     </div>
+                                    <div className="flex justify-between border-b border-slate-500 pb-2 text-blue-300 font-bold">
+                                        <span>{t('payable_summary')}(TWD):</span>
+                                        <div className="text-right">
+                                            <span>{(reportData.summary.totalTWD - reportData.summary.advancePaymentTWD).toLocaleString()}</span>
+                                        </div>
+                                    </div>
                                     <div className="flex justify-between border-b border-slate-500 pb-2">
                                         <span>{t('avg_day_twd')}:</span>
                                         <div className="text-right">

@@ -67,6 +67,7 @@ export const en = {
         "per_person_per_day": "Per Person Per Day",
         "advance_payment": "Advance",
         "advance_payment_summary": "Advance Payment",
+        "payable_summary": "Payable",
         "advance_payment_people": "Advance People",
         "twd_personal": "TWD Personal",
         "twd_overall": "TWD Overall",

@@ -67,6 +67,7 @@ export const zh = {
         "per_person_per_day": "每人每天金額",
         "advance_payment": "代墊",
         "advance_payment_summary": "預支",
+        "payable_summary": "應付",
         "advance_payment_people": "代墊人數",
         "twd_personal": "TWD個人",
         "twd_overall": "TWD總額",
