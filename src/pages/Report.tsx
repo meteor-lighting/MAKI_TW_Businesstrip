@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { transformReportData } from '../utils/reportTransformer';
 import { formatTimeHHmm } from '../utils/formatters';
 
@@ -133,6 +134,13 @@ export default function Report() {
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-gray-800">{t('app_title')} - {reportId}</h1>
                     <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => navigate('/dashboard')}
+                            className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 flex items-center gap-2 transition"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            <span className="hidden sm:inline">{t('back_to_dashboard')}</span>
+                        </button>
                         {reportData && (
                             <button
                                 onClick={handleConfirmSave}
