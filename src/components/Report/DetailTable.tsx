@@ -1,6 +1,7 @@
 import React from 'react';
 import { ReportColumn } from '../../types/report';
 import clsx from 'clsx';
+import { formatTimeHHmm } from '../../utils/formatters';
 
 interface DetailTableProps {
     id?: string; // Add id prop
@@ -57,6 +58,8 @@ const DetailTable: React.FC<DetailTableProps> = ({ id, title, total, columns, da
                                         } catch (e) {
                                             console.warn('Invalid date:', cellValue);
                                         }
+                                    } else if (col.type === 'time' && cellValue) {
+                                        cellValue = formatTimeHHmm(cellValue);
                                     }
 
                                     return (

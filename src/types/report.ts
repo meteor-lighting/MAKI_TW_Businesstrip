@@ -27,7 +27,7 @@ export interface ReportColumn {
     header: string;
     headerKey?: string; // Translation key
     accessorKey: string;
-    type?: 'text' | 'number' | 'currency' | 'date';
+    type?: 'text' | 'number' | 'currency' | 'date' | 'time';
     width?: number; // Percentage or separate unit for DOCX
 }
 
