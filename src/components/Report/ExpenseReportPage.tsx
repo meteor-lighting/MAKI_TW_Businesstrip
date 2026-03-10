@@ -79,11 +79,11 @@ const ExpenseReportPage: React.FC = () => {
                             {t('download_pdf')}
                         </button>
                         <button
-                            onClick={() => navigate('/report')}
+                            onClick={() => navigate('/dashboard')}
                             className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                         >
                             <ArrowLeft size={18} />
-                            {t('back')}
+                            {t('back_to_dashboard')}
                         </button>
                         <button
                             onClick={handleLogout}
