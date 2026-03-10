@@ -10,6 +10,7 @@ interface PerDiemFormData {
     endDate: string;
     region: string;
     currency: string;
+    dailyAmount: number | string;
     amount: number | string;
     twdAmount: number;
     rate: number;
@@ -29,6 +30,7 @@ export default function PerDiemForm({ reportId, headerRate, onSubmitSuccess, onL
     const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<PerDiemFormData>({
         defaultValues: {
             currency: 'TWD',
+            dailyAmount: '',
             amount: '',
             rate: 1,
             twdAmount: 0
@@ -40,8 +42,29 @@ export default function PerDiemForm({ reportId, headerRate, onSubmitSuccess, onL
 
     // Watch fields
     const currency = watch('currency');
+    const dailyAmount = watch('dailyAmount');
     const amount = watch('amount');
     const startDate = watch('startDate');
+    const endDate = watch('endDate');
+
+    // Auto-calculate Total Amount based on Dates and Daily Amount
+    useEffect(() => {
+        if (startDate && endDate && dailyAmount !== '') {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const numStart = start.getTime();
+            const numEnd = end.getTime();
+
+            if (!isNaN(numStart) && !isNaN(numEnd) && numEnd >= numStart) {
+                const diffTime = Math.abs(numEnd - numStart);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end days
+                const numericDaily = Number(dailyAmount);
+                if (!isNaN(numericDaily)) {
+                    setValue('amount', (diffDays * numericDaily).toFixed(2));
+                }
+            }
+        }
+    }, [startDate, endDate, dailyAmount, setValue]);
 
     // Rate Calculation Effect
     useEffect(() => {
@@ -98,6 +121,7 @@ export default function PerDiemForm({ reportId, headerRate, onSubmitSuccess, onL
                     '結束日期': data.endDate.replace(/-/g, '/'),
                     '地區': data.region,
                     '幣別': data.currency,
+                    '每日金額': data.dailyAmount,
                     '金額': data.amount,
                     'TWD金額': data.twdAmount,
                     '匯率': data.rate,
@@ -105,6 +129,7 @@ export default function PerDiemForm({ reportId, headerRate, onSubmitSuccess, onL
                 }
             });
             await onSubmitSuccess();
+            setValue('dailyAmount', '');
             setValue('amount', '');
             setValue('twdAmount', 0);
             setValue('note', '');
@@ -176,6 +201,19 @@ export default function PerDiemForm({ reportId, headerRate, onSubmitSuccess, onL
                         <option value="CNY">CNY</option>
                         <option value="THB">THB</option>
                     </select>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">{t('daily_amount')}</label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        {...register('dailyAmount', {
+                            required: t('please_enter_amount'),
+                            min: 0
+                        })}
+                        disabled={loading || disabled}
+                        className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 ${errors.dailyAmount ? 'border-red-500' : ''}`}
+                    />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('total_amount_per_diem')}</label>

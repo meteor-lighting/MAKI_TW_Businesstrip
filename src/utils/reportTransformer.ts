@@ -181,7 +181,8 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: t('end_date'), headerKey: 'end_date', accessorKey: '結束日期', width: 15, type: 'date' },
         { header: t('region'), headerKey: 'region', accessorKey: '地區', width: 15 },
         { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
-        { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'currency' },
+        { header: t('daily_amount'), headerKey: 'daily_amount', accessorKey: '每日金額', width: 10, type: 'currency' },
+        { header: t('total_amount_per_diem'), headerKey: 'total_amount_per_diem', accessorKey: '金額', width: 10, type: 'currency' },
         { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 10 },
         { header: t('twd_amount'), headerKey: 'twd_amount', accessorKey: 'TWD金額', width: 10, type: 'currency' },
         { header: t('remark'), headerKey: 'remark', accessorKey: '備註', width: 25 }
