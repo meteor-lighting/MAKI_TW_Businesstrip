@@ -282,6 +282,7 @@ function recalculateHeader(reportId) {
       // Calculate Date Range & Duration (And Auto-fetch Rate)
       let allDates = [];
       categories.forEach(cat => {
+        if (cat === 'Accommodation' || cat === 'Per Diem') return;
         try {
           const data = sheetDataToJson(cat);
           const reportItems = data.filter(r => String(r['報告編號']) === String(reportId));
