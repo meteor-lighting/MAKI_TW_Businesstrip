@@ -138,6 +138,7 @@ function getUserReports(payload) {
         days: r['商旅天數'],
         startDate: r['商旅起始日'],
         endDate: r['商旅結束日'],
+        status: r['狀態'],
         createdAt: r['建立時間']
       }))
       // Sort by creation date descending

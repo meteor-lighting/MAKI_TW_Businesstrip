@@ -49,3 +49,7 @@ export async function sendRequest<T = any>(action: string, payload: any = {}): P
 export const getUserReports = async (userId: string) => {
     return sendRequest('getUserReports', { userId });
 };
+
+export const getReport = async (reportId: string) => {
+    return sendRequest('getReport', { reportId });
+};

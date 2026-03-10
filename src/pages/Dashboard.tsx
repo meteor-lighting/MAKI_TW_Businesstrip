@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getUserReports } from '../services/api';
-import { PlusCircle, FileText, Calendar, Clock, Loader2 } from 'lucide-react';
+import { getUserReports, getReport } from '../services/api';
+import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
+import { transformReportData } from '../utils/reportTransformer';
 
 interface ReportSummary {
     reportId: string;
     days: number;
     startDate: string;
     endDate: string;
+    status?: string;
     createdAt: string;
 }
 
@@ -49,9 +51,28 @@ const Dashboard: React.FC = () => {
         navigate('/report');
     };
 
-    const handleOpenReport = (id: string) => {
-        sessionStorage.setItem('activeReportId', id);
-        navigate('/report');
+    const handleOpenReport = async (report: ReportSummary) => {
+        if (report.status) {
+            // Read-only mode - fetch full report and go to summary
+            try {
+                setLoading(true);
+                const res = await getReport(report.reportId);
+                if (res.status === 'success' && res.data) {
+                    const formattedData = transformReportData(res.data, report.reportId, user?.name || '', t);
+                    navigate('/report/summary', { state: { reportData: formattedData } });
+                } else {
+                    setError(res.message || t('error'));
+                }
+            } catch (err: any) {
+                setError(err.message || t('error'));
+            } finally {
+                setLoading(false);
+            }
+        } else {
+            // Edit mode
+            sessionStorage.setItem('activeReportId', report.reportId);
+            navigate('/report');
+        }
     };
 
     const formatDate = (dateStr: string) => {
@@ -95,14 +116,25 @@ const Dashboard: React.FC = () => {
                     {reports.map((report) => (
                         <div
                             key={report.reportId}
-                            onClick={() => handleOpenReport(report.reportId)}
-                            className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 transition group"
+                            onClick={() => handleOpenReport(report)}
+                            className={`p-6 rounded-xl border transition group cursor-pointer 
+                                ${report.status
+                                    ? 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                                    : 'bg-white shadow-sm border-gray-100 hover:shadow-md hover:border-blue-200'}
+                            `}
                         >
                             <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                <div className="flex flex-col gap-2">
+                                    <span className={`text-xs font-semibold px-2 py-1 rounded inline-block w-max
+                                        ${report.status ? 'bg-gray-200 text-gray-600' : 'bg-blue-50 text-blue-600'}`}>
                                         {report.reportId}
                                     </span>
+                                    {report.status && (
+                                        <span className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded flex items-center gap-1 w-max">
+                                            <Lock className="w-3 h-3" />
+                                            {report.status}
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="text-xs text-gray-400 flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
@@ -131,8 +163,17 @@ const Dashboard: React.FC = () => {
                             </div>
 
                             <div className="mt-5 pt-4 border-t border-gray-50 flex justify-end">
-                                <span className="text-sm text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {t('view_details')} &rarr;
+                                <span className={`text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1
+                                    ${report.status ? 'text-gray-500' : 'text-blue-600'}`}>
+                                    {report.status ? (
+                                        <>
+                                            <Eye className="w-4 h-4" /> {t('view_summary')} &rarr;
+                                        </>
+                                    ) : (
+                                        <>
+                                            {t('view_details')} &rarr;
+                                        </>
+                                    )}
                                 </span>
                             </div>
                         </div>

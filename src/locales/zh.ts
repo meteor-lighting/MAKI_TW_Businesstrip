@@ -16,6 +16,7 @@ export const zh = {
         "logout": "登出",
         "download_pdf": "下載 PDF",
         "confirm_finish": "完成",
+        "view_summary": "檢視總結",
         "back_to_dashboard": "返回我的報告",
         "no_data": "無報告資料",
         "return_to_report": "返回報告頁面",
