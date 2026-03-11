@@ -184,16 +184,24 @@ function deleteReport(payload) {
       
       let targetRowIndex = -1;
       let isVerified = false;
+      let errorMsg = 'Report not found or validation failed';
       
       for (let i = 1; i < headerValues.length; i++) {
-        if (String(headerValues[i][reportIdIndex]) === String(reportId)) {
+        if (String(headerValues[i][reportIdIndex]).trim() === String(reportId).trim()) {
           // Found report, verify ownership and status
-          if (String(headerValues[i][userIdIndex]) !== String(userId)) {
-             return { status: 'error', message: 'Unauthorized: Report belongs to another user' };
+          if (String(headerValues[i][userIdIndex]).trim() !== String(userId).trim()) {
+             errorMsg = 'Unauthorized: Report belongs to another user (Sheet userId: ' + String(headerValues[i][userIdIndex]) + ', Request userId: ' + String(userId) + ')';
+             break;
           }
-          if (headerValues[i][statusIndex]) {
-             return { status: 'error', message: 'Cannot delete report with an existing status' };
+          
+          if (statusIndex !== -1) {
+            const statusVal = String(headerValues[i][statusIndex] || '').trim();
+            if (statusVal && statusVal !== '') {
+               errorMsg = 'Cannot delete report with an existing status: ' + statusVal;
+               break;
+            }
           }
+
           targetRowIndex = i + 1; // 1-based index for deletion
           isVerified = true;
           break;
@@ -201,7 +209,7 @@ function deleteReport(payload) {
       }
       
       if (!isVerified) {
-        return { status: 'error', message: 'Report not found or validation failed' };
+        return { status: 'error', message: errorMsg };
       }
 
       // 2. Delete from Report Header
@@ -223,7 +231,7 @@ function deleteReport(payload) {
 
           // Delete backwards to prevent index shifting
           for (let i = data.length - 1; i > 0; i--) {
-            if (String(data[i][catReportIdIdx]) === String(reportId)) {
+            if (String(data[i][catReportIdIdx]).trim() === String(reportId).trim()) {
               sheet.deleteRow(i + 1);
             }
           }
@@ -232,6 +240,7 @@ function deleteReport(payload) {
         }
       });
       
+      SpreadsheetApp.flush(); // Ensure changes are applied before responding
       return { status: 'success', message: 'Report deleted successfully' };
       
     } catch (err) {

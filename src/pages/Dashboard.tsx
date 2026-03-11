@@ -24,6 +24,7 @@ const Dashboard: React.FC = () => {
     const [reports, setReports] = useState<ReportSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [reportToDelete, setReportToDelete] = useState<ReportSummary | null>(null);
 
     const fetchReports = useCallback(async () => {
         if (!user?.id) return;
@@ -75,24 +76,35 @@ const Dashboard: React.FC = () => {
         }
     };
 
-    const handleDeleteReport = async (e: React.MouseEvent, report: ReportSummary) => {
+    const handleDeleteClick = (e: React.MouseEvent, report: ReportSummary) => {
+        e.preventDefault();
         e.stopPropagation();
-        if (window.confirm(t('confirm_delete_report'))) {
-            try {
-                setLoading(true);
-                const res = await deleteReport(report.reportId, user?.id || '');
-                if (res.status === 'success') {
-                    alert(t('delete_success'));
-                    fetchReports(); // Refresh the list
-                } else {
-                    setError(res.message || t('delete_error'));
-                }
-            } catch (err: any) {
-                setError(err.message || t('delete_error'));
-            } finally {
-                setLoading(false);
+        setReportToDelete(report);
+    };
+
+    const confirmDelete = async () => {
+        if (!reportToDelete) return;
+        
+        try {
+            setLoading(true);
+            const res = await deleteReport(reportToDelete.reportId, user?.id || '');
+            if (res.status === 'success') {
+                setReportToDelete(null);
+                fetchReports(); // Refresh the list
+            } else {
+                setError(res.message || t('delete_error'));
+                setReportToDelete(null);
             }
+        } catch (err: any) {
+            setError(err.message || t('delete_error'));
+            setReportToDelete(null);
+        } finally {
+            setLoading(false);
         }
+    };
+
+    const cancelDelete = () => {
+        setReportToDelete(null);
     };
 
     const formatDate = (dateStr: string) => {
@@ -162,8 +174,9 @@ const Dashboard: React.FC = () => {
                                 </div>
                                 {!report.status && (
                                     <button
-                                        onClick={(e) => handleDeleteReport(e, report)}
-                                        className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-full transition ml-2"
+                                        type="button"
+                                        onClick={(e) => handleDeleteClick(e, report)}
+                                        className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-full transition ml-2 z-10 relative"
                                         title={t('delete')}
                                     >
                                         <Trash2 className="w-4 h-4" />
@@ -207,6 +220,38 @@ const Dashboard: React.FC = () => {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Custom Delete Confirmation Modal */}
+            {reportToDelete && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                    <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-fade-in-up">
+                        <div className="flex items-center gap-3 mb-4 text-red-600">
+                            <Trash2 className="w-6 h-6" />
+                            <h3 className="text-lg font-bold">刪除報告 {reportToDelete.reportId}</h3>
+                        </div>
+                        <p className="text-gray-600 mb-6">
+                            {t('confirm_delete_report')}
+                        </p>
+                        <div className="flex justify-end gap-3 rounded-b">
+                            <button
+                                onClick={cancelDelete}
+                                disabled={loading}
+                                className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition font-medium"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                disabled={loading}
+                                className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition font-medium flex items-center gap-2"
+                            >
+                                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                                確認刪除
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
