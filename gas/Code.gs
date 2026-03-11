@@ -40,6 +40,9 @@ function doPost(e) {
       case 'getUserReports': // Get all reports for a user
         result = getUserReports(payload);
         break;
+      case 'deleteReport': // Delete a complete report
+        result = deleteReport(payload);
+        break;
       
       // Items CRUD
       case 'addItem':
@@ -154,5 +157,89 @@ function getUserReports(payload) {
     };
   } catch (e) {
     return { status: 'error', message: e.toString() };
+  }
+}
+// -----------------------------------------------------------------------------
+
+function deleteReport(payload) {
+  const reportId = payload.reportId;
+  const userId = payload.userId;
+  
+  if (!reportId || !userId) {
+    return { status: 'error', message: 'Missing reportId or userId' };
+  }
+
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(10000)) {
+    try {
+      // 1. Verify ownership and status
+      const headerSheet = getSheet('Report Header');
+      const headerDataRange = headerSheet.getDataRange();
+      const headerValues = headerDataRange.getValues();
+      const headers = headerValues[0];
+      
+      const reportIdIndex = headers.indexOf('報告編號');
+      const userIdIndex = headers.indexOf('用戶編號');
+      const statusIndex = headers.indexOf('狀態');
+      
+      let targetRowIndex = -1;
+      let isVerified = false;
+      
+      for (let i = 1; i < headerValues.length; i++) {
+        if (String(headerValues[i][reportIdIndex]) === String(reportId)) {
+          // Found report, verify ownership and status
+          if (String(headerValues[i][userIdIndex]) !== String(userId)) {
+             return { status: 'error', message: 'Unauthorized: Report belongs to another user' };
+          }
+          if (headerValues[i][statusIndex]) {
+             return { status: 'error', message: 'Cannot delete report with an existing status' };
+          }
+          targetRowIndex = i + 1; // 1-based index for deletion
+          isVerified = true;
+          break;
+        }
+      }
+      
+      if (!isVerified) {
+        return { status: 'error', message: 'Report not found or validation failed' };
+      }
+
+      // 2. Delete from Report Header
+      headerSheet.deleteRow(targetRowIndex);
+
+      // 3. Delete from all item sheets
+      const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
+      
+      categories.forEach(cat => {
+        try {
+          const sheet = getSheet(cat);
+          if (!sheet) return;
+          const data = sheet.getDataRange().getValues();
+          if (data.length <= 1) return;
+          
+          const catHeaders = data[0];
+          const catReportIdIdx = catHeaders.indexOf('報告編號');
+          if (catReportIdIdx === -1) return;
+
+          // Delete backwards to prevent index shifting
+          for (let i = data.length - 1; i > 0; i--) {
+            if (String(data[i][catReportIdIdx]) === String(reportId)) {
+              sheet.deleteRow(i + 1);
+            }
+          }
+        } catch (catErr) {
+           // Skip if sheet doesn't exist or fails (failsafe)
+        }
+      });
+      
+      return { status: 'success', message: 'Report deleted successfully' };
+      
+    } catch (err) {
+      return { status: 'error', message: err.toString() };
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { status: 'error', message: 'System is busy. Please try again later.' };
   }
 }

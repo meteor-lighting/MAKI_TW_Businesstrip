@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getUserReports, getReport } from '../services/api';
-import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye } from 'lucide-react';
+import { getUserReports, getReport, deleteReport } from '../services/api';
+import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { transformReportData } from '../utils/reportTransformer';
@@ -25,26 +25,26 @@ const Dashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        const fetchReports = async () => {
-            if (!user?.id) return;
-            try {
-                setLoading(true);
-                const result = await getUserReports(user.id);
-                if (result.status === 'success') {
-                    setReports(result.data);
-                } else {
-                    setError(result.message || t('error_fetching_reports'));
-                }
-            } catch (err: any) {
-                setError(err.message || t('error_fetching_reports'));
-            } finally {
-                setLoading(false);
+    const fetchReports = useCallback(async () => {
+        if (!user?.id) return;
+        try {
+            setLoading(true);
+            const result = await getUserReports(user.id);
+            if (result.status === 'success') {
+                setReports(result.data);
+            } else {
+                setError(result.message || t('error_fetching_reports'));
             }
-        };
+        } catch (err: any) {
+            setError(err.message || t('error_fetching_reports'));
+        } finally {
+            setLoading(false);
+        }
+    }, [user?.id, t]);
 
+    useEffect(() => {
         fetchReports();
-    }, [user, t]);
+    }, [fetchReports]);
 
     const handleCreateNew = () => {
         sessionStorage.removeItem('activeReportId');
@@ -72,6 +72,26 @@ const Dashboard: React.FC = () => {
             // Edit mode
             sessionStorage.setItem('activeReportId', report.reportId);
             navigate('/report');
+        }
+    };
+
+    const handleDeleteReport = async (e: React.MouseEvent, report: ReportSummary) => {
+        e.stopPropagation();
+        if (window.confirm(t('confirm_delete_report'))) {
+            try {
+                setLoading(true);
+                const res = await deleteReport(report.reportId, user?.id || '');
+                if (res.status === 'success') {
+                    alert(t('delete_success'));
+                    fetchReports(); // Refresh the list
+                } else {
+                    setError(res.message || t('delete_error'));
+                }
+            } catch (err: any) {
+                setError(err.message || t('delete_error'));
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -140,6 +160,15 @@ const Dashboard: React.FC = () => {
                                     <Clock className="w-3 h-3" />
                                     {formatDate(report.createdAt)}
                                 </div>
+                                {!report.status && (
+                                    <button
+                                        onClick={(e) => handleDeleteReport(e, report)}
+                                        className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-full transition ml-2"
+                                        title={t('delete')}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                )}
                             </div>
 
                             <div className="space-y-3">

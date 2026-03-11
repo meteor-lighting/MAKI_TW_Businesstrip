@@ -53,3 +53,7 @@ export const getUserReports = async (userId: string) => {
 export const getReport = async (reportId: string) => {
     return sendRequest('getReport', { reportId });
 };
+
+export const deleteReport = async (reportId: string, userId: string) => {
+    return sendRequest('deleteReport', { reportId, userId });
+};
