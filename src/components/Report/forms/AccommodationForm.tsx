@@ -75,7 +75,7 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                 const outDate = new Date(checkOutDate);
                 if (!isNaN(inDate.getTime()) && !isNaN(outDate.getTime())) {
                     const diffTime = outDate.getTime() - inDate.getTime();
-                    n = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+                    n = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)) - 1);
                 }
             }
 
@@ -143,7 +143,7 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                 const outDate = new Date(data.checkOutDate);
                 if (!isNaN(inDate.getTime()) && !isNaN(outDate.getTime())) {
                     const diffTime = outDate.getTime() - inDate.getTime();
-                    n = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+                    n = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)) - 1);
                 }
             }
             
