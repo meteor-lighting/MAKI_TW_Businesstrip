@@ -273,17 +273,25 @@ export default function Report() {
                                 columns={[
                                     { key: '次序', header: t('sequence'), width: '60px' },
                                     {
-                                        key: '日期',
-                                        header: t('date'),
+                                        key: '入住日期',
+                                        header: t('check_in_date'),
                                         render: (item: any) => {
-                                            if (!item['日期']) return '';
-                                            const d = new Date(item['日期']);
-                                            return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+                                            if (!item['入住日期']) return '';
+                                            const d = new Date(item['入住日期']);
+                                            return isNaN(d.getTime()) ? String(item['入住日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+                                        }
+                                    },
+                                    {
+                                        key: '退房日期',
+                                        header: t('check_out_date'),
+                                        render: (item: any) => {
+                                            if (!item['退房日期']) return '';
+                                            const d = new Date(item['退房日期']);
+                                            return isNaN(d.getTime()) ? String(item['退房日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
                                         }
                                     },
                                     { key: '地區', header: t('region') },
                                     { key: '飯店', header: t('hotel') },
-                                    { key: '天數', header: t('days') },
                                     { key: '幣別', header: t('currency') },
                                     { key: '個人金額', header: t('personal') },
                                     { key: 'TWD個人金額', header: t('twd_personal'), width: '90px', render: (item: any) => item['TWD個人金額'] ?? 0 },
