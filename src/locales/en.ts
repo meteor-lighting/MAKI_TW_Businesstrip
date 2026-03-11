@@ -51,6 +51,8 @@ export const en = {
         "region": "Region",
         "currency": "Currency",
         "amount": "Amount",
+        "check_in_date": "Check-In Date",
+        "check_out_date": "Check-Out Date",
         "daily_amount": "Daily Amount",
         "total_amount_per_diem": "Total Amount",
         "exchange_rate": "Rate",

@@ -48,6 +48,8 @@ export const zh = {
         "date": "日期",
         "start_date": "開始日期",
         "end_date": "結束日期",
+        "check_in_date": "入住日期",
+        "check_out_date": "退房日期",
         "region": "地區",
         "currency": "幣別",
         "amount": "金額",

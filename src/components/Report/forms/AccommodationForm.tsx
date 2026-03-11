@@ -6,10 +6,10 @@ import CityAutocomplete from '../CityAutocomplete';
 import { Hourglass } from 'lucide-react';
 
 interface AccommodationFormData {
-    date: string;
+    checkInDate: string;
+    checkOutDate: string;
     region: string;
     hotel: string;
-    nights: number;
     currency: string;
     personalAmount: number | string;
     twdPersonalAmount: number;
@@ -39,7 +39,6 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
             personalAmount: '',
             advanceAmount: 0,
             peopleCount: 0,
-            nights: 1,
             rate: 1,
             hotel: '',
             twdPersonalAmount: 0,
@@ -58,8 +57,8 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
     const personalAmount = watch('personalAmount');
     const advanceAmount = watch('advanceAmount');
     const peopleCount = watch('peopleCount');
-    const nights = watch('nights');
-    const date = watch('date');
+    const checkInDate = watch('checkInDate');
+    const checkOutDate = watch('checkOutDate');
 
     // Rate Calculation Effect
     useEffect(() => {
@@ -70,7 +69,16 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
 
             // Calculate Per Person Per Day
             // Formula: Total Amount / Nights / (People Count + 1)
-            const n = Number(nights) || 1;
+            let n = 1;
+            if (checkInDate && checkOutDate) {
+                const inDate = new Date(checkInDate);
+                const outDate = new Date(checkOutDate);
+                if (!isNaN(inDate.getTime()) && !isNaN(outDate.getTime())) {
+                    const diffTime = outDate.getTime() - inDate.getTime();
+                    n = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+                }
+            }
+
             const p = Number(peopleCount) || 0;
             const perPerson = total / n / (p + 1);
 
@@ -96,11 +104,11 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                 return;
             }
 
-            if (!date || total === 0) return;
+            if (!checkInDate || total === 0) return;
 
             setRateLoading(true);
             try {
-                const res = await sendRequest('getExchangeRate', { currency, date });
+                const res = await sendRequest('getExchangeRate', { currency, date: checkInDate });
                 if (res.status === 'success' || res.rate) {
                     const rate = res.data?.rate || res.rate || 1;
                     setValue('rate', rate);
@@ -117,7 +125,7 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
             }
         };
         fetchRate();
-    }, [currency, personalAmount, advanceAmount, peopleCount, nights, date, setValue, headerRate]);
+    }, [currency, personalAmount, advanceAmount, peopleCount, checkInDate, checkOutDate, setValue, headerRate]);
 
     const onSubmit = async (data: AccommodationFormData) => {
         setLoading(true);
@@ -129,7 +137,16 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
             const twdTotalAmount = (data.twdPersonalAmount || 0) + (data.twdAdvanceAmount || 0);
 
             // Recalculate per person per day safely
-            const n = Number(data.nights) || 1;
+            let n = 1;
+            if (data.checkInDate && data.checkOutDate) {
+                const inDate = new Date(data.checkInDate);
+                const outDate = new Date(data.checkOutDate);
+                if (!isNaN(inDate.getTime()) && !isNaN(outDate.getTime())) {
+                    const diffTime = outDate.getTime() - inDate.getTime();
+                    n = Math.max(1, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+                }
+            }
+            
             const p = Number(data.peopleCount) || 0;
             const perPerson = totalAmount / n / (p + 1);
 
@@ -137,10 +154,10 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                 reportId,
                 category: 'Accommodation',
                 itemData: {
-                    '日期': data.date.replace(/-/g, '/'),
+                    '入住日期': data.checkInDate.replace(/-/g, '/'),
+                    '退房日期': data.checkOutDate.replace(/-/g, '/'),
                     '地區': data.region,
                     '飯店': data.hotel,
-                    '天數': data.nights,
                     '幣別': data.currency,
                     '個人金額': pAmount || 0,
                     'TWD個人金額': data.twdPersonalAmount,
@@ -183,16 +200,28 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">{t('date')} (YYYY/MM/DD)</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('check_in_date')} (YYYY/MM/DD)</label>
                     <input
                         type="date"
-                        {...register('date', {
+                        {...register('checkInDate', {
                             required: t('please_enter_date'),
                         })}
                         disabled={loading || disabled}
-                        className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.date ? 'border-red-500' : ''}`}
+                        className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.checkInDate ? 'border-red-500' : ''}`}
                     />
-                    {errors.date && <span className="text-red-500 text-sm">{errors.date.message}</span>}
+                    {errors.checkInDate && <span className="text-red-500 text-sm">{errors.checkInDate.message}</span>}
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">{t('check_out_date')} (YYYY/MM/DD)</label>
+                    <input
+                        type="date"
+                        {...register('checkOutDate', {
+                            required: t('please_enter_date'),
+                        })}
+                        disabled={loading || disabled}
+                        className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.checkOutDate ? 'border-red-500' : ''}`}
+                    />
+                    {errors.checkOutDate && <span className="text-red-500 text-sm">{errors.checkOutDate.message}</span>}
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('region')}</label>
@@ -213,10 +242,6 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('hotel')}</label>
                     <input type="text" {...register('hotel')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">{t('days')}</label>
-                    <input type="number" {...register('nights')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" min={1} />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('currency')}</label>

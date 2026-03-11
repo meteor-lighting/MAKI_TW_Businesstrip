@@ -100,10 +100,10 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     catTotals['Accommodation'] = accommodationTotalTWD;
 
     createSection('Accommodation', `${t('accommodation_details')} (Accommodation Details)`, [
-        { header: t('date'), headerKey: 'date', accessorKey: '日期', width: 12, type: 'date' },
+        { header: t('check_in_date'), headerKey: 'check_in_date', accessorKey: '入住日期', width: 12, type: 'date' },
+        { header: t('check_out_date'), headerKey: 'check_out_date', accessorKey: '退房日期', width: 12, type: 'date' },
         { header: t('region'), headerKey: 'region', accessorKey: '地區', width: 10 },
-        { header: t('hotel'), headerKey: 'hotel', accessorKey: '飯店', width: 10 }, // Added Hotel column
-        { header: t('days'), headerKey: 'days', accessorKey: '天數', width: 5 },
+        { header: t('hotel'), headerKey: 'hotel', accessorKey: '飯店', width: 10 },
         { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 8 },
         { header: t('personal_amount'), headerKey: 'personal_amount', accessorKey: '個人金額', width: 10, type: 'currency' },
         { header: t('overall_amount'), headerKey: 'overall_amount', accessorKey: '總體金額', width: 10, type: 'currency' },
