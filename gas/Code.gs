@@ -102,6 +102,19 @@ function getReportFullData(payload) {
   if (!header) {
       return { status: 'error', message: 'Report not found' };
   }
+
+  // Populate true user name if missing
+  if (!header['員工姓名'] || header['員工姓名'] === '') {
+      try {
+          const memberData = sheetDataToJson('Member');
+          const member = memberData.find(m => String(m['用戶編號']) === String(header['用戶編號']));
+          if (member) {
+              header['員工姓名'] = member['用戶名稱'];
+          }
+      } catch (e) {
+          console.warn('Could not fetch Member data for getReportFullData');
+      }
+  }
   
   // 2. Get All Items
   const items = {};
