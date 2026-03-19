@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getUserReports, getReport, deleteReport, updateReportStatus } from '../services/api';
-import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock } from 'lucide-react';
+import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { transformReportData } from '../utils/reportTransformer';
@@ -18,7 +18,7 @@ interface ReportSummary {
 }
 
 const Dashboard: React.FC = () => {
-    const { user } = useAuth();
+    const { user, signOut } = useAuth();
     const navigate = useNavigate();
     const { t } = useTranslation();
 
@@ -51,6 +51,11 @@ const Dashboard: React.FC = () => {
     const handleCreateNew = () => {
         sessionStorage.removeItem('activeReportId');
         navigate('/report');
+    };
+
+    const handleLogout = () => {
+        signOut();
+        navigate('/');
     };
 
     const handleOpenReport = async (report: ReportSummary) => {
@@ -137,13 +142,22 @@ const Dashboard: React.FC = () => {
         <div className="max-w-6xl mx-auto p-4 md:p-6 pb-24">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-gray-800">{t('my_reports')}</h1>
-                <button
-                    onClick={handleCreateNew}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition"
-                >
-                    <PlusCircle className="w-5 h-5" />
-                    {t('new_report')}
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded shadow-sm transition"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        {t('logout')}
+                    </button>
+                    <button
+                        onClick={handleCreateNew}
+                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition"
+                    >
+                        <PlusCircle className="w-5 h-5" />
+                        {t('new_report')}
+                    </button>
+                </div>
             </div>
 
             {error && (
