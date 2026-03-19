@@ -142,6 +142,16 @@ function getUserReports(payload) {
 
   try {
     const headerData = sheetDataToJson('Report Header');
+    const memberData = sheetDataToJson('Member');
+    
+    // Create mapping of userId -> userName
+    const userMap = {};
+    if (memberData && memberData.length > 0) {
+      memberData.forEach(m => {
+        userMap[String(m['用戶編號'])] = m['用戶名稱'];
+      });
+    }
+
     let filteredData = headerData;
     
     if (role !== 'admin') {
@@ -151,7 +161,7 @@ function getUserReports(payload) {
     const userReports = filteredData
       .map(r => ({
         reportId: r['報告編號'],
-        userName: r['員工姓名'] || r['用戶編號'],
+        userName: userMap[String(r['用戶編號'])] || r['員工姓名'] || r['用戶編號'],
         days: r['商旅天數'],
         startDate: r['商旅起始日'],
         endDate: r['商旅結束日'],
