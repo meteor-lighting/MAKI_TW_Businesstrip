@@ -83,7 +83,8 @@ function handleSignIn(payload) {
     user: {
       id: user['用戶編號'],
       name: user['用戶名稱'],
-      email: user['用戶電郵地址']
+      email: user['用戶電郵地址'],
+      role: user['用戶權限'] === '管理員' ? 'admin' : 'user'
     }
   };
 }

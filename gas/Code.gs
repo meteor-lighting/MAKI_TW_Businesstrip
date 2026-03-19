@@ -43,6 +43,9 @@ function doPost(e) {
       case 'deleteReport': // Delete a complete report
         result = deleteReport(payload);
         break;
+      case 'updateReportStatus': // Lock or unlock a report
+        result = updateReportStatus(payload);
+        break;
       
       // Items CRUD
       case 'addItem':
@@ -131,16 +134,24 @@ function getReportFullData(payload) {
 
 function getUserReports(payload) {
   const userId = payload.userId;
-  if (!userId) {
+  const role = payload.role || 'user';
+  
+  if (!userId && role !== 'admin') {
     return { status: 'error', message: 'Missing userId' };
   }
 
   try {
     const headerData = sheetDataToJson('Report Header');
-    const userReports = headerData
-      .filter(r => String(r['用戶編號']) === String(userId))
+    let filteredData = headerData;
+    
+    if (role !== 'admin') {
+      filteredData = headerData.filter(r => String(r['用戶編號']) === String(userId));
+    }
+
+    const userReports = filteredData
       .map(r => ({
         reportId: r['報告編號'],
+        userName: r['員工姓名'] || r['用戶編號'],
         days: r['商旅天數'],
         startDate: r['商旅起始日'],
         endDate: r['商旅結束日'],
@@ -253,5 +264,51 @@ function deleteReport(payload) {
     }
   } else {
     return { status: 'error', message: 'System is busy. Please try again later.' };
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+function updateReportStatus(payload) {
+  const reportId = payload.reportId;
+  const status = payload.status;
+  
+  if (!reportId) return { status: 'error', message: 'Missing reportId' };
+  
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(10000)) {
+    try {
+      const headerSheet = getSheet('Report Header');
+      const data = headerSheet.getDataRange().getValues();
+      const headers = data[0];
+      const idIdx = headers.indexOf('報告編號');
+      const statusIdx = headers.indexOf('狀態');
+      
+      if (idIdx === -1 || statusIdx === -1) {
+        return { status: 'error', message: 'Headers not found' };
+      }
+      
+      let rowIndex = -1;
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][idIdx]) === String(reportId)) {
+          rowIndex = i + 1;
+          break;
+        }
+      }
+      
+      if (rowIndex === -1) {
+        return { status: 'error', message: 'Report not found' };
+      }
+      
+      headerSheet.getRange(rowIndex, statusIdx + 1).setValue(status || '');
+      SpreadsheetApp.flush();
+      return { status: 'success', message: 'Status updated successfully' };
+    } catch(e) {
+      return { status: 'error', message: e.toString() };
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { status: 'error', message: 'System busy, try again later' };
   }
 }

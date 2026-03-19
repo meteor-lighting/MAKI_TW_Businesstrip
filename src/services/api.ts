@@ -46,8 +46,8 @@ export async function sendRequest<T = any>(action: string, payload: any = {}): P
     }
 }
 
-export const getUserReports = async (userId: string) => {
-    return sendRequest('getUserReports', { userId });
+export const getUserReports = async (userId: string, role?: string) => {
+    return sendRequest('getUserReports', { userId, role });
 };
 
 export const getReport = async (reportId: string) => {
@@ -56,6 +56,10 @@ export const getReport = async (reportId: string) => {
 
 export const deleteReport = async (reportId: string, userId: string) => {
     return sendRequest('deleteReport', { reportId, userId });
+};
+
+export const updateReportStatus = async (reportId: string, status: string) => {
+    return sendRequest('updateReportStatus', { reportId, status });
 };
 
 let cachedFlights: any[] | null = null;

@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getUserReports, getReport, deleteReport } from '../services/api';
-import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2 } from 'lucide-react';
+import { getUserReports, getReport, deleteReport, updateReportStatus } from '../services/api';
+import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { transformReportData } from '../utils/reportTransformer';
@@ -14,6 +14,7 @@ interface ReportSummary {
     endDate: string;
     status?: string;
     createdAt: string;
+    userName?: string;
 }
 
 const Dashboard: React.FC = () => {
@@ -30,7 +31,7 @@ const Dashboard: React.FC = () => {
         if (!user?.id) return;
         try {
             setLoading(true);
-            const result = await getUserReports(user.id);
+            const result = await getUserReports(user.id, user.role);
             if (result.status === 'success') {
                 setReports(result.data);
             } else {
@@ -107,6 +108,25 @@ const Dashboard: React.FC = () => {
         setReportToDelete(null);
     };
 
+    const toggleLock = async (e: React.MouseEvent, report: ReportSummary) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+            setLoading(true);
+            const newStatus = report.status ? '' : t('locked') || '已鎖定';
+            const res = await updateReportStatus(report.reportId, newStatus);
+            if (res.status === 'success') {
+                fetchReports();
+            } else {
+                setError(res.message || t('error'));
+            }
+        } catch (err: any) {
+            setError(err.message || t('error'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const formatDate = (dateStr: string) => {
         if (!dateStr) return '';
         const d = new Date(dateStr);
@@ -161,6 +181,11 @@ const Dashboard: React.FC = () => {
                                         ${report.status ? 'bg-gray-200 text-gray-600' : 'bg-blue-50 text-blue-600'}`}>
                                         {report.reportId}
                                     </span>
+                                    {user?.role === 'admin' && report.userName && (
+                                        <span className="text-xs font-semibold px-2 py-0.5 rounded inline-block w-max bg-purple-100 text-purple-700">
+                                            {report.userName}
+                                        </span>
+                                    )}
                                     {report.status && (
                                         <span className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded flex items-center gap-1 w-max">
                                             <Lock className="w-3 h-3" />
@@ -172,16 +197,29 @@ const Dashboard: React.FC = () => {
                                     <Clock className="w-3 h-3" />
                                     {formatDate(report.createdAt)}
                                 </div>
-                                {!report.status && (
-                                    <button
-                                        type="button"
-                                        onClick={(e) => handleDeleteClick(e, report)}
-                                        className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-full transition ml-2 z-10 relative"
-                                        title={t('delete')}
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                )}
+                                <div className="flex z-10 relative">
+                                    {user?.role === 'admin' && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => toggleLock(e, report)}
+                                            className={`p-1.5 rounded-full transition ml-2 flex items-center justify-center 
+                                                ${report.status ? 'text-amber-500 hover:bg-amber-50' : 'text-gray-400 hover:text-amber-500 hover:bg-amber-50'}`}
+                                            title={report.status ? t('unlock') : t('lock')}
+                                        >
+                                            {report.status ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                                        </button>
+                                    )}
+                                    {!report.status && (
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleDeleteClick(e, report)}
+                                            className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-full transition ml-2"
+                                            title={t('delete')}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="space-y-3">
