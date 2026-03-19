@@ -6,7 +6,7 @@ import { formatTimeHHmm } from '../utils/formatters';
 
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { sendRequest } from '../services/api';
+import { sendRequest, preloadFlights } from '../services/api';
 import ReportHeader from '../components/Report/ReportHeader';
 import SectionAccordion from '../components/Report/SectionAccordion';
 import DataGrid from '../components/Report/DataGrid';
@@ -47,6 +47,10 @@ export default function Report() {
 
     const handleLoadingChange = useCallback((isLoading: boolean) => {
         setLoadingCount(prev => isLoading ? prev + 1 : Math.max(0, prev - 1));
+    }, []);
+
+    useEffect(() => {
+        preloadFlights();
     }, []);
 
     // Initialize Report or Load existing

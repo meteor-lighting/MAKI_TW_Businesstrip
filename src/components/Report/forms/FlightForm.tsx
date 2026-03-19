@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { sendRequest } from '../../../services/api';
+import { sendRequest, getAllFlights } from '../../../services/api';
+import { searchFlightLocal } from '../../../utils/flightLogic';
 import { Hourglass } from 'lucide-react';
 
 interface FlightFormData {
@@ -130,27 +131,23 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
         const flightDate = watch('date');
 
         if (flightCode && flightDate && flightDate.length === 10) {
-            const timer = setTimeout(async () => {
+            const fetchLocalFlight = async () => {
                 try {
-                    // Call API to get departure/arrival info
-
-                    setLoading(true);
-                    const res = await sendRequest('searchFlight', { code: flightCode, date: flightDate });
-
+                    const res = await getAllFlights();
                     if (res.status === 'success' && res.data) {
-                        setValue('departure', res.data.departure);
-                        setValue('arrival', res.data.arrival);
-                        setValue('depTime', res.data.depTime);
-                        setValue('arrTime', res.data.arrTime);
+                        const match = searchFlightLocal(flightCode, flightDate, res.data);
+                        if (match) {
+                            setValue('departure', match.departure);
+                            setValue('arrival', match.arrival);
+                            setValue('depTime', match.depTime);
+                            setValue('arrTime', match.arrTime);
+                        }
                     }
                 } catch (e) {
                     console.warn('Flight search failed', e);
-                } finally {
-                    setLoading(false);
                 }
-            }, 500); // Debounce 500ms
-
-            return () => clearTimeout(timer);
+            };
+            fetchLocalFlight();
         }
     }, [watch('flightCode'), watch('date'), setValue]);
 

@@ -57,3 +57,20 @@ export const getReport = async (reportId: string) => {
 export const deleteReport = async (reportId: string, userId: string) => {
     return sendRequest('deleteReport', { reportId, userId });
 };
+
+let cachedFlights: any[] | null = null;
+
+export const getAllFlights = async () => {
+    if (cachedFlights) return { status: 'success', data: cachedFlights };
+    const res = await sendRequest('getAllFlights');
+    if (res.status === 'success' && res.data) {
+        cachedFlights = res.data;
+    }
+    return res;
+};
+
+export const preloadFlights = () => {
+    if (!cachedFlights) {
+        getAllFlights().catch(console.error);
+    }
+};

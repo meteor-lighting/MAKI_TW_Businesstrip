@@ -331,3 +331,19 @@ function formatTime(val) {
     }
     return String(val); // If it's already a string
 }
+
+function getAllFlights() {
+    try {
+        let sheet;
+        try {
+            sheet = getSheet('Flights');
+        } catch (e) {
+            console.warn('Flights sheet not found');
+            return { status: 'success', data: null, message: 'Flights sheet not found' };
+        }
+        const data = sheetDataToJson('Flights');
+        return { status: 'success', data: data };
+    } catch (e) {
+        return { status: 'error', message: 'Failed to fetch flights: ' + e.toString() };
+    }
+}

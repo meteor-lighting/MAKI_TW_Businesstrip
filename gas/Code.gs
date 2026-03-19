@@ -68,6 +68,9 @@ function doPost(e) {
       case 'searchFlight':
         result = searchFlight(payload);
         break;
+      case 'getAllFlights':
+        result = getAllFlights();
+        break;
 
       default:
         throw new Error(`Unknown action: ${action}`);
