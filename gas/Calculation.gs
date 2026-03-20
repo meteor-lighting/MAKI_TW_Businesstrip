@@ -80,7 +80,12 @@ function addReportItem(payload) {
           const allData = getDataRows(category);
           // Filter valid rows for this reportId
           const reportRows = allData.filter(r => String(r[0]) === String(reportId));
-          const nextSeq = reportRows.length + 1;
+          
+          let nextSeq = 1;
+          if (reportRows.length > 0) {
+              const maxSeq = Math.max(...reportRows.map(r => Number(r[1]) || 0));
+              nextSeq = maxSeq + 1;
+          }
           
           // 2. Prepare Row Data based on Sheet Headers
           const sheet = getSheet(category);
