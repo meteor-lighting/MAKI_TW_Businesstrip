@@ -96,6 +96,8 @@ export const en = {
         "advance_payment_details": "💸 Advance Payment Details",
         "others": "📝 Others (其他)",
         "others_details": "📝 Others Details",
+        "lunch_learn": "🍱 Lunch & Learn (午餐與學費)",
+        "lunch_learn_details": "🍱 Lunch & Learn Details",
         "hotel": "Hotel",
         "personal_amount": "Personal Amount",
         "overall_amount": "Overall Amount",

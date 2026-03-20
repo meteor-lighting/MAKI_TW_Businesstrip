@@ -22,6 +22,9 @@ export const zh = {
         "unlock": "解除鎖定",
         "locked": "已鎖定",
         "confirm_delete_report": "確定要刪除這筆報告嗎？此動作無法復原。",
+        "report_submit_success": "提交成功",
+        "dealer": "經銷商",
+        "headcount": "人數",
         "delete_success": "報告刪除成功",
         "delete_error": "刪除報告時發生錯誤",
         "no_data": "無報告資料",
@@ -96,6 +99,8 @@ export const zh = {
         "advance_payment_details": "💸 預支費用明細",
         "others": "📝 其他 (Others)",
         "others_details": "📝 其他費用明細",
+        "lunch_learn": "🍱 午餐與學費 (Lunch & Learn)",
+        "lunch_learn_details": "🍱 午餐與學費明細",
         "hotel": "飯店",
         "personal_amount": "個人金額",
         "overall_amount": "總體金額",
@@ -147,3 +152,5 @@ export const zh = {
         "cancel": "取消",
     }
 };
+
+export default zh;

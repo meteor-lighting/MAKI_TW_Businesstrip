@@ -18,6 +18,7 @@ export interface RawReportData {
         HandingFee?: any[];
         PerDiem?: any[];
         'Advance Payment'?: any[];
+        'Lunch & Learn'?: any[];
         Others?: any[];
         [key: string]: any[] | undefined;
     };
@@ -48,6 +49,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         'Handing Fee': 0, // Key matches backend
         'Per Diem': 0,    // Key matches backend
         'Advance Payment': 0,
+        'Lunch & Learn': 0,
         Others: 0,
     };
 
@@ -167,6 +169,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { key: 'Luggage Fee', id: 'luggageFee', title: `${t('luggage_fee_details')} (Luggage Fee Details)` },
         { key: 'Handing Fee', id: 'handingFee', title: `${t('handing_fee_details')} (Handing Fee Details)` },
         { key: 'Advance Payment', id: 'advancePayment', title: `${t('advance_payment_details')} (Advance Payment Details)` },
+        { key: 'Lunch & Learn', id: 'lunchLearn', title: `${t('lunch_learn_details')} (Lunch & Learn Details)` },
         { key: 'Others', id: 'others', title: `${t('others_details')} (Others Details)` }
     ];
 
@@ -176,7 +179,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         const catTotal = catItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
         catTotals[cat.key] = catTotal;
 
-        const columns = [
+        let columns = [
             { header: t('date'), headerKey: 'date', accessorKey: '日期', width: 15, type: 'date' },
             { header: t('region'), headerKey: 'region', accessorKey: '地區', width: 15 },
             { header: t('hotel'), headerKey: 'hotel', accessorKey: '飯店', width: 15 }, // Added Hotel column as per instruction
@@ -189,13 +192,18 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
 
         // Add 'Category' column for 'Others'
         if (cat.key === 'Others') {
-            // Insert after '日期' (index 0) or at the beginning? 
-            // Request says "In the Other Expenses... Add column 'Category'". 
-            // Usually implies first or second column. 
-            // Let's put it after '次序' (which isn't here, handled by index usually) or '日期'.
-            // Based on OthersForm.tsx, it might be the first field.
-            // Let's place it at the beginning of the columns list for visibility.
             columns.unshift({ header: t('category'), headerKey: 'category', accessorKey: '分類', width: 15 });
+        } else if (cat.key === 'Lunch & Learn') {
+            columns = [
+                { header: t('date'), headerKey: 'date', accessorKey: '日期', width: 15, type: 'date' },
+                { header: t('region'), headerKey: 'region', accessorKey: '地區', width: 15 },
+                { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
+                { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'currency' },
+                { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 10 },
+                { header: t('twd_amount'), headerKey: 'twd_amount', accessorKey: 'TWD金額', width: 10, type: 'currency' },
+                { header: t('headcount'), headerKey: 'headcount', accessorKey: '人數', width: 10 },
+                { header: t('dealer'), headerKey: 'dealer', accessorKey: '經銷商', width: 25 }
+            ];
         }
 
         createSection(cat.key, cat.title, columns, cat.id, catTotal);

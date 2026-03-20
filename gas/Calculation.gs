@@ -179,7 +179,7 @@ function deleteReportItem(payload) {
 function recalculateHeader(reportId) {
     let startDateStr = '';
     // Sum up all categories for this reportId
-    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
+    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
     
     let totals = {
         '機票費總額': 0,
@@ -197,6 +197,7 @@ function recalculateHeader(reportId) {
         '手續費總額': 0,
         '日支費總額': 0,
         '預支費用總額': 0,
+        '午餐與學費總額': 0,
         '其他費用總額': 0
     };
     
@@ -245,6 +246,7 @@ function recalculateHeader(reportId) {
             if (cat === 'Handing Fee') totals['手續費總額'] = sum;
             if (cat === 'Per Diem') totals['日支費總額'] = sum;
             if (cat === 'Advance Payment') totals['預支費用總額'] = sum;
+            if (cat === 'Lunch & Learn') totals['午餐與學費總額'] = sum;
             if (cat === 'Others') totals['其他費用總額'] = sum;
         } catch (e) {
             // ignore missing sheets
@@ -294,6 +296,7 @@ function recalculateHeader(reportId) {
              else if (cat === 'Handing Fee') { totalPersonalTWD += totals['手續費總額']; totalOverallTWD += totals['手續費總額']; }
              else if (cat === 'Per Diem') { totalPersonalTWD += totals['日支費總額']; totalOverallTWD += totals['日支費總額']; }
              else if (cat === 'Advance Payment') { /* 預支費用不列入總計計算 */ }
+             else if (cat === 'Lunch & Learn') { totalPersonalTWD += totals['午餐與學費總額']; totalOverallTWD += totals['午餐與學費總額']; }
              else if (cat === 'Others') { totalPersonalTWD += totals['其他費用總額']; totalOverallTWD += totals['其他費用總額']; }
              else if (cat === 'Accommodation') {
                  totalPersonalTWD += totals['個人住宿費總額'];
@@ -537,7 +540,7 @@ function updateAllExchangeRates(reportId, startDateStr) {
         return rateCache[currency];
     };
 
-    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
+    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
     
     categories.forEach(cat => {
         try {
