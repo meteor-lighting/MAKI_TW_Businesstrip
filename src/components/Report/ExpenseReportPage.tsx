@@ -204,6 +204,9 @@ const ExpenseReportPage: React.FC = () => {
                             if (section.id === 'handingFee') titleKey = 'handing_fee_details';
                             if (section.id === 'perDiem') titleKey = 'per_diem_details';
                             if (section.id === 'advancePayment') titleKey = 'advance_payment_details';
+                            if (section.id === 'rentalCar') titleKey = 'rental_car_details';
+                            if (section.id === 'luggageFee') titleKey = 'luggage_fee_details';
+                            if (section.id === 'lunchLearn') titleKey = 'lunch_learn_details';
 
                             return (
                                 <DetailTable
