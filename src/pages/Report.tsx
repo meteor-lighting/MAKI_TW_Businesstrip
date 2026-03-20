@@ -193,7 +193,7 @@ export default function Report() {
                         <FlightForm
                             reportId={reportId}
                             headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            hasFlights={hasFlights}
+                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={loadingCount > 0}
@@ -256,6 +256,7 @@ export default function Report() {
                         <AccommodationForm
                             reportId={reportId}
                             headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -324,6 +325,7 @@ export default function Report() {
                         <TaxiForm
                             reportId={reportId}
                             headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -377,6 +379,7 @@ export default function Report() {
                         <InternetForm
                             reportId={reportId}
                             headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -430,6 +433,7 @@ export default function Report() {
                         <SocialForm
                             reportId={reportId}
                             headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -483,6 +487,7 @@ export default function Report() {
                         <GiftForm
                             reportId={reportId}
                             headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -536,6 +541,7 @@ export default function Report() {
                         <HandingFeeForm
                             reportId={reportId}
                             headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -589,6 +595,7 @@ export default function Report() {
                         <PerDiemForm
                             reportId={reportId}
                             headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -652,6 +659,7 @@ export default function Report() {
                         <AdvancePaymentForm
                             reportId={reportId}
                             headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -705,6 +713,7 @@ export default function Report() {
                         <OthersForm
                             reportId={reportId}
                             headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}

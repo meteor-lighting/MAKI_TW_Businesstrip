@@ -94,15 +94,14 @@ function addReportItem(payload) {
           
           appendRow(category, newRow);
           
-          // 3. Recalculate Header Totals
-          recalculateHeader(reportId);
+          // 3. Recalculate Header Totals & Dates
+          const startDateStr = recalculateHeader(reportId);
 
-          // [NEW] If Category is Flight, we might need to update Exchange Rate & Recalculate everything
-          if (category === 'Flight') {
-              updateExchangeRateAndRecalculate(reportId);
-              // Recalculate Header AGAIN because amounts changed
-              recalculateHeader(reportId);
-          }
+          // 4. Update Exchange Rates based on the new Start Date
+          updateAllExchangeRates(reportId, startDateStr);
+          
+          // 5. Recalculate Header AGAIN because TWD amounts may have changed
+          recalculateHeader(reportId);
           
           return { status: 'success', sequence: nextSeq };
       } finally {
@@ -143,14 +142,13 @@ function deleteReportItem(payload) {
         
         if (deleteRowIndex > 0) {
             sheet.deleteRow(deleteRowIndex);
-            recalculateHeader(reportId);
+            const startDateStr = recalculateHeader(reportId);
             
-            // [NEW] If Category is Flight, update Rate & Recalculate
-            if (category === 'Flight') {
-                updateExchangeRateAndRecalculate(reportId);
-                // Recalculate Header AGAIN
-                recalculateHeader(reportId);
-            }
+            // Update Exchange Rates based on the new Start Date
+            updateAllExchangeRates(reportId, startDateStr);
+            
+            // Recalculate Header AGAIN
+            recalculateHeader(reportId);
 
             return { status: 'success', message: 'Deleted' };
         } else {
@@ -471,73 +469,99 @@ function recalculateHeader(reportId) {
           });
       }
     }
+    
+    return startDateStr;
 }
 
 /**
- * Updates Exchange Rate and Recalculates all dependent TWD amounts
- * Logic:
- * 1. Find earliest flight date.
- * 2. Update Header Rate = Rate of (Earliest Flight Date - 1).
- * 3. Iterate ALL sheets, if currency is USD, update Rate and TWD amounts.
- * 4. If no flights, reset Header Rate to 0.
+ * Updates Exchange Rate and Recalculates all dependent TWD amounts based on Trip Start Date
  */
-function updateExchangeRateAndRecalculate(reportId) {
-    // 1. Find flights
-    const flightSheet = getSheet('Flight');
-    // Read all data to find flights for this report
-    const flightData = sheetDataToJson('Flight');
-    const myFlights = flightData.filter(r => String(r['報告編號']) === String(reportId));
-    
-    let newRate = 0;
-    
-    if (myFlights.length > 0) {
-        // Find Earliest Date
-        let minDateTs = Infinity;
-        let minDateObj = null;
+function updateAllExchangeRates(reportId, startDateStr) {
+    if (!startDateStr || startDateStr === '-') return;
 
-        myFlights.forEach(f => {
-             let d = f['日期'];
-             let dateObj = null;
-             if (d instanceof Date) dateObj = d;
-             else if (typeof d === 'string') {
-                 // Try parsing YYYY-MM-DD or YYYY/MM/DD
-                 let p = d.split(/[-/]/);
-                 if (p.length === 3) dateObj = new Date(p[0], parseInt(p[1], 10) - 1, p[2]);
-                 else dateObj = new Date(d);
-             }
-             
-             if (dateObj && !isNaN(dateObj.getTime())) {
-                 if (dateObj.getTime() < minDateTs) {
-                     minDateTs = dateObj.getTime();
-                     minDateObj = dateObj;
-                 }
-             }
-        });
-
-        if (minDateObj) {
-            // Target: Earliest - 1 Day
-            const yyyy = minDateObj.getFullYear();
-            const mm = String(minDateObj.getMonth() + 1).padStart(2, '0');
-            const dd = String(minDateObj.getDate()).padStart(2, '0');
-            const dateStr = `${yyyy}/${mm}/${dd}`;
-            
-            const res = getExchangeRate({ currency: 'USD', date: dateStr });
-            if (res && res.status === 'success' && res.rate) {
-                newRate = res.rate;
-                Logger.log(`[RateUpdate] New Rate ${newRate} (from ${dateStr} T-1 logic)`);
-            }
+    // Cache to prevent multiple BOT API calls for the same currency
+    const rateCache = { 'TWD': 1.0 }; 
+    
+    // Function to get rate
+    const getRate = (currency) => {
+        if (rateCache[currency] !== undefined) return rateCache[currency];
+        const res = getExchangeRate({ currency, date: startDateStr });
+        if (res && res.status === 'success' && res.rate) {
+            rateCache[currency] = res.rate;
+            Logger.log(`[RateUpdate] Fetched ${currency} rate = ${res.rate} for ${startDateStr}`);
+        } else {
+            rateCache[currency] = 1.0; // Fallback
         }
-    } else {
-        // No flights -> Reset Rate
-        newRate = 0;
-        Logger.log(`[RateUpdate] No flights, resetting rate to 0`);
-    }
+        return rateCache[currency];
+    };
 
-    // 2. Update Header Rate
+    const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
+    
+    categories.forEach(cat => {
+        try {
+            const sheet = getSheet(cat);
+            if (!sheet) return;
+            const data = sheet.getDataRange().getValues();
+            if (data.length <= 1) return;
+            
+            const sheetHeaders = data[0];
+            
+            const idxId = sheetHeaders.indexOf('報告編號');
+            const idxCurrency = sheetHeaders.indexOf('幣別');
+            const idxRate = sheetHeaders.indexOf('匯率');
+            const idxAmount = sheetHeaders.indexOf('金額');
+            const idxTwdAmount = sheetHeaders.indexOf('TWD金額');
+            
+            const idxPersonal = sheetHeaders.indexOf('個人金額');
+            const idxTwdPersonal = sheetHeaders.indexOf('TWD個人金額');
+            const idxAdvance = sheetHeaders.indexOf('代墊金額');
+            const idxTwdAdvance = sheetHeaders.indexOf('TWD代墊金額');
+            const idxOverall = sheetHeaders.indexOf('總體金額');
+            const idxTwdOverall = sheetHeaders.indexOf('TWD總體金額');
+            
+            for (let i = 1; i < data.length; i++) {
+                 if (String(data[i][idxId]) === String(reportId)) {
+                     const currency = String(data[i][idxCurrency]).trim().toUpperCase();
+                     
+                     if (currency !== 'TWD' && currency !== '') {
+                         const rowRate = getRate(currency);
+                         const row = i + 1;
+                         
+                         if (idxRate > -1) sheet.getRange(row, idxRate + 1).setValue(rowRate);
+                         
+                         if (cat === 'Accommodation') {
+                             if (idxPersonal > -1 && idxTwdPersonal > -1) {
+                                 const val = Number(data[i][idxPersonal]) || 0;
+                                 sheet.getRange(row, idxTwdPersonal + 1).setValue(Math.round(val * rowRate));
+                             }
+                             if (idxAdvance > -1 && idxTwdAdvance > -1) {
+                                 const val = Number(data[i][idxAdvance]) || 0;
+                                 sheet.getRange(row, idxTwdAdvance + 1).setValue(Math.round(val * rowRate));
+                             }
+                             if (idxOverall > -1 && idxTwdOverall > -1) {
+                                 const val = Number(data[i][idxOverall]) || 0;
+                                 sheet.getRange(row, idxTwdOverall + 1).setValue(Math.round(val * rowRate));
+                             }
+                         } else {
+                             // Normal forms
+                             if (idxAmount > -1 && idxTwdAmount > -1) {
+                                 const val = Number(data[i][idxAmount]) || 0;
+                                 sheet.getRange(row, idxTwdAmount + 1).setValue(Math.round(val * rowRate));
+                             }
+                         }
+                     }
+                 }
+            }
+        } catch(e) {
+            Logger.log('Error updating rates for ' + cat + ': ' + e);
+        }
+    });
+
+    // 2. Update Header Rate (USD is the primary reference)
+    const newUsdRate = getRate('USD');
     const headerSheet = getSheet('Report Header');
     const headerData = headerSheet.getDataRange().getValues();
     let headerRowIndex = -1;
-    // Assume Row 1 is header
     for (let i = 1; i < headerData.length; i++) {
         if (String(headerData[i][0]) === String(reportId)) {
             headerRowIndex = i + 1; 
@@ -549,81 +573,8 @@ function updateExchangeRateAndRecalculate(reportId) {
         const headers = headerData[0];
         const rateCol = headers.indexOf('USD匯率');
         if (rateCol > -1) {
-            headerSheet.getRange(headerRowIndex, rateCol + 1).setValue(newRate);
-            SpreadsheetApp.flush(); // Ensure Header update is committed
+            headerSheet.getRange(headerRowIndex, rateCol + 1).setValue(newUsdRate);
         }
-        
-        // 3. Recalculate ALL sheets
-        const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
-        
-        categories.forEach(cat => {
-            try {
-                const sheet = getSheet(cat);
-                const data = sheet.getDataRange().getValues(); // Refresh data
-                const sheetHeaders = data[0];
-                
-                // Find column indices
-                const idxId = sheetHeaders.indexOf('報告編號');
-                const idxCurrency = sheetHeaders.indexOf('幣別');
-                const idxRate = sheetHeaders.indexOf('匯率');
-                const idxAmount = sheetHeaders.indexOf('金額');
-                const idxTwdAmount = sheetHeaders.indexOf('TWD金額');
-                
-                // specific for Accommodation
-                const idxPersonal = sheetHeaders.indexOf('個人金額');
-                const idxTwdPersonal = sheetHeaders.indexOf('TWD個人金額');
-                const idxAdvance = sheetHeaders.indexOf('代墊金額');
-                const idxTwdAdvance = sheetHeaders.indexOf('TWD代墊金額');
-                const idxOverall = sheetHeaders.indexOf('總體金額');
-                const idxTwdOverall = sheetHeaders.indexOf('TWD總體金額');
-                
-                let updates = []; // Store {row, col, val}
-                
-                for (let i = 1; i < data.length; i++) {
-                     if (String(data[i][idxId]) === String(reportId)) {
-                         const currency = String(data[i][idxCurrency]);
-                         
-                         // If USD, update Rate & TWD Amount
-                         if (currency === 'USD') {
-                             const row = i + 1;
-                             
-                             // Update Row Rate
-                             if (idxRate > -1) sheet.getRange(row, idxRate + 1).setValue(newRate);
-                             
-                             const rateToUse = newRate;
-                             
-                             // Update TWD Amounts
-                             if (cat === 'Accommodation') {
-                                 // Personal
-                                 if (idxPersonal > -1 && idxTwdPersonal > -1) {
-                                     const val = Number(data[i][idxPersonal]) || 0;
-                                     sheet.getRange(row, idxTwdPersonal + 1).setValue(val * rateToUse);
-                                 }
-                                 // Advance
-                                 if (idxAdvance > -1 && idxTwdAdvance > -1) {
-                                     const val = Number(data[i][idxAdvance]) || 0;
-                                     sheet.getRange(row, idxTwdAdvance + 1).setValue(val * rateToUse);
-                                 }
-                                 // Overall
-                                 if (idxOverall > -1 && idxTwdOverall > -1) {
-                                     const val = Number(data[i][idxOverall]) || 0;
-                                     sheet.getRange(row, idxTwdOverall + 1).setValue(val * rateToUse);
-                                 }
-                                 
-                             } else {
-                                 // Standard forms
-                                 if (idxAmount > -1 && idxTwdAmount > -1) {
-                                      const val = Number(data[i][idxAmount]) || 0;
-                                      sheet.getRange(row, idxTwdAmount + 1).setValue(val * rateToUse);
-                                 }
-                             }
-                         }
-                     }
-                }
-                
-            } catch (e) {}
-        });
-        
-        SpreadsheetApp.flush(); // Ensure changes are saved before recalculateHeader runs again
     }
+    SpreadsheetApp.flush();
 }

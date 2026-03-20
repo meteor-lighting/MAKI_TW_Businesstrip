@@ -22,13 +22,13 @@ interface FlightFormData {
 interface FlightFormProps {
     reportId: string;
     headerRate?: number;
-    hasFlights?: boolean;
+    tripStartDate?: string;
     onSubmitSuccess: () => Promise<void> | void;
     onLoadingChange?: (loading: boolean) => void;
     disabled?: boolean;
 }
 
-export default function FlightForm({ reportId, headerRate, hasFlights = false, onSubmitSuccess, onLoadingChange, disabled = false }: FlightFormProps) {
+export default function FlightForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false }: FlightFormProps) {
     const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [rateLoading, setRateLoading] = useState(false);
@@ -58,52 +58,37 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
         let isActive = true;
 
         const fetchRate = async () => {
+            if (!isActive) return;
+
             if (currency === 'TWD') {
-                if (isActive) {
-                    setValue('rate', 1);
-                    setValue('twdAmount', Number(amount) || 0);
-                }
+                setValue('rate', 1);
+                setValue('twdAmount', Number(amount) || 0);
                 return;
             }
 
             const numericAmount = Number(amount);
 
-            // Special Logic: If First Flight !hasFlights, fetch rate from Previous Day (Backend handles T-1 now)
-            if (currency === 'USD' && !hasFlights && date && date.length === 10) {
-                if (isActive) setRateLoading(true);
-                try {
-                    const res = await sendRequest('getExchangeRate', { currency, date });
-                    if (!isActive) return;
-                    setRateLoading(false);
-
-                    if (res.status === 'success' || res.rate) {
-                        const rate = res.data?.rate || res.rate || 1;
-                        setValue('rate', rate);
-                        setValue('twdAmount', Number((numericAmount * rate).toFixed(0)));
-                        return;
-                    }
-                } catch (e) {
-                    console.error('Error fetching rate', e);
-                    setRateLoading(false);
+            let targetDate = date;
+            if (tripStartDate && tripStartDate !== '-' && tripStartDate !== '') {
+                const itemD = new Date(date);
+                const tripD = new Date(tripStartDate);
+                if (itemD > tripD) {
+                    targetDate = tripStartDate;
                 }
             }
 
-            // Otherwise Use Header Rate for USD if available
-            if (currency === 'USD' && headerRate && headerRate > 0) {
-                if (isActive) {
-                    setValue('rate', headerRate);
-                    setValue('twdAmount', Number((numericAmount * headerRate).toFixed(0)));
-                }
+            // If USD and targetDate equals tripStartDate, use headerRate to save API call
+            if (currency === 'USD' && targetDate === tripStartDate && headerRate && headerRate > 0) {
+                setValue('rate', headerRate);
+                setValue('twdAmount', Number((numericAmount * headerRate).toFixed(0)));
                 return;
             }
 
-            // Default rate fetch for others
-            if (!date || (amount === '' || isNaN(numericAmount))) return;
+            if (!targetDate || (amount === '' || isNaN(numericAmount))) return;
 
-            if (isActive) setRateLoading(true);
+            setRateLoading(true);
             try {
-                // Fetch rate based on date
-                const res = await sendRequest('getExchangeRate', { currency, date });
+                const res = await sendRequest('getExchangeRate', { currency, date: targetDate });
                 if (!isActive) return;
 
                 if (res.status === 'success' || res.rate) {
@@ -123,7 +108,7 @@ export default function FlightForm({ reportId, headerRate, hasFlights = false, o
         return () => {
             isActive = false;
         };
-    }, [currency, amount, date, setValue, headerRate, hasFlights]);
+    }, [currency, amount, date, tripStartDate, setValue, headerRate]);
 
     // Flight Info Auto-fill
     useEffect(() => {

@@ -19,12 +19,13 @@ interface OthersFormData {
 interface OthersFormProps {
     reportId: string;
     headerRate?: number;
+    tripStartDate?: string;
     onSubmitSuccess: () => Promise<void> | void;
     onLoadingChange?: (loading: boolean) => void;
     disabled?: boolean;
 }
 
-export default function OthersForm({ reportId, headerRate, onSubmitSuccess, onLoadingChange, disabled = false }: OthersFormProps) {
+export default function OthersForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false }: OthersFormProps) {
     const { t } = useTranslation();
     const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<OthersFormData>({
         defaultValues: {
@@ -46,7 +47,9 @@ export default function OthersForm({ reportId, headerRate, onSubmitSuccess, onLo
 
     // Rate Calculation Effect
     useEffect(() => {
+        let isActive = true;
         const fetchRate = async () => {
+            if (!isActive) return;
             if (currency === 'TWD') {
                 setValue('rate', 1);
                 setValue('twdAmount', Number(amount) || 0);
@@ -55,24 +58,28 @@ export default function OthersForm({ reportId, headerRate, onSubmitSuccess, onLo
 
             const numericAmount = Number(amount);
 
-            // Use Header Rate for USD if available
-            if (currency === 'USD') {
-                if (headerRate && headerRate > 0) {
-                    setValue('rate', headerRate);
-                    setValue('twdAmount', Number((numericAmount * headerRate).toFixed(0)));
-                    return;
-                } else {
-                    alert('出發的首筆機票未建立，請建立後再輸入');
-                    setValue('currency', 'TWD');
-                    return;
+            let targetDate = date;
+            if (tripStartDate && tripStartDate !== '-' && tripStartDate !== '') {
+                const itemD = new Date(date);
+                const tripD = new Date(tripStartDate);
+                if (itemD > tripD) {
+                    targetDate = tripStartDate;
                 }
             }
 
-            if (!date || (amount === '' || isNaN(numericAmount))) return;
+            // Use Header Rate for USD if available and date matches
+            if (currency === 'USD' && targetDate === tripStartDate && headerRate && headerRate > 0) {
+                setValue('rate', headerRate);
+                setValue('twdAmount', Number((numericAmount * headerRate).toFixed(0)));
+                return;
+            }
+
+            if (!targetDate || (amount === '' || isNaN(numericAmount))) return;
 
             setRateLoading(true);
             try {
-                const res = await sendRequest('getExchangeRate', { currency, date });
+                const res = await sendRequest('getExchangeRate', { currency, date: targetDate });
+                if (!isActive) return;
                 if (res.status === 'success' || res.rate) {
                     const rate = res.data?.rate || res.rate || 1;
                     setValue('rate', rate);
@@ -81,11 +88,13 @@ export default function OthersForm({ reportId, headerRate, onSubmitSuccess, onLo
             } catch (e) {
                 console.error(e);
             } finally {
-                setRateLoading(false);
+                if (isActive) setRateLoading(false);
             }
         };
         fetchRate();
-    }, [currency, amount, date, setValue, headerRate]);
+
+        return () => { isActive = false; };
+    }, [currency, amount, date, tripStartDate, setValue, headerRate]);
 
     const onSubmit = async (data: OthersFormData) => {
         setLoading(true);

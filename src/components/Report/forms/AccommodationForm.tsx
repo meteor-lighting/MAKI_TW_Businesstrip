@@ -26,12 +26,13 @@ interface AccommodationFormData {
 interface AccommodationFormProps {
     reportId: string;
     headerRate?: number;
+    tripStartDate?: string;
     onSubmitSuccess: () => Promise<void> | void;
     onLoadingChange?: (loading: boolean) => void;
     disabled?: boolean;
 }
 
-export default function AccommodationForm({ reportId, headerRate, onSubmitSuccess, onLoadingChange, disabled = false }: AccommodationFormProps) {
+export default function AccommodationForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false }: AccommodationFormProps) {
     const { t } = useTranslation();
     const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<AccommodationFormData>({
         defaultValues: {
@@ -62,7 +63,9 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
 
     // Rate Calculation Effect
     useEffect(() => {
+        let isActive = true;
         const fetchRate = async () => {
+            if (!isActive) return;
             const pAmount = Number(personalAmount) || 0;
             const aAmount = Number(advanceAmount) || 0;
             const total = pAmount + aAmount;
@@ -93,8 +96,17 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                 return;
             }
 
+            let targetDate = checkInDate;
+            if (tripStartDate && tripStartDate !== '-' && tripStartDate !== '') {
+                const itemD = new Date(checkInDate);
+                const tripD = new Date(tripStartDate);
+                if (itemD > tripD) {
+                    targetDate = tripStartDate;
+                }
+            }
+
             // Use Header Rate for USD if available
-            if (currency === 'USD' && headerRate && headerRate > 0) {
+            if (currency === 'USD' && targetDate === tripStartDate && headerRate && headerRate > 0) {
                 setValue('rate', headerRate);
                 const twdP = Number((pAmount * headerRate).toFixed(0));
                 const twdA = Number((aAmount * headerRate).toFixed(0));
@@ -104,11 +116,12 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
                 return;
             }
 
-            if (!checkInDate || total === 0) return;
+            if (!targetDate || total === 0) return;
 
             setRateLoading(true);
             try {
-                const res = await sendRequest('getExchangeRate', { currency, date: checkInDate });
+                const res = await sendRequest('getExchangeRate', { currency, date: targetDate });
+                if (!isActive) return;
                 if (res.status === 'success' || res.rate) {
                     const rate = res.data?.rate || res.rate || 1;
                     setValue('rate', rate);
@@ -121,11 +134,13 @@ export default function AccommodationForm({ reportId, headerRate, onSubmitSucces
             } catch (e) {
                 console.error(e);
             } finally {
-                setRateLoading(false);
+                if (isActive) setRateLoading(false);
             }
         };
         fetchRate();
-    }, [currency, personalAmount, advanceAmount, peopleCount, checkInDate, checkOutDate, setValue, headerRate]);
+
+        return () => { isActive = false; };
+    }, [currency, personalAmount, advanceAmount, peopleCount, checkInDate, checkOutDate, tripStartDate, setValue, headerRate]);
 
     const onSubmit = async (data: AccommodationFormData) => {
         setLoading(true);
