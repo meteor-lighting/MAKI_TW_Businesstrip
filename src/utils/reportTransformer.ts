@@ -228,6 +228,22 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
 
     // End Custom Block
 
+    // Sort sections to match the exact input page sequence
+    const desiredOrder = [
+        'flight', 'accommodation', 'rentalCar', 'gas', 'parking', 'taxi',
+        'internet', 'social', 'gift', 'luggageFee', 'handingFee', 'perDiem',
+        'advancePayment', 'others', 'lunchLearn'
+    ];
+    sections.sort((a, b) => {
+        const indexA = desiredOrder.indexOf(a.id);
+        const indexB = desiredOrder.indexOf(b.id);
+        // If not found in desiredOrder, put them at the end
+        if (indexA === -1 && indexB === -1) return 0;
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+    });
+
     // Build Chart Data
     return {
         reportId,
