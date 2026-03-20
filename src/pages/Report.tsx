@@ -318,8 +318,10 @@ export default function Report() {
                 {/* Rental Car */}
                 <SectionAccordion
                     title={t('rental_car')}
-                    totalAmountText={t('total_amount_text')}
-                    totalAmount={Number(reportData?.header['總體租車費總額'] || 0)}
+                    totalAmountText={t('personal_total')}
+                    totalAmount={Number(reportData?.header['個人租車費總額'] || 0)}
+                    secondaryTotalAmountText={t('overall_total')}
+                    secondaryTotalAmount={Number(reportData?.header['總體租車費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
                 >
                     <div className="space-y-6">
