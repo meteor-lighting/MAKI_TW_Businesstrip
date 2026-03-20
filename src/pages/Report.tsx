@@ -14,6 +14,9 @@ import FlightForm from '../components/Report/forms/FlightForm';
 import AccommodationForm from '../components/Report/forms/AccommodationForm';
 import RentalCarForm from '../components/Report/forms/RentalCarForm';
 import TaxiForm from '../components/Report/forms/TaxiForm';
+import GasForm from '../components/Report/forms/GasForm';
+import ParkingForm from '../components/Report/forms/ParkingForm';
+import LuggageFeeForm from '../components/Report/forms/LuggageFeeForm';
 import InternetForm from '../components/Report/forms/InternetForm';
 import SocialForm from '../components/Report/forms/SocialForm';
 import GiftForm from '../components/Report/forms/GiftForm';
@@ -388,6 +391,114 @@ export default function Report() {
                     </div>
                 </SectionAccordion>
 
+                {/* Gas */}
+                <SectionAccordion
+                    title={t('gas')}
+                    totalAmountText={t('total_amount_text')}
+                    totalAmount={Number(reportData?.header['瓦斯費總額'] || 0)}
+                    disabled={isOtherFormsDisabled}
+                >
+                    <div className="space-y-6">
+                        <GasForm
+                            reportId={reportId}
+                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            tripStartDate={reportData?.header['商旅起始日']}
+                            onSubmitSuccess={handleItemChanged}
+                            onLoadingChange={handleLoadingChange}
+                            disabled={isOtherFormsDisabled}
+                        />
+
+                        <div className="mt-4">
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            <DataGrid
+                                keyField="次序"
+                                data={reportData?.items?.Gas || []}
+                                onDelete={(item) => {
+                                    return sendRequest('deleteItem', {
+                                        reportId,
+                                        category: 'Gas',
+                                        sequence: item.次序
+                                    }).then(handleItemChanged);
+                                }}
+                                onLoadingChange={handleLoadingChange}
+                                disabled={isOtherFormsDisabled}
+                                columns={[
+                                    { key: '次序', header: t('sequence'), width: '60px' },
+                                    {
+                                        key: '日期',
+                                        header: t('date'),
+                                        render: (item: any) => {
+                                            if (!item['日期']) return '';
+                                            const d = new Date(item['日期']);
+                                            return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+                                        }
+                                    },
+                                    { key: '地區', header: t('region') },
+                                    { key: '幣別', header: t('currency') },
+                                    { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
+                                    { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '備註', header: t('remark') },
+                                ]}
+                            />
+                        </div>
+                    </div>
+                </SectionAccordion>
+
+                {/* Parking */}
+                <SectionAccordion
+                    title={t('parking')}
+                    totalAmountText={t('total_amount_text')}
+                    totalAmount={Number(reportData?.header['停車費總額'] || 0)}
+                    disabled={isOtherFormsDisabled}
+                >
+                    <div className="space-y-6">
+                        <ParkingForm
+                            reportId={reportId}
+                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            tripStartDate={reportData?.header['商旅起始日']}
+                            onSubmitSuccess={handleItemChanged}
+                            onLoadingChange={handleLoadingChange}
+                            disabled={isOtherFormsDisabled}
+                        />
+
+                        <div className="mt-4">
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            <DataGrid
+                                keyField="次序"
+                                data={reportData?.items?.Parking || []}
+                                onDelete={(item) => {
+                                    return sendRequest('deleteItem', {
+                                        reportId,
+                                        category: 'Parking',
+                                        sequence: item.次序
+                                    }).then(handleItemChanged);
+                                }}
+                                onLoadingChange={handleLoadingChange}
+                                disabled={isOtherFormsDisabled}
+                                columns={[
+                                    { key: '次序', header: t('sequence'), width: '60px' },
+                                    {
+                                        key: '日期',
+                                        header: t('date'),
+                                        render: (item: any) => {
+                                            if (!item['日期']) return '';
+                                            const d = new Date(item['日期']);
+                                            return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+                                        }
+                                    },
+                                    { key: '地區', header: t('region') },
+                                    { key: '幣別', header: t('currency') },
+                                    { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
+                                    { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '備註', header: t('remark') },
+                                ]}
+                            />
+                        </div>
+                    </div>
+                </SectionAccordion>
+
                 {/* Taxi */}
                 <SectionAccordion
                     title={t('taxi')}
@@ -576,6 +687,60 @@ export default function Report() {
                                     return sendRequest('deleteItem', {
                                         reportId,
                                         category: 'Gift',
+                                        sequence: item.次序
+                                    }).then(handleItemChanged);
+                                }}
+                                onLoadingChange={handleLoadingChange}
+                                disabled={isOtherFormsDisabled}
+                                columns={[
+                                    { key: '次序', header: t('sequence'), width: '60px' },
+                                    {
+                                        key: '日期',
+                                        header: t('date'),
+                                        render: (item: any) => {
+                                            if (!item['日期']) return '';
+                                            const d = new Date(item['日期']);
+                                            return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+                                        }
+                                    },
+                                    { key: '地區', header: t('region') },
+                                    { key: '幣別', header: t('currency') },
+                                    { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
+                                    { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '備註', header: t('remark') },
+                                ]}
+                            />
+                        </div>
+                    </div>
+                </SectionAccordion>
+
+                {/* Luggage Fee */}
+                <SectionAccordion
+                    title={t('luggage_fee')}
+                    totalAmountText={t('total_amount_text')}
+                    totalAmount={Number(reportData?.header['行李費總額'] || 0)}
+                    disabled={isOtherFormsDisabled}
+                >
+                    <div className="space-y-6">
+                        <LuggageFeeForm
+                            reportId={reportId}
+                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            tripStartDate={reportData?.header['商旅起始日']}
+                            onSubmitSuccess={handleItemChanged}
+                            onLoadingChange={handleLoadingChange}
+                            disabled={isOtherFormsDisabled}
+                        />
+
+                        <div className="mt-4">
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            <DataGrid
+                                keyField="次序"
+                                data={reportData?.items?.['Luggage Fee'] || []}
+                                onDelete={(item) => {
+                                    return sendRequest('deleteItem', {
+                                        reportId,
+                                        category: 'Luggage Fee',
                                         sequence: item.次序
                                     }).then(handleItemChanged);
                                 }}

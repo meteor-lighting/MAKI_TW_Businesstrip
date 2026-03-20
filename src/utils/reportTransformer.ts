@@ -9,9 +9,12 @@ export interface RawReportData {
         Accommodation?: any[];
         'Rental Car'?: any[];
         Taxi?: any[];
+        Gas?: any[];
+        Parking?: any[];
         Internet?: any[];
         Social?: any[];
         Gift?: any[];
+        'Luggage Fee'?: any[];
         HandingFee?: any[];
         PerDiem?: any[];
         'Advance Payment'?: any[];
@@ -36,9 +39,12 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         Accommodation: 0,
         'Rental Car': 0,
         Taxi: 0,
+        Gas: 0,
+        Parking: 0,
         Internet: 0,
         Social: 0,
         Gift: 0,
+        'Luggage Fee': 0,
         'Handing Fee': 0, // Key matches backend
         'Per Diem': 0,    // Key matches backend
         'Advance Payment': 0,
@@ -153,9 +159,12 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     // Others - using generic keys
     // Mapping keys to IDs. Backend uses 'Handing Fee' and 'Per Diem' with spaces.
     const otherCats = [
+        { key: 'Gas', id: 'gas', title: `${t('gas_details')} (Gas Details)` },
+        { key: 'Parking', id: 'parking', title: `${t('parking_details')} (Parking Details)` },
         { key: 'Internet', id: 'internet', title: `${t('internet_details')} (Internet Details)` },
         { key: 'Social', id: 'social', title: `${t('social_details')} (Social Details)` },
         { key: 'Gift', id: 'gift', title: `${t('gift_details')} (Gift Details)` },
+        { key: 'Luggage Fee', id: 'luggageFee', title: `${t('luggage_fee_details')} (Luggage Fee Details)` },
         { key: 'Handing Fee', id: 'handingFee', title: `${t('handing_fee_details')} (Handing Fee Details)` },
         { key: 'Advance Payment', id: 'advancePayment', title: `${t('advance_payment_details')} (Advance Payment Details)` },
         { key: 'Others', id: 'others', title: `${t('others_details')} (Others Details)` }

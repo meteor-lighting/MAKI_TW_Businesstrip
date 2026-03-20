@@ -179,7 +179,7 @@ function deleteReportItem(payload) {
 function recalculateHeader(reportId) {
     let startDateStr = '';
     // Sum up all categories for this reportId
-    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
+    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
     
     let totals = {
         '機票費總額': 0,
@@ -188,9 +188,12 @@ function recalculateHeader(reportId) {
         '個人租車費總額': 0,
         '總體租車費總額': 0,
         '計程車費總額': 0,
+        '瓦斯費總額': 0,
+        '停車費總額': 0,
         '網路費總額': 0,
         '社交費總額': 0,
         '禮品費總額': 0,
+        '行李費總額': 0,
         '手續費總額': 0,
         '日支費總額': 0,
         '預支費用總額': 0,
@@ -233,9 +236,12 @@ function recalculateHeader(reportId) {
                 totals['總體租車費總額'] = overallSum;
             }
             if (cat === 'Taxi') totals['計程車費總額'] = sum;
+            if (cat === 'Gas') totals['瓦斯費總額'] = sum;
+            if (cat === 'Parking') totals['停車費總額'] = sum;
             if (cat === 'Internet') totals['網路費總額'] = sum;
             if (cat === 'Social') totals['社交費總額'] = sum;
             if (cat === 'Gift') totals['禮品費總額'] = sum;
+            if (cat === 'Luggage Fee') totals['行李費總額'] = sum;
             if (cat === 'Handing Fee') totals['手續費總額'] = sum;
             if (cat === 'Per Diem') totals['日支費總額'] = sum;
             if (cat === 'Advance Payment') totals['預支費用總額'] = sum;
@@ -274,9 +280,12 @@ function recalculateHeader(reportId) {
              // Mapping based on category code naming in 'totals' object
              if (cat === 'Flight') { totalPersonalTWD += totals['機票費總額']; totalOverallTWD += totals['機票費總額']; }
              else if (cat === 'Taxi') { totalPersonalTWD += totals['計程車費總額']; totalOverallTWD += totals['計程車費總額']; }
+             else if (cat === 'Gas') { totalPersonalTWD += totals['瓦斯費總額']; totalOverallTWD += totals['瓦斯費總額']; }
+             else if (cat === 'Parking') { totalPersonalTWD += totals['停車費總額']; totalOverallTWD += totals['停車費總額']; }
              else if (cat === 'Internet') { totalPersonalTWD += totals['網路費總額']; totalOverallTWD += totals['網路費總額']; }
              else if (cat === 'Social') { totalPersonalTWD += totals['社交費總額']; totalOverallTWD += totals['社交費總額']; }
              else if (cat === 'Gift') { totalPersonalTWD += totals['禮品費總額']; totalOverallTWD += totals['禮品費總額']; }
+             else if (cat === 'Luggage Fee') { totalPersonalTWD += totals['行李費總額']; totalOverallTWD += totals['行李費總額']; }
              else if (cat === 'Handing Fee') { totalPersonalTWD += totals['手續費總額']; totalOverallTWD += totals['手續費總額']; }
              else if (cat === 'Per Diem') { totalPersonalTWD += totals['日支費總額']; totalOverallTWD += totals['日支費總額']; }
              else if (cat === 'Advance Payment') { /* 預支費用不列入總計計算 */ }
@@ -523,7 +532,7 @@ function updateAllExchangeRates(reportId, startDateStr) {
         return rateCache[currency];
     };
 
-    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
+    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
     
     categories.forEach(cat => {
         try {

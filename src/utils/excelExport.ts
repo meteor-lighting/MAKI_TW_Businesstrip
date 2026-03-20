@@ -28,9 +28,12 @@ export const exportToExcel = (reportData: ReportData, reportId: string) => {
         ['住宿費 (個人)', reportData.header['個人住宿費總額']],
         ['租車費 (個人)', reportData.header['個人租車費總額']],
         ['計程車費', reportData.header['計程車費總額']],
+        ['瓦斯費', reportData.header['瓦斯費總額']],
+        ['停車費', reportData.header['停車費總額']],
         ['網路費', reportData.header['網路費總額']],
         ['社交費', reportData.header['社交費總額']],
         ['禮品費', reportData.header['禮品費總額']],
+        ['行李費', reportData.header['行李費總額']],
         ['手續費', reportData.header['手續費總額']],
         ['日支費', reportData.header['日支費總額']],
         ['其他', reportData.header['其他費用總額']],
@@ -41,7 +44,7 @@ export const exportToExcel = (reportData: ReportData, reportId: string) => {
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
     XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
 
-    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
+    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
 
     categories.forEach(cat => {
         const items = reportData.items[cat];
