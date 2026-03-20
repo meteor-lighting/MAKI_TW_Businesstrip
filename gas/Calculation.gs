@@ -89,10 +89,13 @@ function addReportItem(payload) {
           const newRow = headers.map(header => {
               if (header === '報告編號') return reportId;
               if (header === '次序') return nextSeq;
-              return itemData[header] || '';
+              return itemData[header] !== undefined ? itemData[header] : '';
           });
           
           appendRow(category, newRow);
+          
+          // Force flush to sheet so subsequent reads in this execution and immediate next HTTP requests see the new row
+          SpreadsheetApp.flush();
           
           // 3. Recalculate Header Totals & Dates
           const startDateStr = recalculateHeader(reportId);
@@ -102,6 +105,9 @@ function addReportItem(payload) {
           
           // 5. Recalculate Header AGAIN because TWD amounts may have changed
           recalculateHeader(reportId);
+          
+          // Final flush to guarantee UI refresh gets the latest data
+          SpreadsheetApp.flush();
           
           return { status: 'success', sequence: nextSeq };
       } finally {
@@ -150,6 +156,8 @@ function deleteReportItem(payload) {
             // Recalculate Header AGAIN
             recalculateHeader(reportId);
 
+            SpreadsheetApp.flush();
+
             return { status: 'success', message: 'Deleted' };
         } else {
              return { status: 'error', message: 'Item not found' };
@@ -164,6 +172,7 @@ function deleteReportItem(payload) {
 }
 
 function recalculateHeader(reportId) {
+    let startDateStr = '';
     // Sum up all categories for this reportId
     const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
     
@@ -311,7 +320,6 @@ function recalculateHeader(reportId) {
       });
       
       let diffDays = 0;
-      let startDateStr = '';
       let endDateStr = '';
       
       if (allDates.length > 0) {
