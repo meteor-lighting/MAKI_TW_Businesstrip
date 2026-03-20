@@ -224,6 +224,18 @@ const ExpenseReportPage: React.FC = () => {
                         <div className="text-center py-10 text-gray-500">無詳細資料</div>
                     )}
                 </div>
+
+                {/* Signature Section */}
+                <div id="report-signature-section" className="report-detail-section mt-10 pt-6">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '40px', padding: '0 20px' }}>
+                        {['部門主管', '總經理', '董事長'].map((title) => (
+                            <div key={title} style={{ flex: 1, textAlign: 'center' }}>
+                                <div style={{ borderBottom: '1px solid #333', height: '60px', marginBottom: '8px' }} />
+                                <div style={{ fontSize: '14px', fontWeight: 600, color: '#333' }}>{title}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );
