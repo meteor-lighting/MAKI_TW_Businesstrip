@@ -42,22 +42,29 @@ export default function DataGrid<T>({ columns, data, onDelete, onEdit, keyField,
 
     if (data.length === 0) {
         return (
-            <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+            <div className="relative text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                {isDeleting && (
+                    <div className="absolute inset-0 bg-white/60 z-50 flex flex-col items-center justify-center backdrop-blur-sm rounded-lg">
+                        <Hourglass className="w-10 h-10 text-red-600 animate-spin" />
+                        <span className="text-sm text-red-600 font-medium mt-2">Deleting...</span>
+                    </div>
+                )}
                 無資料
             </div>
         );
     }
 
     return (
-        <div className="relative overflow-x-auto border border-gray-200 rounded-lg shadow-sm">
+        <div className="relative border border-gray-200 rounded-lg shadow-sm">
             {isDeleting && (
-                <div className="absolute inset-0 bg-white/60 z-50 flex flex-col items-center justify-center backdrop-blur-sm">
+                <div className="absolute inset-0 bg-white/60 z-50 flex flex-col items-center justify-center backdrop-blur-sm rounded-lg">
                     <Hourglass className="w-10 h-10 text-red-600 animate-spin" />
                     <span className="text-sm text-red-600 font-medium mt-2">Deleting...</span>
                 </div>
             )}
 
-            <table className="min-w-full divide-y divide-gray-200">
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                     <tr>
                         {columns.map((col, idx) => (
@@ -114,7 +121,8 @@ export default function DataGrid<T>({ columns, data, onDelete, onEdit, keyField,
                         </tr>
                     ))}
                 </tbody>
-            </table>
+                </table>
+            </div>
         </div>
     );
 }
