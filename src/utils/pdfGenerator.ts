@@ -9,18 +9,45 @@ export const generatePDF = async (reportId: string) => {
     const contentWidth = pageWidth - (margin * 2);
     let yPos = margin;
 
+    // Helper: temporarily force all descendants to overflow:visible
+    const forceOverflowVisible = (el: HTMLElement): Map<HTMLElement, string> => {
+        const saved = new Map<HTMLElement, string>();
+        const all = el.querySelectorAll('*');
+        all.forEach((node) => {
+            const htmlNode = node as HTMLElement;
+            if (htmlNode.style) {
+                saved.set(htmlNode, htmlNode.style.overflow);
+                htmlNode.style.overflow = 'visible';
+            }
+        });
+        saved.set(el, el.style.overflow);
+        el.style.overflow = 'visible';
+        return saved;
+    };
+
+    const restoreOverflow = (saved: Map<HTMLElement, string>) => {
+        saved.forEach((val, node) => {
+            node.style.overflow = val;
+        });
+    };
+
     // Helper to add element to PDF
     const addElementToPdf = async (element: HTMLElement) => {
         try {
-            // Options to ensure better quality and white background
+            // Force overflow visible on all children to prevent scrollbars
+            const saved = forceOverflowVisible(element);
+
             const dataUrl = await toPng(element, {
                 quality: 0.95,
                 backgroundColor: '#ffffff',
-                // specific style overrides to ensure it looks good in PDF
                 style: {
                     margin: '0',
-                }
+                    overflow: 'visible',
+                },
             });
+
+            // Restore original overflow
+            restoreOverflow(saved);
 
             const imgProps = doc.getImageProperties(dataUrl);
             const imgHeight = (imgProps.height * contentWidth) / imgProps.width;
