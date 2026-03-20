@@ -7,6 +7,7 @@ export interface RawReportData {
     items: {
         Flight?: any[];
         Accommodation?: any[];
+        'Rental Car'?: any[];
         Taxi?: any[];
         Internet?: any[];
         Social?: any[];
@@ -33,6 +34,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     const catTotals: Record<string, number> = {
         Flight: 0,
         Accommodation: 0,
+        'Rental Car': 0,
         Taxi: 0,
         Internet: 0,
         Social: 0,
@@ -112,6 +114,25 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: t('twd_personal'), headerKey: 'twd_personal', accessorKey: 'TWD個人金額', width: 12, type: 'currency' },
         { header: t('twd_overall'), headerKey: 'twd_overall', accessorKey: 'TWD總體金額', width: 12, type: 'currency' }
     ], 'accommodation', accommodationTotalTWD);
+
+    // Rental Car 
+    const rentalCarItems = raw.items['Rental Car'] || [];
+    const rentalCarTotalTWD = rentalCarItems.reduce((sum, item) => sum + Number(item['TWD總體金額'] || 0), 0);
+    catTotals['Rental Car'] = rentalCarTotalTWD;
+
+    createSection('Rental Car', `${t('rental_car_details')} (Rental Car Details)`, [
+        { header: t('rental_start_date'), headerKey: 'rental_start_date', accessorKey: '借車日期', width: 12, type: 'date' },
+        { header: t('rental_end_date'), headerKey: 'rental_end_date', accessorKey: '還車日期', width: 12, type: 'date' },
+        { header: t('region'), headerKey: 'region', accessorKey: '地區', width: 10 },
+        { header: t('rental_company'), headerKey: 'rental_company', accessorKey: '租車公司', width: 10 },
+        { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 8 },
+        { header: t('personal_amount'), headerKey: 'personal_amount', accessorKey: '個人金額', width: 10, type: 'currency' },
+        { header: t('overall_amount'), headerKey: 'overall_amount', accessorKey: '總體金額', width: 10, type: 'currency' },
+        { header: t('per_person_per_day'), headerKey: 'per_person_per_day', accessorKey: '每人每天金額', width: 12, type: 'currency' },
+        { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 8 },
+        { header: t('twd_personal'), headerKey: 'twd_personal', accessorKey: 'TWD個人金額', width: 12, type: 'currency' },
+        { header: t('twd_overall'), headerKey: 'twd_overall', accessorKey: 'TWD總體金額', width: 12, type: 'currency' }
+    ], 'rentalCar', rentalCarTotalTWD);
 
     // Taxi Sheet Headers: ..., 幣別, 金額, TWD金額, 匯率, 備註
     // Taxi Sheet Headers

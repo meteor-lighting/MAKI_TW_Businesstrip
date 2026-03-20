@@ -12,6 +12,7 @@ import SectionAccordion from '../components/Report/SectionAccordion';
 import DataGrid from '../components/Report/DataGrid';
 import FlightForm from '../components/Report/forms/FlightForm';
 import AccommodationForm from '../components/Report/forms/AccommodationForm';
+import RentalCarForm from '../components/Report/forms/RentalCarForm';
 import TaxiForm from '../components/Report/forms/TaxiForm';
 import InternetForm from '../components/Report/forms/InternetForm';
 import SocialForm from '../components/Report/forms/SocialForm';
@@ -298,6 +299,77 @@ export default function Report() {
                                     },
                                     { key: '地區', header: t('region') },
                                     { key: '飯店', header: t('hotel') },
+                                    { key: '幣別', header: t('currency') },
+                                    { key: '個人金額', header: t('personal') },
+                                    { key: 'TWD個人金額', header: t('twd_personal'), width: '90px', render: (item: any) => item['TWD個人金額'] ?? 0 },
+                                    { key: '代墊金額', header: t('advance_payment'), width: '90px', render: (item: any) => item['代墊金額'] || 0 },
+                                    { key: 'TWD代墊金額', header: t('twd_advance'), width: '90px', render: (item: any) => item['TWD代墊金額'] || 0 },
+                                    { key: '總體金額', header: t('overall_amount'), width: '90px', render: (item: any) => item['總體金額'] || 0 },
+                                    { key: 'TWD總體金額', header: t('twd_overall'), width: '90px', render: (item: any) => item['TWD總體金額'] || 0 },
+                                    { key: '代墊人數', header: t('advance_payment_people'), width: '80px', render: (item: any) => item['代墊人數'] || 0 },
+                                    { key: '每人每天金額', header: t('per_person_per_day'), width: '90px', render: (item: any) => item['每人每天金額'] || 0 },
+                                    { key: '備註', header: t('remark') },
+                                ]}
+                            />
+                        </div>
+                    </div>
+                </SectionAccordion>
+
+                {/* Rental Car */}
+                <SectionAccordion
+                    title={t('rental_car')}
+                    totalAmountText={t('total_amount_text')}
+                    totalAmount={Number(reportData?.header['總體租車費總額'] || 0)}
+                    disabled={isOtherFormsDisabled}
+                >
+                    <div className="space-y-6">
+                        <RentalCarForm
+                            reportId={reportId}
+                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
+                            tripStartDate={reportData?.header['商旅起始日']}
+                            onSubmitSuccess={handleItemChanged}
+                            onLoadingChange={handleLoadingChange}
+                            disabled={isOtherFormsDisabled}
+                        />
+
+                        <div className="mt-4">
+                            <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            <DataGrid
+                                keyField="次序"
+                                data={reportData?.items?.['Rental Car'] || []}
+                                onDelete={(item) => {
+                                    return sendRequest('deleteItem', {
+                                        reportId,
+                                        category: 'Rental Car',
+                                        sequence: item.次序
+                                    }).then(handleItemChanged);
+                                }}
+                                onLoadingChange={handleLoadingChange}
+                                disabled={isOtherFormsDisabled}
+                                columns={[
+                                    { key: '次序', header: t('sequence'), width: '60px' },
+                                    {
+                                        key: '借車日期',
+                                        header: t('rental_start_date'),
+                                        width: '100px',
+                                        render: (item: any) => {
+                                            if (!item['借車日期']) return '';
+                                            const d = new Date(item['借車日期']);
+                                            return isNaN(d.getTime()) ? String(item['借車日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+                                        }
+                                    },
+                                    {
+                                        key: '還車日期',
+                                        header: t('rental_end_date'),
+                                        width: '100px',
+                                        render: (item: any) => {
+                                            if (!item['還車日期']) return '';
+                                            const d = new Date(item['還車日期']);
+                                            return isNaN(d.getTime()) ? String(item['還車日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+                                        }
+                                    },
+                                    { key: '地區', header: t('region') },
+                                    { key: '租車公司', header: t('rental_company') },
                                     { key: '幣別', header: t('currency') },
                                     { key: '個人金額', header: t('personal') },
                                     { key: 'TWD個人金額', header: t('twd_personal'), width: '90px', render: (item: any) => item['TWD個人金額'] ?? 0 },

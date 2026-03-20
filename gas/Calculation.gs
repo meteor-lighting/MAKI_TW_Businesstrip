@@ -174,12 +174,14 @@ function deleteReportItem(payload) {
 function recalculateHeader(reportId) {
     let startDateStr = '';
     // Sum up all categories for this reportId
-    const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
+    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
     
     let totals = {
         '機票費總額': 0,
         '個人住宿費總額': 0,
         '總體住宿費總額': 0,
+        '個人租車費總額': 0,
+        '總體租車費總額': 0,
         '計程車費總額': 0,
         '網路費總額': 0,
         '社交費總額': 0,
@@ -199,7 +201,7 @@ function recalculateHeader(reportId) {
             let sum = 0;
             reportItems.forEach(item => {
                  let val = 0;
-                 if (cat === 'Accommodation') val = Number(item['TWD個人金額']) || 0;
+                 if (cat === 'Accommodation' || cat === 'Rental Car') val = Number(item['TWD個人金額']) || 0;
                  else val = Number(item['TWD金額']) || 0;
                  sum += val;
             });
@@ -215,6 +217,15 @@ function recalculateHeader(reportId) {
                      overallSum += val;
                 });
                 totals['總體住宿費總額'] = overallSum;
+            }
+            if (cat === 'Rental Car') {
+                totals['個人租車費總額'] = sum;
+                let overallSum = 0;
+                 reportItems.forEach(item => {
+                     let val = Number(item['TWD總體金額']) || 0;
+                     overallSum += val;
+                });
+                totals['總體租車費總額'] = overallSum;
             }
             if (cat === 'Taxi') totals['計程車費總額'] = sum;
             if (cat === 'Internet') totals['網路費總額'] = sum;
@@ -269,6 +280,10 @@ function recalculateHeader(reportId) {
                  totalPersonalTWD += totals['個人住宿費總額'];
                  totalOverallTWD += totals['總體住宿費總額'];
              }
+             else if (cat === 'Rental Car') {
+                 totalPersonalTWD += totals['個人租車費總額'];
+                 totalOverallTWD += totals['總體租車費總額'];
+             }
       });
       
       // Get current rate
@@ -289,7 +304,7 @@ function recalculateHeader(reportId) {
       // Calculate Date Range & Duration (And Auto-fetch Rate)
       let allDates = [];
       categories.forEach(cat => {
-        if (cat === 'Accommodation' || cat === 'Per Diem') return;
+        if (cat === 'Accommodation' || cat === 'Per Diem' || cat === 'Rental Car') return;
         try {
           const data = sheetDataToJson(cat);
           const reportItems = data.filter(r => String(r['報告編號']) === String(reportId));
@@ -503,7 +518,7 @@ function updateAllExchangeRates(reportId, startDateStr) {
         return rateCache[currency];
     };
 
-    const categories = ['Flight', 'Accommodation', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
+    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Internet', 'Social', 'Gift', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Others'];
     
     categories.forEach(cat => {
         try {
@@ -537,7 +552,7 @@ function updateAllExchangeRates(reportId, startDateStr) {
                          
                          if (idxRate > -1) sheet.getRange(row, idxRate + 1).setValue(rowRate);
                          
-                         if (cat === 'Accommodation') {
+                         if (cat === 'Accommodation' || cat === 'Rental Car') {
                              if (idxPersonal > -1 && idxTwdPersonal > -1) {
                                  const val = Number(data[i][idxPersonal]) || 0;
                                  sheet.getRange(row, idxTwdPersonal + 1).setValue(Math.round(val * rowRate));
