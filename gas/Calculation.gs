@@ -265,12 +265,17 @@ function recalculateHeader(reportId) {
     if (rowIndex > 0) {
       const headers = headerSheet.getRange(1, 1, 1, headerSheet.getLastColumn()).getValues()[0];
       
-      // Update totals columns
+      // Update totals columns (auto-add missing columns)
       for (const [key, val] of Object.entries(totals)) {
-        const colIdx = headers.indexOf(key);
-        if (colIdx > -1) {
-          headerSheet.getRange(rowIndex, colIdx + 1).setValue(val);
+        let colIdx = headers.indexOf(key);
+        if (colIdx === -1) {
+          // Column doesn't exist yet — append it
+          const newCol = headers.length + 1;
+          headerSheet.getRange(1, newCol).setValue(key);
+          headers.push(key);
+          colIdx = headers.length - 1;
         }
+        headerSheet.getRange(rowIndex, colIdx + 1).setValue(val);
       }
       
       // Recalculate separate totals (Personal vs Overall)
