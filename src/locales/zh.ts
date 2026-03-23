@@ -116,6 +116,9 @@ export const zh = {
         "add_item": "新增項目",
         "delete": "刪除",
         "edit": "編輯",
+        "sequence": "次序",
+        "departure_time": "出發時間",
+        "arrival_time": "抵達時間",
         // Flight Form
         "trip_type": "行程類型",
         "one_way": "單程",
