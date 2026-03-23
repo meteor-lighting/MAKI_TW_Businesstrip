@@ -1,5 +1,6 @@
 import { ReportData, ReportSection, ChartData } from '../types/report';
 import { TFunction } from 'i18next';
+import { formatTimeHHmm } from './formatters';
 
 // Define the raw data structure coming from the API (Report.tsx)
 export interface RawReportData {
@@ -89,13 +90,50 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     const flightTotalTWD = flightItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
     catTotals['Flight'] = flightTotalTWD;
 
-    createSection('Flight', `${t('flight_details')} (Flight Details)`, [
-        { header: t('date'), headerKey: 'date', accessorKey: '日期', width: 15, type: 'date' },
-        { header: t('flight_code'), headerKey: 'flight_code', accessorKey: '航班代號', width: 15 },
-        { header: t('departure'), headerKey: 'departure', accessorKey: '出發地', width: 10 },
-        { header: t('arrival'), headerKey: 'arrival', accessorKey: '抵達地', width: 10 },
-        { header: t('departure_time'), headerKey: 'departure_time', accessorKey: '出發時間', width: 10, type: 'time' },
-        { header: t('arrival_time'), headerKey: 'arrival_time', accessorKey: '抵達時間', width: 10, type: 'time' },
+    // Mutate and pre-format Flight items so DetailTable renders multiline correctly for round-trips
+    const formattedFlightItems = flightItems.map((item: any) => {
+        const formatD = (dStr: any) => {
+            if (!dStr) return '';
+            const d = new Date(dStr);
+            return isNaN(d.getTime()) ? String(dStr) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+        };
+        const formatT = (tStr: any) => {
+            if (!tStr) return '';
+            return formatTimeHHmm(tStr);
+        };
+
+        if (item['行程類型'] === 'round-trip') {
+            return {
+                ...item,
+                '日期_Formatted': formatD(item['日期']) + '\n' + formatD(item['回程日期']),
+                '航班代號_Formatted': `${item['航班代號']}\n${item['回程航班代號'] || ''}`,
+                '出發地_Formatted': `${item['出發地']}\n${item['回程出發地'] || ''}`,
+                '抵達地_Formatted': `${item['抵達地']}\n${item['回程抵達地'] || ''}`,
+                '出發時間_Formatted': formatT(item['出發時間']) + '\n' + formatT(item['回程出發時間']),
+                '抵達時間_Formatted': formatT(item['抵達時間']) + '\n' + formatT(item['回程抵達時間']),
+            };
+        }
+        
+        return {
+            ...item,
+            '日期_Formatted': formatD(item['日期']),
+            '航班代號_Formatted': item['航班代號'],
+            '出發地_Formatted': item['出發地'],
+            '抵達地_Formatted': item['抵達地'],
+            '出發時間_Formatted': formatT(item['出發時間']),
+            '抵達時間_Formatted': formatT(item['抵達時間']),
+        };
+    });
+
+    raw.items['Flight_Display'] = formattedFlightItems;
+
+    createSection('Flight_Display', `${t('flight_details')} (Flight Details)`, [
+        { header: t('date'), headerKey: 'date', accessorKey: '日期_Formatted', width: 15 },
+        { header: t('flight_code'), headerKey: 'flight_code', accessorKey: '航班代號_Formatted', width: 15 },
+        { header: t('departure'), headerKey: 'departure', accessorKey: '出發地_Formatted', width: 10 },
+        { header: t('arrival'), headerKey: 'arrival', accessorKey: '抵達地_Formatted', width: 10 },
+        { header: t('departure_time'), headerKey: 'departure_time', accessorKey: '出發時間_Formatted', width: 10 },
+        { header: t('arrival_time'), headerKey: 'arrival_time', accessorKey: '抵達時間_Formatted', width: 10 },
         { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
         { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'number' },
         { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 15 },

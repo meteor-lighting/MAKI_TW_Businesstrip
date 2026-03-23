@@ -230,14 +230,100 @@ export default function Report() {
                                         render: (item: any) => {
                                             if (!item['日期']) return '';
                                             const d = new Date(item['日期']);
-                                            return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                                            const outD = isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+                                            
+                                            if (item['行程類型'] === 'round-trip' && item['回程日期']) {
+                                                const rd = new Date(item['回程日期']);
+                                                const retD = isNaN(rd.getTime()) ? String(item['回程日期']) : rd.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+                                                return (
+                                                    <div className="flex flex-col gap-1 text-sm">
+                                                        <span>{outD}</span>
+                                                        <span className="text-gray-500 pt-1 border-t border-gray-100">{retD}</span>
+                                                    </div>
+                                                );
+                                            }
+                                            return outD;
                                         }
                                     },
-                                    { key: '航班代號', header: t('flight_code') },
-                                    { key: '出發地', header: t('departure') },
-                                    { key: '抵達地', header: t('arrival') },
-                                    { key: '出發時間', header: t('departure_time'), render: (item: any) => formatTimeHHmm(item['出發時間']) },
-                                    { key: '抵達時間', header: t('arrival_time'), render: (item: any) => formatTimeHHmm(item['抵達時間']) },
+                                    {
+                                        key: '航班代號',
+                                        header: t('flight_code'),
+                                        render: (item: any) => {
+                                            if (item['行程類型'] === 'round-trip') {
+                                                return (
+                                                    <div className="flex flex-col gap-1 text-sm">
+                                                        <span>{item['航班代號']}</span>
+                                                        <span className="text-gray-500 pt-1 border-t border-gray-100">{item['回程航班代號'] || '-'}</span>
+                                                    </div>
+                                                );
+                                            }
+                                            return item['航班代號'];
+                                        }
+                                    },
+                                    {
+                                        key: '出發地',
+                                        header: t('departure'),
+                                        render: (item: any) => {
+                                            if (item['行程類型'] === 'round-trip') {
+                                                return (
+                                                    <div className="flex flex-col gap-1 text-sm">
+                                                        <span>{item['出發地']}</span>
+                                                        <span className="text-gray-500 pt-1 border-t border-gray-100">{item['回程出發地'] || '-'}</span>
+                                                    </div>
+                                                );
+                                            }
+                                            return item['出發地'];
+                                        }
+                                    },
+                                    {
+                                        key: '抵達地',
+                                        header: t('arrival'),
+                                        render: (item: any) => {
+                                            if (item['行程類型'] === 'round-trip') {
+                                                return (
+                                                    <div className="flex flex-col gap-1 text-sm">
+                                                        <span>{item['抵達地']}</span>
+                                                        <span className="text-gray-500 pt-1 border-t border-gray-100">{item['回程抵達地'] || '-'}</span>
+                                                    </div>
+                                                );
+                                            }
+                                            return item['抵達地'];
+                                        }
+                                    },
+                                    {
+                                        key: '出發時間',
+                                        header: t('departure_time'),
+                                        render: (item: any) => {
+                                            const outT = formatTimeHHmm(item['出發時間']);
+                                            if (item['行程類型'] === 'round-trip') {
+                                                const retT = formatTimeHHmm(item['回程出發時間']);
+                                                return (
+                                                    <div className="flex flex-col gap-1 text-sm">
+                                                        <span>{outT}</span>
+                                                        <span className="text-gray-500 pt-1 border-t border-gray-100">{retT || '-'}</span>
+                                                    </div>
+                                                );
+                                            }
+                                            return outT;
+                                        }
+                                    },
+                                    {
+                                        key: '抵達時間',
+                                        header: t('arrival_time'),
+                                        render: (item: any) => {
+                                            const outT = formatTimeHHmm(item['抵達時間']);
+                                            if (item['行程類型'] === 'round-trip') {
+                                                const retT = formatTimeHHmm(item['回程抵達時間']);
+                                                return (
+                                                    <div className="flex flex-col gap-1 text-sm">
+                                                        <span>{outT}</span>
+                                                        <span className="text-gray-500 pt-1 border-t border-gray-100">{retT || '-'}</span>
+                                                    </div>
+                                                );
+                                            }
+                                            return outT;
+                                        }
+                                    },
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount') },
                                     { key: 'TWD金額', header: t('twd_amount') },

@@ -352,6 +352,11 @@ function recalculateHeader(reportId) {
                  let obj = parseDateStr(item['日期']);
                  if (obj && !isNaN(obj.getTime())) allDates.push(obj.getTime());
              }
+
+             if (cat === 'Flight' && item['行程類型'] === 'round-trip' && item['回程日期']) {
+                 let objRet = parseDateStr(item['回程日期']);
+                 if (objRet && !isNaN(objRet.getTime())) allDates.push(objRet.getTime());
+             }
           });
         } catch(e) {}
       });
@@ -388,50 +393,63 @@ function recalculateHeader(reportId) {
              let maxFlightTs = -Infinity;
              
              myFlights.forEach(f => {
-                 let d = f['日期'];
-                 let dateObj = null;
-                 if (d instanceof Date) dateObj = d;
-                 else if (typeof d === 'string') {
-                      let p = d.split(/[-/]/);
-                      if (p.length === 3) dateObj = new Date(p[0], parseInt(p[1], 10) - 1, p[2]);
-                      else dateObj = new Date(d);
+                 const legs = [];
+                 if (f['日期']) {
+                     legs.push({ date: d, depT: f['出發時間'], arrT: f['抵達時間'] });
                  }
-                 
-                 if (dateObj && !isNaN(dateObj.getTime())) {
-                     const parseTimeStr = (tStr) => {
-                         let h = 0, m = 0;
-                         if (!tStr) return {h, m};
-                         let isPM = String(tStr).includes('下午') || /pm/i.test(tStr);
-                         let isAM = String(tStr).includes('上午') || /am/i.test(tStr);
-                         let cleanTime = String(tStr).replace(/[^0-9:]/g, '');
-                         let parts = cleanTime.split(':');
-                         if (parts.length >= 2) {
-                             h = parseInt(parts[0], 10);
-                             m = parseInt(parts[1], 10);
-                             if (isPM && h < 12) h += 12;
-                             if (isAM && h === 12) h = 0;
-                         }
-                         return { h, m };
-                     };
-                     
-                     // Dep
-                     let depT = f['出發時間'];
-                     let dh=0, dm=0;
-                     if (depT instanceof Date) { dh=depT.getHours(); dm=depT.getMinutes(); }
-                     else { const t=parseTimeStr(depT); dh=t.h; dm=t.m; }
-                     let depTs = dateObj.getTime() + dh*3600000 + dm*60000;
-                     
-                     // Arr
-                     let arrT = f['抵達時間'];
-                     let ah=0, am=0;
-                     if (arrT instanceof Date) { ah=arrT.getHours(); am=arrT.getMinutes(); }
-                     else { const t=parseTimeStr(arrT); ah=t.h; am=t.m; }
-                     
-                     if (depTs > maxFlightTs) {
-                         maxFlightTs = depTs;
-                         latestFlightArrivalHour = ah + (am/60);
+                 if (f['行程類型'] === 'round-trip' && f['回程日期']) {
+                     legs.push({ date: f['回程日期'], depT: f['回程出發時間'], arrT: f['回程抵達時間'] });
+                 }
+
+                 legs.forEach(leg => {
+                     let legDateObj = null;
+                     if (leg.date instanceof Date) legDateObj = leg.date;
+                     else if (typeof leg.date === 'string') {
+                          let p = leg.date.split(/[-/]/);
+                          if (p.length === 3) legDateObj = new Date(p[0], parseInt(p[1], 10) - 1, p[2]);
+                          else legDateObj = new Date(leg.date);
                      }
-                 }
+                     
+                     if (legDateObj && !isNaN(legDateObj.getTime())) {
+                         const parseTimeStr = (tStr) => {
+                             let h = 0, m = 0;
+                             if (!tStr) return {h, m};
+                             let isPM = String(tStr).includes('下午') || /pm/i.test(tStr);
+                             let isAM = String(tStr).includes('上午') || /am/i.test(tStr);
+                             let cleanTime = String(tStr).replace(/[^0-9:]/g, '');
+                             let parts = cleanTime.split(':');
+                             if (parts.length >= 2) {
+                                 h = parseInt(parts[0], 10);
+                                 m = parseInt(parts[1], 10);
+                                 if (isPM && h < 12) h += 12;
+                                 if (isAM && h === 12) h = 0;
+                             }
+                             return { h, m };
+                         };
+                         
+                         // Dep
+                         let depT = leg.depT;
+                         let dh=0, dm=0;
+                         if (depT instanceof Date) { dh=depT.getHours(); dm=depT.getMinutes(); }
+                         else { const t=parseTimeStr(depT); dh=t.h; dm=t.m; }
+                         let depTs = legDateObj.getTime() + dh*3600000 + dm*60000;
+                         if (depTs < minFlightTs) {
+                             minFlightTs = depTs;
+                             earliestFlightHour = dh + (dm/60);
+                         }
+                         
+                         // Arr
+                         let arrT = leg.arrT;
+                         let ah=0, am=0;
+                         if (arrT instanceof Date) { ah=arrT.getHours(); am=arrT.getMinutes(); }
+                         else { const t=parseTimeStr(arrT); ah=t.h; am=t.m; }
+                         
+                         if (depTs > maxFlightTs) {
+                             maxFlightTs = depTs;
+                             latestFlightArrivalHour = ah + (am/60);
+                         }
+                     }
+                 });
              });
              
              // Rules

@@ -17,6 +17,13 @@ interface FlightFormData {
     twdAmount: number;
     rate: number;
     note: string;
+    tripType: 'one-way' | 'round-trip';
+    returnDate: string;
+    returnFlightCode: string;
+    returnDeparture: string;
+    returnArrival: string;
+    returnDepTime: string;
+    returnArrTime: string;
 }
 
 interface FlightFormProps {
@@ -45,13 +52,21 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
             arrival: '',
             depTime: '',
             arrTime: '',
-            note: ''
+            note: '',
+            tripType: 'one-way',
+            returnDate: '',
+            returnFlightCode: '',
+            returnDeparture: '',
+            returnArrival: '',
+            returnDepTime: '',
+            returnArrTime: ''
         }
     });
 
     const currency = watch('currency');
     const amount = watch('amount');
     const date = watch('date');
+    const tripType = watch('tripType');
 
     // Rate Calculation Effect
     useEffect(() => {
@@ -141,6 +156,32 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
         // Keeping empty or removing onBlur from input.
     };
 
+    // Return Flight Info Auto-fill
+    useEffect(() => {
+        const returnFlightCode = watch('returnFlightCode');
+        const returnDate = watch('returnDate');
+
+        if (returnFlightCode && returnDate && returnDate.length === 10) {
+            const fetchLocalFlight = async () => {
+                try {
+                    const res = await getAllFlights();
+                    if (res.status === 'success' && res.data) {
+                        const match = searchFlightLocal(returnFlightCode, returnDate, res.data);
+                        if (match) {
+                            setValue('returnDeparture', match.departure);
+                            setValue('returnArrival', match.arrival);
+                            setValue('returnDepTime', match.depTime);
+                            setValue('returnArrTime', match.arrTime);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Flight search failed', e);
+                }
+            };
+            fetchLocalFlight();
+        }
+    }, [watch('returnFlightCode'), watch('returnDate'), setValue]);
+
     const onSubmit = async (data: FlightFormData) => {
         setLoading(true);
         onLoadingChange?.(true);
@@ -159,7 +200,14 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                     '金額': data.amount,
                     'TWD金額': data.twdAmount,
                     '匯率': data.rate,
-                    '備註': data.note
+                    '備註': data.note,
+                    '行程類型': data.tripType,
+                    '回程日期': data.tripType === 'round-trip' ? data.returnDate.replace(/-/g, '/') : '',
+                    '回程航班代號': data.tripType === 'round-trip' ? data.returnFlightCode : '',
+                    '回程出發地': data.tripType === 'round-trip' ? data.returnDeparture : '',
+                    '回程抵達地': data.tripType === 'round-trip' ? data.returnArrival : '',
+                    '回程出發時間': data.tripType === 'round-trip' ? data.returnDepTime : '',
+                    '回程抵達時間': data.tripType === 'round-trip' ? data.returnArrTime : ''
                 }
             });
             console.log('Flight Submitted Payload:', {
@@ -187,6 +235,20 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                     <span className="text-sm text-blue-600 font-medium mt-2">{t('processing')}...</span>
                 </div>
             )}
+
+            <div className="flex gap-4 items-center">
+                <label className="text-sm font-medium text-gray-700">{t('trip_type')}:</label>
+                <div className="flex items-center gap-4">
+                    <label className="inline-flex items-center border border-gray-300 rounded px-3 py-1 cursor-pointer hover:bg-gray-100">
+                        <input type="radio" value="one-way" {...register('tripType')} className="mr-2" disabled={loading || disabled} />
+                        <span className="text-sm">{t('one_way')}</span>
+                    </label>
+                    <label className="inline-flex items-center border border-gray-300 rounded px-3 py-1 cursor-pointer hover:bg-gray-100">
+                        <input type="radio" value="round-trip" {...register('tripType')} className="mr-2" disabled={loading || disabled} />
+                        <span className="text-sm">{t('round_trip')}</span>
+                    </label>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
@@ -248,8 +310,56 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                     <label className="block text-sm font-medium text-gray-700">{t('arrival_time')}</label>
                     <input type="time" {...register('arrTime')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
                 </div>
+            </div>
 
-                {/* Row 3 - Calculated Fields */}
+            {tripType === 'round-trip' && (
+                <div className="bg-blue-50/50 p-4 border border-blue-100 rounded-lg space-y-4">
+                    <h4 className="text-sm font-semibold text-blue-800 border-b border-blue-200 pb-2 mb-2">{t('round_trip')}</h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">{t('return_date')} (YYYY/MM/DD)</label>
+                            <input
+                                type="date"
+                                {...register('returnDate', {
+                                    required: t('please_enter_date')
+                                })}
+                                disabled={loading || disabled}
+                                className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.returnDate ? 'border-red-500' : ''}`}
+                            />
+                            {errors.returnDate && <span className="text-red-500 text-sm">{(errors.returnDate as any).message}</span>}
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">{t('return_flight_code')}</label>
+                            <input type="text" {...register('returnFlightCode', { required: true })} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 uppercase disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white" placeholder="e.g. BR124" />
+                            {errors.returnFlightCode && <span className="text-red-500 text-sm">Required</span>}
+                        </div>
+                        <div className="md:col-span-2"></div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">{t('return_departure')}</label>
+                            <input type="text" {...register('returnDeparture')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 uppercase disabled:bg-gray-100" maxLength={3} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">{t('return_arrival')}</label>
+                            <input type="text" {...register('returnArrival')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 uppercase disabled:bg-gray-100" maxLength={3} />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">{t('return_departure_time')}</label>
+                            <input type="time" {...register('returnDepTime')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">{t('return_arrival_time')}</label>
+                            <input type="time" {...register('returnArrTime')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Row 3 - Calculated Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('exchange_rate')}</label>
                     <input type="number" step="0.0001" {...register('rate', { valueAsNumber: true })} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100" />

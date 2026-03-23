@@ -63,7 +63,7 @@ const DetailTable: React.FC<DetailTableProps> = ({ id, title, total, columns, da
                                     }
 
                                     return (
-                                        <td key={colIndex} className="px-4 py-2 border-r border-slate-300 last:border-r-0 text-slate-800 font-medium">
+                                        <td key={colIndex} className="px-4 py-2 border-r border-slate-300 last:border-r-0 text-slate-800 font-medium whitespace-pre-wrap">
                                             {cellValue}
                                         </td>
                                     );
