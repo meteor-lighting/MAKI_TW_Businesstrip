@@ -282,7 +282,7 @@ const Dashboard: React.FC = () => {
                     <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-fade-in-up">
                         <div className="flex items-center gap-3 mb-4 text-red-600">
                             <Trash2 className="w-6 h-6" />
-                            <h3 className="text-lg font-bold">刪除報告 {reportToDelete.reportId}</h3>
+                            <h3 className="text-lg font-bold">刪除報告 {reportToDelete.reportName || reportToDelete.reportId}</h3>
                         </div>
                         <p className="text-gray-600 mb-6">
                             {t('confirm_delete_report')}

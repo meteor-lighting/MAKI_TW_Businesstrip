@@ -97,10 +97,34 @@ function doPost(e) {
 function getReportFullData(payload) {
   // payload: { reportId }
   const reportId = payload.reportId;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
   
+  // Create sheet mapping for O(1) sheet retrieval and cache them
+  const allSheets = ss.getSheets();
+  const sheetMap = {};
+  allSheets.forEach(s => sheetMap[s.getName()] = s);
+
   // 1. Get Header
-  const headerData = sheetDataToJson('Report Header');
-  const header = headerData.find(r => String(r['報告編號']) === String(reportId));
+  const headerSheet = sheetMap['Report Header'];
+  if (!headerSheet) return { status: 'error', message: 'Report Header sheet not found' };
+  
+  const headerDataRaw = headerSheet.getDataRange().getValues();
+  if (headerDataRaw.length < 2) return { status: 'error', message: 'Report not found' };
+  
+  const hCols = headerDataRaw[0];
+  let header = null;
+  const idIdx = hCols.indexOf('報告編號');
+  
+  if (idIdx === -1) return { status: 'error', message: 'Invalid Report Header sheet structure' };
+  
+  for (let i = 1; i < headerDataRaw.length; i++) {
+     if (String(headerDataRaw[i][idIdx]) === String(reportId)) {
+         let obj = {};
+         hCols.forEach((col, idx) => obj[col] = headerDataRaw[i][idx]);
+         header = obj;
+         break;
+     }
+  }
   
   if (!header) {
       return { status: 'error', message: 'Report not found' };
@@ -109,13 +133,25 @@ function getReportFullData(payload) {
   // Populate true user name if missing
   if (!header['員工姓名'] || header['員工姓名'] === '') {
       try {
-          const memberData = sheetDataToJson('Member');
-          const member = memberData.find(m => String(m['用戶編號']) === String(header['用戶編號']));
-          if (member) {
-              header['員工姓名'] = member['用戶名稱'];
+          const memberSheet = sheetMap['Member'];
+          if (memberSheet) {
+              const memberRaw = memberSheet.getDataRange().getValues();
+              if (memberRaw.length >= 2) {
+                  const mCols = memberRaw[0];
+                  const mIdIdx = mCols.indexOf('用戶編號');
+                  const mNameIdx = mCols.indexOf('用戶名稱');
+                  if (mIdIdx !== -1 && mNameIdx !== -1) {
+                      for (let i = 1; i < memberRaw.length; i++) {
+                         if (String(memberRaw[i][mIdIdx]) === String(header['用戶編號'])) {
+                             header['員工姓名'] = memberRaw[i][mNameIdx];
+                             break;
+                         }
+                      }
+                  }
+              }
           }
       } catch (e) {
-          console.warn('Could not fetch Member data for getReportFullData');
+          console.warn('Could not fetch Member data for getReportFullData', e);
       }
   }
   
@@ -124,17 +160,37 @@ function getReportFullData(payload) {
   const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
   
   categories.forEach(cat => {
-      try {
-          const catData = sheetDataToJson(cat); 
-          // Filter by reportId and sort by '次序'
-          const reportItems = catData
-            .filter(r => String(r['報告編號']) === String(reportId))
-            .sort((a, b) => parseInt(a['次序']) - parseInt(b['次序']));
-            
-          items[cat] = reportItems;
-      } catch (e) {
-          items[cat] = [];
+      let reportItems = [];
+      const sheet = sheetMap[cat];
+      
+      if (sheet) {
+          try {
+              const dataVals = sheet.getDataRange().getValues();
+              if (dataVals.length >= 2) {
+                  const cols = dataVals[0];
+                  const rIdx = cols.indexOf('報告編號');
+                  const oIdx = cols.indexOf('次序');
+                  
+                  if (rIdx !== -1) {
+                      for (let i = 1; i < dataVals.length; i++) {
+                          if (String(dataVals[i][rIdx]) === String(reportId)) {
+                              let obj = {};
+                              cols.forEach((col, idx) => obj[col] = dataVals[i][idx]);
+                              reportItems.push(obj);
+                          }
+                      }
+                      
+                      // Sort by sequence if applicable
+                      if (oIdx !== -1) {
+                          reportItems.sort((a, b) => parseInt(a['次序'] || 0) - parseInt(b['次序'] || 0));
+                      }
+                  }
+              }
+          } catch (e) {
+              console.warn(`Error processing category ${cat}`, e);
+          }
       }
+      items[cat] = reportItems;
   });
 
   return {
