@@ -8,6 +8,7 @@ export interface ReportSummary {
     period: string;
     days: number;
     rateUSD: number;
+    reportName?: string;
     headerDetails?: {
         currency: string;
         personalAmount: string;

@@ -49,6 +49,7 @@ export default function Report() {
     const [loading, setLoading] = useState(true);
     const [loadingCount, setLoadingCount] = useState(0);
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+    const [localReportName, setLocalReportName] = useState('');
 
     const handleLoadingChange = useCallback((isLoading: boolean) => {
         setLoadingCount(prev => isLoading ? prev + 1 : Math.max(0, prev - 1));
@@ -109,6 +110,7 @@ export default function Report() {
             const res = await sendRequest('getReport', { reportId: id });
             if (res.status === 'success') {
                 setReportData(res.data);
+                setLocalReportName(res.data.header['報告名稱'] || '');
             }
         } catch (e) {
             console.error(e);
@@ -121,6 +123,29 @@ export default function Report() {
 
     const handleItemChanged = async () => {
         if (reportId) await fetchReportData(reportId);
+    };
+
+    const handleSaveReportName = async () => {
+        if (reportData && localReportName !== (reportData.header['報告名稱'] || '')) {
+            try {
+                handleLoadingChange(true);
+                await sendRequest('updateReportName', {
+                    reportId,
+                    reportName: localReportName
+                });
+                setReportData({
+                    ...reportData,
+                    header: {
+                        ...reportData.header,
+                        '報告名稱': localReportName
+                    }
+                });
+            } catch (e) {
+                console.error(e);
+            } finally {
+                handleLoadingChange(false);
+            }
+        }
     };
 
 
@@ -140,9 +165,19 @@ export default function Report() {
         <div className="min-h-screen bg-gray-100 p-4 md:p-8 pb-32">
             <ChangePasswordModal isOpen={isChangePasswordModalOpen} onClose={() => setIsChangePasswordModalOpen(false)} />
             <div className="max-w-7xl mx-auto">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-800">{t('app_title')} - {reportId}</h1>
-                    <div className="flex items-center gap-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <div className="flex-1 w-full md:w-auto">
+                        <input
+                            type="text"
+                            value={localReportName}
+                            onChange={(e) => setLocalReportName(e.target.value)}
+                            onBlur={handleSaveReportName}
+                            placeholder={t('app_title')}
+                            disabled={loadingCount > 0}
+                            className="text-2xl font-bold text-gray-800 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none w-full max-w-lg transition-colors placeholder-gray-400 py-1"
+                        />
+                    </div>
+                    <div className="flex items-center gap-4 shrink-0">
                         <button
                             onClick={() => navigate('/dashboard')}
                             className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 flex items-center gap-2 transition"

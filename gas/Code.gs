@@ -46,6 +46,9 @@ function doPost(e) {
       case 'updateReportStatus': // Lock or unlock a report
         result = updateReportStatus(payload);
         break;
+      case 'updateReportName': // Update report custom name
+        result = updateReportName(payload);
+        break;
       
       // Items CRUD
       case 'addItem':
@@ -179,7 +182,8 @@ function getUserReports(payload) {
         startDate: r['商旅起始日'],
         endDate: r['商旅結束日'],
         status: r['狀態'],
-        createdAt: r['建立時間']
+        createdAt: r['建立時間'],
+        reportName: r['報告名稱']
       }))
       // Sort by creation date descending
       .sort((a, b) => {
@@ -326,6 +330,53 @@ function updateReportStatus(payload) {
       headerSheet.getRange(rowIndex, statusIdx + 1).setValue(status || '');
       SpreadsheetApp.flush();
       return { status: 'success', message: 'Status updated successfully' };
+    } catch(e) {
+      return { status: 'error', message: e.toString() };
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { status: 'error', message: 'System busy, try again later' };
+  }
+}
+
+function updateReportName(payload) {
+  const reportId = payload.reportId;
+  const reportName = payload.reportName;
+  
+  if (!reportId) return { status: 'error', message: 'Missing reportId' };
+  
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(10000)) {
+    try {
+      const headerSheet = getSheet('Report Header');
+      const data = headerSheet.getDataRange().getValues();
+      const headers = data[0];
+      const idIdx = headers.indexOf('報告編號');
+      const nameIdx = headers.indexOf('報告名稱');
+      
+      if (idIdx === -1) {
+        return { status: 'error', message: 'Headers not found' };
+      }
+      if (nameIdx === -1) {
+        return { status: 'error', message: 'Please add 報告名稱 column to Report Header sheet' };
+      }
+      
+      let rowIndex = -1;
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][idIdx]) === String(reportId)) {
+          rowIndex = i + 1;
+          break;
+        }
+      }
+      
+      if (rowIndex === -1) {
+        return { status: 'error', message: 'Report not found' };
+      }
+      
+      headerSheet.getRange(rowIndex, nameIdx + 1).setValue(reportName || '');
+      SpreadsheetApp.flush();
+      return { status: 'success', message: 'Report name updated successfully' };
     } catch(e) {
       return { status: 'error', message: e.toString() };
     } finally {

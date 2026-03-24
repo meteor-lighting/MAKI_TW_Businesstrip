@@ -15,6 +15,7 @@ interface ReportSummary {
     status?: string;
     createdAt: string;
     userName?: string;
+    reportName?: string;
 }
 
 const Dashboard: React.FC = () => {
@@ -193,7 +194,7 @@ const Dashboard: React.FC = () => {
                                 <div className="flex flex-col gap-2">
                                     <span className={`text-xs font-semibold px-2 py-1 rounded inline-block w-max
                                         ${report.status ? 'bg-gray-200 text-gray-600' : 'bg-blue-50 text-blue-600'}`}>
-                                        {report.reportId}
+                                        {report.reportName || report.reportId}
                                     </span>
                                     {user?.role === 'admin' && report.userName && (
                                         <span className="text-xs font-semibold px-2 py-0.5 rounded inline-block w-max bg-purple-100 text-purple-700">
