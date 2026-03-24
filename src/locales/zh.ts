@@ -129,6 +129,7 @@ export const zh = {
         "return_arrival": "回程抵達地",
         "return_departure_time": "回程出發時間",
         "return_arrival_time": "回程抵達時間",
+        "total_amount_text": "總額",
         "personal_total": "個人",
         "overall_total": "總體總額",
         "processing": "處理中",
