@@ -21,12 +21,14 @@ interface PerDiemFormProps {
     reportId: string;
     headerRate?: number;
     tripStartDate?: string;
+    tripEndDate?: string;
+    flights?: any[];
     onSubmitSuccess: () => Promise<void> | void;
     onLoadingChange?: (loading: boolean) => void;
     disabled?: boolean;
 }
 
-export default function PerDiemForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false }: PerDiemFormProps) {
+export default function PerDiemForm({ reportId, headerRate, tripStartDate, tripEndDate, flights, onSubmitSuccess, onLoadingChange, disabled = false }: PerDiemFormProps) {
     const { t } = useTranslation();
     const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<PerDiemFormData>({
         defaultValues: {
@@ -48,6 +50,16 @@ export default function PerDiemForm({ reportId, headerRate, tripStartDate, onSub
     const startDate = watch('startDate');
     const endDate = watch('endDate');
 
+    // Auto-fill Dates
+    useEffect(() => {
+        if (tripStartDate && tripStartDate !== '-' && !startDate) {
+            setValue('startDate', tripStartDate.replace(/\//g, '-'));
+        }
+        if (tripEndDate && tripEndDate !== '-' && !endDate) {
+            setValue('endDate', tripEndDate.replace(/\//g, '-'));
+        }
+    }, [tripStartDate, tripEndDate, startDate, endDate, setValue]);
+
     // Auto-calculate Total Amount based on Dates and Daily Amount
     useEffect(() => {
         if (startDate && endDate && dailyAmount !== '') {
@@ -59,13 +71,101 @@ export default function PerDiemForm({ reportId, headerRate, tripStartDate, onSub
             if (!isNaN(numStart) && !isNaN(numEnd) && numEnd >= numStart) {
                 const diffTime = Math.abs(numEnd - numStart);
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end days
+                
+                // --- Dynamic Deductions based on Flights ---
+                let startDeduction = 0;
+                let endDeduction = 0;
+
+                if (flights && flights.length > 0) {
+                    let earliestFlightHour = -1;
+                    let minFlightTs = Infinity;
+                    let latestFlightArrivalHour = -1;
+                    let maxFlightTs = -Infinity;
+
+                    flights.forEach((f: any) => {
+                        const legs = [];
+                        if (f['日期']) {
+                            legs.push({ date: f['日期'], depT: f['出發時間'], arrT: f['抵達時間'] });
+                        }
+                        if (f['行程類型'] === 'round-trip' && f['回程日期']) {
+                            legs.push({ date: f['回程日期'], depT: f['回程出發時間'], arrT: f['回程抵達時間'] });
+                        }
+
+                        legs.forEach(leg => {
+                            let legDateObj = new Date(leg.date);
+                            if (!isNaN(legDateObj.getTime())) {
+                                const parseTimeStr = (tStr: any) => {
+                                    let h = 0, m = 0;
+                                    if (!tStr) return { h, m };
+                                    let isPM = String(tStr).includes('下午') || /pm/i.test(tStr as string);
+                                    let isAM = String(tStr).includes('上午') || /am/i.test(tStr as string);
+                                    let cleanTime = String(tStr).replace(/[^0-9:]/g, '');
+                                    let parts = cleanTime.split(':');
+                                    if (parts.length >= 2) {
+                                        h = parseInt(parts[0], 10);
+                                        m = parseInt(parts[1], 10);
+                                        if (isPM && h < 12) h += 12;
+                                        if (isAM && h === 12) h = 0;
+                                    }
+                                    return { h, m };
+                                };
+
+                                let depT = leg.depT;
+                                let dh = 0, dm = 0;
+                                if (depT instanceof Date) { dh = (depT as Date).getHours(); dm = (depT as Date).getMinutes(); }
+                                else { const t = parseTimeStr(depT); dh = t.h; dm = t.m; }
+                                let depTs = legDateObj.getTime() + dh * 3600000 + dm * 60000;
+                                
+                                if (depTs < minFlightTs) {
+                                    minFlightTs = depTs;
+                                    earliestFlightHour = dh + (dm / 60);
+                                }
+
+                                let arrT = leg.arrT;
+                                let ah = 0, am = 0;
+                                if (arrT instanceof Date) { ah = (arrT as Date).getHours(); am = (arrT as Date).getMinutes(); }
+                                else { const t = parseTimeStr(arrT); ah = t.h; am = t.m; }
+                                
+                                if (depTs > maxFlightTs) {
+                                    maxFlightTs = depTs;
+                                    latestFlightArrivalHour = ah + (am / 60);
+                                }
+                            }
+                        });
+                    });
+
+                    if (earliestFlightHour >= 14) startDeduction = 0.5;
+                    if (latestFlightArrivalHour > -1 && latestFlightArrivalHour <= 12) endDeduction = 0.5;
+                }
+
+                let effectiveDays = diffDays;
+                
+                const formStartStr = start.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+                const formEndStr = end.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+                
+                const normalizeDate = (dStr?: string) => {
+                    if (!dStr || dStr === '-') return '';
+                    const d = new Date(dStr);
+                    return isNaN(d.getTime()) ? '' : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
+                };
+
+                if (formStartStr === normalizeDate(tripStartDate) && startDeduction > 0) {
+                    effectiveDays -= startDeduction;
+                }
+                
+                if (formEndStr === normalizeDate(tripEndDate) && endDeduction > 0) {
+                    effectiveDays -= endDeduction;
+                }
+                
+                if (effectiveDays < 0) effectiveDays = 0;
+
                 const numericDaily = Number(dailyAmount);
                 if (!isNaN(numericDaily)) {
-                    setValue('amount', (diffDays * numericDaily).toFixed(2));
+                    setValue('amount', (effectiveDays * numericDaily).toFixed(2));
                 }
             }
         }
-    }, [startDate, endDate, dailyAmount, setValue]);
+    }, [startDate, endDate, dailyAmount, setValue, tripStartDate, tripEndDate, flights]);
 
     // Rate Calculation Effect
     useEffect(() => {

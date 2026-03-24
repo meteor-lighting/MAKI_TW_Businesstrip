@@ -922,6 +922,8 @@ export default function Report() {
                             reportId={reportId}
                             headerRate={Number(reportData?.header['USD匯率'] || 0)}
                             tripStartDate={reportData?.header['商旅起始日']}
+                            tripEndDate={reportData?.header['商旅結束日']}
+                            flights={reportData?.items?.Flight || []}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
