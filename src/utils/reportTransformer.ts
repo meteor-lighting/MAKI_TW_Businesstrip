@@ -137,7 +137,8 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
         { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'number' },
         { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 15 },
-        { header: t('twd_amount'), headerKey: 'twd_amount', accessorKey: 'TWD金額', width: 10, type: 'currency' }
+        { header: t('twd_amount'), headerKey: 'twd_amount', accessorKey: 'TWD金額', width: 10, type: 'currency' },
+        { header: t('remark'), headerKey: 'remark', accessorKey: '備註', width: 20 }
     ], 'flight', flightTotalTWD);
 
     // Accommodation Sheet Headers: ..., TWD個人金額, TWD代墊金額, 總體金額, TWD總體金額...
@@ -158,7 +159,8 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: t('per_person_per_day'), headerKey: 'per_person_per_day', accessorKey: '每人每天金額', width: 12, type: 'currency' },
         { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 8 },
         { header: t('twd_personal'), headerKey: 'twd_personal', accessorKey: 'TWD個人金額', width: 12, type: 'currency' },
-        { header: t('twd_overall'), headerKey: 'twd_overall', accessorKey: 'TWD總體金額', width: 12, type: 'currency' }
+        { header: t('twd_overall'), headerKey: 'twd_overall', accessorKey: 'TWD總體金額', width: 12, type: 'currency' },
+        { header: t('remark'), headerKey: 'remark', accessorKey: '備註', width: 20 }
     ], 'accommodation', accommodationTotalTWD);
 
     // Rental Car 
@@ -177,7 +179,8 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: t('per_person_per_day'), headerKey: 'per_person_per_day', accessorKey: '每人每天金額', width: 12, type: 'currency' },
         { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 8 },
         { header: t('twd_personal'), headerKey: 'twd_personal', accessorKey: 'TWD個人金額', width: 12, type: 'currency' },
-        { header: t('twd_overall'), headerKey: 'twd_overall', accessorKey: 'TWD總體金額', width: 12, type: 'currency' }
+        { header: t('twd_overall'), headerKey: 'twd_overall', accessorKey: 'TWD總體金額', width: 12, type: 'currency' },
+        { header: t('remark'), headerKey: 'remark', accessorKey: '備註', width: 20 }
     ], 'rentalCar', rentalCarTotalTWD);
 
     // Taxi Sheet Headers: ..., 幣別, 金額, TWD金額, 匯率, 備註
