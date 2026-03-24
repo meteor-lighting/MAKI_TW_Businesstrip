@@ -287,6 +287,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         reportId,
         user: userName,
         summary: {
+            reportName: header['報告名稱'] || '',
             totalTWD,
             personalTWD,
             avgDayTWD,
