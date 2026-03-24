@@ -395,7 +395,7 @@ function recalculateHeader(reportId) {
              myFlights.forEach(f => {
                  const legs = [];
                  if (f['日期']) {
-                     legs.push({ date: d, depT: f['出發時間'], arrT: f['抵達時間'] });
+                     legs.push({ date: f['日期'], depT: f['出發時間'], arrT: f['抵達時間'] });
                  }
                  if (f['行程類型'] === 'round-trip' && f['回程日期']) {
                      legs.push({ date: f['回程日期'], depT: f['回程出發時間'], arrT: f['回程抵達時間'] });
@@ -453,8 +453,9 @@ function recalculateHeader(reportId) {
              });
              
              // Rules
-             if (earliestFlightHour > 14) diffDays -= 0.5;
-             if (latestFlightArrivalHour > -1 && latestFlightArrivalHour < 12 && diffDays > 1) diffDays -= 0.5;
+             if (earliestFlightHour >= 14) diffDays -= 0.5;
+             if (latestFlightArrivalHour > -1 && latestFlightArrivalHour <= 12) diffDays -= 0.5;
+             if (diffDays < 0) diffDays = 0;
              
           } catch(e) {
               Logger.log('Flight time adjustment error: ' + e);
