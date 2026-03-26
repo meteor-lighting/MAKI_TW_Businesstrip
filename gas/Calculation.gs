@@ -138,14 +138,21 @@ function deleteReportItem(payload) {
     try {
         const sheet = getSheet(category);
         const data = sheet.getDataRange().getValues(); // Get all data
-        // Columns needed: Index 0 (ReportId), Index 1 (Seq).
-        // Find row to delete. Row index matches data array index + 1
+        if (data.length < 2) return { status: 'error', message: 'Item not found' };
+        
+        const headers = data[0];
+        const rIdx = headers.indexOf('報告編號');
+        const sIdx = headers.indexOf('次序');
+        
+        if (rIdx === -1 || sIdx === -1) {
+            return { status: 'error', message: 'Invalid sheet structure' };
+        }
         
         // Find the specific row
         let deleteRowIndex = -1;
         
         for (let i = 1; i < data.length; i++) { // Skip header
-            if (String(data[i][0]) === String(reportId) && String(data[i][1]) === String(sequence)) {
+            if (String(data[i][rIdx]) === String(reportId) && String(data[i][sIdx]) === String(sequence)) {
                 deleteRowIndex = i + 1; // logical row number
                 break;
             }
