@@ -77,19 +77,23 @@ function addReportItem(payload) {
   if (lock.tryLock(10000)) {
       try {
           // 1. Get current items in this category for this report to determine 'Sequence'
-          const allData = getDataRows(category);
-          // Filter valid rows for this reportId
-          const reportRows = allData.filter(r => String(r[0]) === String(reportId));
-          
+          const sheet = getSheet(category);
+          const data = sheet.getDataRange().getValues();
+          const headers = data[0] || [];
+          const rIdx = headers.indexOf('報告編號');
+          const sIdx = headers.indexOf('次序');
           let nextSeq = 1;
-          if (reportRows.length > 0) {
-              const maxSeq = Math.max(...reportRows.map(r => Number(r[1]) || 0));
-              nextSeq = maxSeq + 1;
+          
+          if (rIdx !== -1 && sIdx !== -1 && data.length > 1) {
+              const reportRows = data.slice(1).filter(r => String(r[rIdx]) === String(reportId));
+              if (reportRows.length > 0) {
+                  const maxSeq = Math.max(...reportRows.map(r => Number(r[sIdx]) || 0));
+                  nextSeq = maxSeq + 1;
+              }
           }
           
           // 2. Prepare Row Data based on Sheet Headers
-          const sheet = getSheet(category);
-          const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
           
           const newRow = headers.map(header => {
               if (header === '報告編號') return reportId;
@@ -124,9 +128,58 @@ function addReportItem(payload) {
 }
 
 function updateReportItem(payload) {
-    // ... item update logic ...
-    // Note: Implementing minimal update logic if needed, or placeholder
-    return { status: 'success' };
+    // payload: { reportId, category, sequence, itemData }
+    const { reportId, category, sequence, itemData } = payload;
+    if (!reportId || !category || !sequence || !itemData) return { status: 'error', message: 'Missing params' };
+    
+    const lock = LockService.getScriptLock();
+    if (lock.tryLock(10000)) {
+        try {
+            const sheet = getSheet(category);
+            const data = sheet.getDataRange().getValues();
+            if (data.length < 2) return { status: 'error', message: 'Item not found' };
+            
+            const headers = data[0];
+            const rIdx = headers.indexOf('報告編號');
+            const sIdx = headers.indexOf('次序');
+            
+            if (rIdx === -1 || sIdx === -1) {
+                return { status: 'error', message: 'Invalid sheet structure' };
+            }
+            
+            let updateRowIndex = -1;
+            for (let i = 1; i < data.length; i++) {
+                if (String(data[i][rIdx]) === String(reportId) && String(data[i][sIdx]) === String(sequence)) {
+                    updateRowIndex = i + 1; // 1-based row index
+                    break;
+                }
+            }
+            
+            if (updateRowIndex === -1) {
+                return { status: 'error', message: 'Item not found' };
+            }
+            
+            const updatedRow = headers.map(header => {
+                if (header === '報告編號') return reportId;
+                if (header === '次序') return sequence;
+                return itemData[header] !== undefined ? itemData[header] : ''; 
+            });
+            
+            sheet.getRange(updateRowIndex, 1, 1, headers.length).setValues([updatedRow]);
+            
+            SpreadsheetApp.flush();
+            const startDateStr = recalculateHeader(reportId);
+            updateAllExchangeRates(reportId, startDateStr);
+            recalculateHeader(reportId);
+            SpreadsheetApp.flush();
+            
+            return { status: 'success' };
+        } finally {
+            lock.releaseLock();
+        }
+    } else {
+        return { status: 'error', message: 'Busy' };
+    }
 }
 
 function deleteReportItem(payload) {

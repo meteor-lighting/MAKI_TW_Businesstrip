@@ -22,9 +22,11 @@ interface GiftFormProps {
     onSubmitSuccess: () => Promise<void> | void;
     onLoadingChange?: (loading: boolean) => void;
     disabled?: boolean;
+    editingItem?: any;
+    onCancelEdit?: () => void;
 }
 
-export default function GiftForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false }: GiftFormProps) {
+export default function GiftForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false, editingItem, onCancelEdit }: GiftFormProps) {
     const { t } = useTranslation();
     const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<GiftFormData>({
         defaultValues: {
@@ -42,6 +44,18 @@ export default function GiftForm({ reportId, headerRate, tripStartDate, onSubmit
     const currency = watch('currency');
     const amount = watch('amount');
     const date = watch('date');
+
+    useEffect(() => {
+        if (editingItem) {
+            setValue('date', (editingItem['日期'] || '').replace(/\//g, '-'));
+            setValue('region', editingItem['地區'] || '');
+            setValue('currency', editingItem['幣別'] || 'TWD');
+            setValue('amount', editingItem['金額'] || '');
+            setValue('twdAmount', editingItem['TWD金額'] || 0);
+            setValue('rate', editingItem['匯率'] || 1);
+            setValue('note', editingItem['備註'] || '');
+        }
+    }, [editingItem, setValue]);
 
     // Rate Calculation Effect
     useEffect(() => {
@@ -98,19 +112,31 @@ export default function GiftForm({ reportId, headerRate, tripStartDate, onSubmit
         setLoading(true);
         onLoadingChange?.(true);
         try {
-            await sendRequest('addItem', {
-                reportId,
-                category: 'Gift',
-                itemData: {
-                    '日期': data.date.replace(/-/g, '/'),
-                    '地區': data.region,
-                    '幣別': data.currency,
-                    '金額': data.amount,
-                    'TWD金額': data.twdAmount,
-                    '匯率': data.rate,
-                    '備註': data.note
-                }
-            });
+            const payloadData = {
+                '日期': data.date.replace(/-/g, '/'),
+                '地區': data.region,
+                '幣別': data.currency,
+                '金額': data.amount,
+                'TWD金額': data.twdAmount,
+                '匯率': data.rate,
+                '備註': data.note
+            };
+
+            if (editingItem) {
+                await sendRequest('updateItem', {
+                    reportId,
+                    category: 'Gift',
+                    sequence: editingItem['次序'],
+                    itemData: payloadData
+                });
+                if (onCancelEdit) onCancelEdit();
+            } else {
+                await sendRequest('addItem', {
+                    reportId,
+                    category: 'Gift',
+                    itemData: payloadData
+                });
+            }
             await onSubmitSuccess();
             setValue('amount', '');
             setValue('twdAmount', 0);
@@ -203,7 +229,22 @@ export default function GiftForm({ reportId, headerRate, tripStartDate, onSubmit
                 </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end pt-2 gap-2">
+                {editingItem && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (onCancelEdit) onCancelEdit();
+                            setValue('amount', '');
+                            setValue('date', '');
+                            setValue('note', '');
+                        }}
+                        disabled={loading || disabled}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 disabled:opacity-50"
+                    >
+                        {t('cancel', '取消')}
+                    </button>
+                )}
                 <button
                     type="submit"
                     disabled={loading || disabled || rateLoading}
@@ -215,7 +256,7 @@ export default function GiftForm({ reportId, headerRate, tripStartDate, onSubmit
                             <span>{t('saving')}...</span>
                         </>
                     ) : (
-                        t('add')
+                        editingItem ? t('save_changes', '儲存變更') : t('add')
                     )}
                 </button>
             </div>

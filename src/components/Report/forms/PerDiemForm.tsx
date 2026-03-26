@@ -26,9 +26,11 @@ interface PerDiemFormProps {
     onSubmitSuccess: () => Promise<void> | void;
     onLoadingChange?: (loading: boolean) => void;
     disabled?: boolean;
+    editingItem?: any;
+    onCancelEdit?: () => void;
 }
 
-export default function PerDiemForm({ reportId, headerRate, tripStartDate, tripEndDate, flights, onSubmitSuccess, onLoadingChange, disabled = false }: PerDiemFormProps) {
+export default function PerDiemForm({ reportId, headerRate, tripStartDate, tripEndDate, flights, onSubmitSuccess, onLoadingChange, disabled = false, editingItem, onCancelEdit }: PerDiemFormProps) {
     const { t } = useTranslation();
     const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<PerDiemFormData>({
         defaultValues: {
@@ -49,6 +51,20 @@ export default function PerDiemForm({ reportId, headerRate, tripStartDate, tripE
     const amount = watch('amount');
     const startDate = watch('startDate');
     const endDate = watch('endDate');
+
+    useEffect(() => {
+        if (editingItem) {
+            setValue('startDate', (editingItem['開始日期'] || '').replace(/\//g, '-'));
+            setValue('endDate', (editingItem['結束日期'] || '').replace(/\//g, '-'));
+            setValue('region', editingItem['地區'] || '');
+            setValue('currency', editingItem['幣別'] || 'TWD');
+            setValue('dailyAmount', editingItem['每日金額'] || '');
+            setValue('amount', editingItem['金額'] || '');
+            setValue('twdAmount', editingItem['TWD金額'] || 0);
+            setValue('rate', editingItem['匯率'] || 1);
+            setValue('note', editingItem['備註'] || '');
+        }
+    }, [editingItem, setValue]);
 
     // Auto-fill Dates
     useEffect(() => {
@@ -222,21 +238,33 @@ export default function PerDiemForm({ reportId, headerRate, tripStartDate, tripE
         setLoading(true);
         onLoadingChange?.(true);
         try {
-            await sendRequest('addItem', {
-                reportId,
-                category: 'Per Diem',
-                itemData: {
-                    '開始日期': data.startDate.replace(/-/g, '/'),
-                    '結束日期': data.endDate.replace(/-/g, '/'),
-                    '地區': data.region,
-                    '幣別': data.currency,
-                    '每日金額': data.dailyAmount,
-                    '金額': data.amount,
-                    'TWD金額': data.twdAmount,
-                    '匯率': data.rate,
-                    '備註': data.note
-                }
-            });
+            const payloadData = {
+                '開始日期': data.startDate.replace(/-/g, '/'),
+                '結束日期': data.endDate.replace(/-/g, '/'),
+                '地區': data.region,
+                '幣別': data.currency,
+                '每日金額': data.dailyAmount,
+                '金額': data.amount,
+                'TWD金額': data.twdAmount,
+                '匯率': data.rate,
+                '備註': data.note
+            };
+
+            if (editingItem) {
+                await sendRequest('updateItem', {
+                    reportId,
+                    category: 'Per Diem',
+                    sequence: editingItem['次序'],
+                    itemData: payloadData
+                });
+                if (onCancelEdit) onCancelEdit();
+            } else {
+                await sendRequest('addItem', {
+                    reportId,
+                    category: 'Per Diem',
+                    itemData: payloadData
+                });
+            }
             await onSubmitSuccess();
             setValue('dailyAmount', '');
             setValue('amount', '');
@@ -355,7 +383,24 @@ export default function PerDiemForm({ reportId, headerRate, tripStartDate, tripE
                 </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end pt-2 gap-2">
+                {editingItem && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (onCancelEdit) onCancelEdit();
+                            setValue('dailyAmount', '');
+                            setValue('amount', '');
+                            setValue('startDate', '');
+                            setValue('endDate', '');
+                            setValue('note', '');
+                        }}
+                        disabled={loading || disabled}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 disabled:opacity-50"
+                    >
+                        {t('cancel', '取消')}
+                    </button>
+                )}
                 <button
                     type="submit"
                     disabled={loading || disabled || rateLoading}
@@ -367,7 +412,7 @@ export default function PerDiemForm({ reportId, headerRate, tripStartDate, tripE
                             <span>{t('saving')}...</span>
                         </>
                     ) : (
-                        t('add')
+                        editingItem ? t('save_changes', '儲存變更') : t('add')
                     )}
                 </button>
             </div>

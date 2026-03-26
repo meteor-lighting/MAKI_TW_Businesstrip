@@ -23,9 +23,11 @@ interface LunchLearnFormProps {
     onSubmitSuccess: () => Promise<void> | void;
     onLoadingChange?: (loading: boolean) => void;
     disabled?: boolean;
+    editingItem?: any;
+    onCancelEdit?: () => void;
 }
 
-export default function LunchLearnForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false }: LunchLearnFormProps) {
+export default function LunchLearnForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false, editingItem, onCancelEdit }: LunchLearnFormProps) {
     const { t } = useTranslation();
     const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<LunchLearnFormData>({
         defaultValues: {
@@ -45,6 +47,19 @@ export default function LunchLearnForm({ reportId, headerRate, tripStartDate, on
     const currency = watch('currency');
     const amount = watch('amount');
     const date = watch('date');
+
+    useEffect(() => {
+        if (editingItem) {
+            setValue('date', (editingItem['日期'] || '').replace(/\//g, '-'));
+            setValue('region', editingItem['地區'] || '');
+            setValue('currency', editingItem['幣別'] || 'TWD');
+            setValue('amount', editingItem['金額'] || '');
+            setValue('twdAmount', editingItem['TWD金額'] || 0);
+            setValue('rate', editingItem['匯率'] || 1);
+            setValue('dealer', editingItem['經銷商'] || '');
+            setValue('headcount', editingItem['人數'] || '');
+        }
+    }, [editingItem, setValue]);
 
     // Rate Calculation Effect
     useEffect(() => {
@@ -101,20 +116,32 @@ export default function LunchLearnForm({ reportId, headerRate, tripStartDate, on
         setLoading(true);
         onLoadingChange?.(true);
         try {
-            await sendRequest('addItem', {
-                reportId,
-                category: 'Lunch & Learn',
-                itemData: {
-                    '日期': data.date.replace(/-/g, '/'),
-                    '地區': data.region,
-                    '幣別': data.currency,
-                    '金額': data.amount,
-                    'TWD金額': data.twdAmount,
-                    '匯率': data.rate,
-                    '經銷商': data.dealer,
-                    '人數': data.headcount
-                }
-            });
+            const payloadData = {
+                '日期': data.date.replace(/-/g, '/'),
+                '地區': data.region,
+                '幣別': data.currency,
+                '金額': data.amount,
+                'TWD金額': data.twdAmount,
+                '匯率': data.rate,
+                '經銷商': data.dealer,
+                '人數': data.headcount
+            };
+
+            if (editingItem) {
+                await sendRequest('updateItem', {
+                    reportId,
+                    category: 'Lunch & Learn',
+                    sequence: editingItem['次序'],
+                    itemData: payloadData
+                });
+                if (onCancelEdit) onCancelEdit();
+            } else {
+                await sendRequest('addItem', {
+                    reportId,
+                    category: 'Lunch & Learn',
+                    itemData: payloadData
+                });
+            }
             await onSubmitSuccess();
             setValue('amount', '');
             setValue('twdAmount', 0);
@@ -212,7 +239,23 @@ export default function LunchLearnForm({ reportId, headerRate, tripStartDate, on
                 </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end pt-2 gap-2">
+                {editingItem && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (onCancelEdit) onCancelEdit();
+                            setValue('amount', '');
+                            setValue('twdAmount', 0);
+                            setValue('dealer', '');
+                            setValue('headcount', '');
+                        }}
+                        disabled={loading || disabled}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 disabled:opacity-50"
+                    >
+                        {t('cancel', '取消')}
+                    </button>
+                )}
                 <button
                     type="submit"
                     disabled={loading || disabled || rateLoading}
@@ -224,7 +267,7 @@ export default function LunchLearnForm({ reportId, headerRate, tripStartDate, on
                             <span>{t('saving')}...</span>
                         </>
                     ) : (
-                        t('add')
+                        editingItem ? t('save_changes', '儲存變更') : t('add')
                     )}
                 </button>
             </div>

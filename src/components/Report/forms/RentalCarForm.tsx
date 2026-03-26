@@ -30,9 +30,11 @@ interface RentalCarFormProps {
     onSubmitSuccess: () => Promise<void> | void;
     onLoadingChange?: (loading: boolean) => void;
     disabled?: boolean;
+    editingItem?: any;
+    onCancelEdit?: () => void;
 }
 
-export default function RentalCarForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false }: RentalCarFormProps) {
+export default function RentalCarForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false, editingItem, onCancelEdit }: RentalCarFormProps) {
     const { t } = useTranslation();
     const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<RentalCarFormData>({
         defaultValues: {
@@ -60,6 +62,26 @@ export default function RentalCarForm({ reportId, headerRate, tripStartDate, onS
     const peopleCount = watch('peopleCount');
     const rentalStartDate = watch('rentalStartDate');
     const rentalEndDate = watch('rentalEndDate');
+
+    useEffect(() => {
+        if (editingItem) {
+            setValue('rentalStartDate', (editingItem['借車日期'] || '').replace(/\//g, '-'));
+            setValue('rentalEndDate', (editingItem['還車日期'] || '').replace(/\//g, '-'));
+            setValue('region', editingItem['地區'] || '');
+            setValue('rentalCompany', editingItem['租車公司'] || '');
+            setValue('currency', editingItem['幣別'] || 'TWD');
+            setValue('personalAmount', editingItem['個人金額'] || '');
+            setValue('twdPersonalAmount', editingItem['TWD個人金額'] || 0);
+            setValue('advanceAmount', editingItem['代墊金額'] || '');
+            setValue('twdAdvanceAmount', editingItem['TWD代墊金額'] || 0);
+            setValue('totalAmount', editingItem['總體金額'] || 0);
+            setValue('twdTotalAmount', editingItem['TWD總體金額'] || 0);
+            setValue('peopleCount', editingItem['代墊人數'] || 0);
+            setValue('perPersonPerDay', editingItem['每人每天金額'] || 0);
+            setValue('rate', editingItem['匯率'] || 1);
+            setValue('note', editingItem['備註'] || '');
+        }
+    }, [editingItem, setValue]);
 
     // Rate Calculation Effect
     useEffect(() => {
@@ -165,27 +187,39 @@ export default function RentalCarForm({ reportId, headerRate, tripStartDate, onS
             const p = Number(data.peopleCount) || 0;
             const perPerson = totalAmount / n / (p + 1);
 
-            await sendRequest('addItem', {
-                reportId,
-                category: 'Rental Car',
-                itemData: {
-                    '借車日期': data.rentalStartDate.replace(/-/g, '/'),
-                    '還車日期': data.rentalEndDate.replace(/-/g, '/'),
-                    '地區': data.region,
-                    '租車公司': data.rentalCompany,
-                    '幣別': data.currency,
-                    '個人金額': pAmount || 0,
-                    'TWD個人金額': data.twdPersonalAmount,
-                    '代墊金額': aAmount || 0,
-                    'TWD代墊金額': data.twdAdvanceAmount,
-                    '總體金額': totalAmount,
-                    'TWD總體金額': twdTotalAmount,
-                    '代墊人數': data.peopleCount,
-                    '每人每天金額': Number(perPerson.toFixed(2)),
-                    '匯率': data.rate,
-                    '備註': data.note
-                }
-            });
+            const payloadData = {
+                '借車日期': data.rentalStartDate.replace(/-/g, '/'),
+                '還車日期': data.rentalEndDate.replace(/-/g, '/'),
+                '地區': data.region,
+                '租車公司': data.rentalCompany,
+                '幣別': data.currency,
+                '個人金額': pAmount || 0,
+                'TWD個人金額': data.twdPersonalAmount,
+                '代墊金額': aAmount || 0,
+                'TWD代墊金額': data.twdAdvanceAmount,
+                '總體金額': totalAmount,
+                'TWD總體金額': twdTotalAmount,
+                '代墊人數': data.peopleCount,
+                '每人每天金額': Number(perPerson.toFixed(2)),
+                '匯率': data.rate,
+                '備註': data.note
+            };
+
+            if (editingItem) {
+                await sendRequest('updateItem', {
+                    reportId,
+                    category: 'Rental Car',
+                    sequence: editingItem['次序'],
+                    itemData: payloadData
+                });
+                if (onCancelEdit) onCancelEdit();
+            } else {
+                await sendRequest('addItem', {
+                    reportId,
+                    category: 'Rental Car',
+                    itemData: payloadData
+                });
+            }
             await onSubmitSuccess();
             setValue('personalAmount', '');
             setValue('rentalCompany', '');
@@ -352,7 +386,31 @@ export default function RentalCarForm({ reportId, headerRate, tripStartDate, onS
                 <input type="text" {...register('note')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
             </div>
 
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-end pt-4 gap-2">
+                {editingItem && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (onCancelEdit) onCancelEdit();
+                            setValue('personalAmount', '');
+                            setValue('rentalCompany', '');
+                            setValue('advanceAmount', 0);
+                            setValue('peopleCount', 0);
+                            setValue('twdPersonalAmount', 0);
+                            setValue('twdAdvanceAmount', 0);
+                            setValue('totalAmount', 0);
+                            setValue('twdTotalAmount', 0);
+                            setValue('perPersonPerDay', 0);
+                            setValue('note', '');
+                            setValue('rentalStartDate', '');
+                            setValue('rentalEndDate', '');
+                        }}
+                        disabled={loading || disabled}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 disabled:opacity-50"
+                    >
+                        {t('cancel', '取消')}
+                    </button>
+                )}
                 <button
                     type="submit"
                     disabled={loading || disabled || rateLoading}
@@ -364,7 +422,7 @@ export default function RentalCarForm({ reportId, headerRate, tripStartDate, onS
                             <span>{t('saving')}...</span>
                         </>
                     ) : (
-                        t('add')
+                        editingItem ? t('save_changes', '儲存變更') : t('add')
                     )}
                 </button>
             </div>

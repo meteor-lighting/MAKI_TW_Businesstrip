@@ -30,9 +30,11 @@ interface AccommodationFormProps {
     onSubmitSuccess: () => Promise<void> | void;
     onLoadingChange?: (loading: boolean) => void;
     disabled?: boolean;
+    editingItem?: any;
+    onCancelEdit?: () => void;
 }
 
-export default function AccommodationForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false }: AccommodationFormProps) {
+export default function AccommodationForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false, editingItem, onCancelEdit }: AccommodationFormProps) {
     const { t } = useTranslation();
     const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<AccommodationFormData>({
         defaultValues: {
@@ -60,6 +62,26 @@ export default function AccommodationForm({ reportId, headerRate, tripStartDate,
     const peopleCount = watch('peopleCount');
     const checkInDate = watch('checkInDate');
     const checkOutDate = watch('checkOutDate');
+
+    useEffect(() => {
+        if (editingItem) {
+            setValue('checkInDate', (editingItem['入住日期'] || '').replace(/\//g, '-'));
+            setValue('checkOutDate', (editingItem['退房日期'] || '').replace(/\//g, '-'));
+            setValue('region', editingItem['地區'] || '');
+            setValue('hotel', editingItem['飯店'] || '');
+            setValue('currency', editingItem['幣別'] || 'TWD');
+            setValue('personalAmount', editingItem['個人金額'] || '');
+            setValue('twdPersonalAmount', editingItem['TWD個人金額'] || 0);
+            setValue('advanceAmount', editingItem['代墊金額'] || 0);
+            setValue('twdAdvanceAmount', editingItem['TWD代墊金額'] || 0);
+            setValue('totalAmount', editingItem['總體金額'] || 0);
+            setValue('twdTotalAmount', editingItem['TWD總體金額'] || 0);
+            setValue('peopleCount', editingItem['代墊人數'] || 0);
+            setValue('perPersonPerDay', editingItem['每人每天金額'] || 0);
+            setValue('rate', editingItem['匯率'] || 1);
+            setValue('note', editingItem['備註'] || '');
+        }
+    }, [editingItem, setValue]);
 
     // Rate Calculation Effect
     useEffect(() => {
@@ -165,27 +187,39 @@ export default function AccommodationForm({ reportId, headerRate, tripStartDate,
             const p = Number(data.peopleCount) || 0;
             const perPerson = totalAmount / n / (p + 1);
 
-            await sendRequest('addItem', {
-                reportId,
-                category: 'Accommodation',
-                itemData: {
-                    '入住日期': data.checkInDate.replace(/-/g, '/'),
-                    '退房日期': data.checkOutDate.replace(/-/g, '/'),
-                    '地區': data.region,
-                    '飯店': data.hotel,
-                    '幣別': data.currency,
-                    '個人金額': pAmount || 0,
-                    'TWD個人金額': data.twdPersonalAmount,
-                    '代墊金額': aAmount || 0,
-                    'TWD代墊金額': data.twdAdvanceAmount,
-                    '總體金額': totalAmount,
-                    'TWD總體金額': twdTotalAmount,
-                    '代墊人數': data.peopleCount,
-                    '每人每天金額': Number(perPerson.toFixed(2)),
-                    '匯率': data.rate,
-                    '備註': data.note
-                }
-            });
+            const payloadData = {
+                '入住日期': data.checkInDate.replace(/-/g, '/'),
+                '退房日期': data.checkOutDate.replace(/-/g, '/'),
+                '地區': data.region,
+                '飯店': data.hotel,
+                '幣別': data.currency,
+                '個人金額': pAmount || 0,
+                'TWD個人金額': data.twdPersonalAmount,
+                '代墊金額': aAmount || 0,
+                'TWD代墊金額': data.twdAdvanceAmount,
+                '總體金額': totalAmount,
+                'TWD總體金額': twdTotalAmount,
+                '代墊人數': data.peopleCount,
+                '每人每天金額': Number(perPerson.toFixed(2)),
+                '匯率': data.rate,
+                '備註': data.note
+            };
+
+            if (editingItem) {
+                await sendRequest('updateItem', {
+                    reportId,
+                    category: 'Accommodation',
+                    sequence: editingItem['次序'],
+                    itemData: payloadData
+                });
+                if (onCancelEdit) onCancelEdit();
+            } else {
+                await sendRequest('addItem', {
+                    reportId,
+                    category: 'Accommodation',
+                    itemData: payloadData
+                });
+            }
             await onSubmitSuccess();
             setValue('personalAmount', '');
             setValue('hotel', '');
@@ -352,7 +386,26 @@ export default function AccommodationForm({ reportId, headerRate, tripStartDate,
                 <input type="text" {...register('note')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
             </div>
 
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-end pt-4 gap-2">
+                {editingItem && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (onCancelEdit) onCancelEdit();
+                            setValue('personalAmount', '');
+                            setValue('hotel', '');
+                            setValue('advanceAmount', 0);
+                            setValue('peopleCount', 0);
+                            setValue('checkInDate', '');
+                            setValue('checkOutDate', '');
+                            setValue('note', '');
+                        }}
+                        disabled={loading || disabled}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 disabled:opacity-50"
+                    >
+                        {t('cancel', '取消')}
+                    </button>
+                )}
                 <button
                     type="submit"
                     disabled={loading || disabled || rateLoading}
@@ -364,7 +417,7 @@ export default function AccommodationForm({ reportId, headerRate, tripStartDate,
                             <span>{t('saving')}...</span>
                         </>
                     ) : (
-                        t('add')
+                        editingItem ? t('save_changes', '儲存變更') : t('add')
                     )}
                 </button>
             </div>

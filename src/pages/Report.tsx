@@ -50,6 +50,19 @@ export default function Report() {
     const [loadingCount, setLoadingCount] = useState(0);
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
     const [localReportName, setLocalReportName] = useState('');
+    const [editingItems, setEditingItems] = useState<{ [category: string]: any }>({});
+
+    const handleEditItem = useCallback((category: string, item: any) => {
+        setEditingItems(prev => ({ ...prev, [category]: item }));
+    }, []);
+
+    const handleCancelEdit = useCallback((category: string) => {
+        setEditingItems(prev => {
+            const newEditing = { ...prev };
+            delete newEditing[category];
+            return newEditing;
+        });
+    }, []);
 
     const handleLoadingChange = useCallback((isLoading: boolean) => {
         setLoadingCount(prev => isLoading ? prev + 1 : Math.max(0, prev - 1));
@@ -237,6 +250,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={loadingCount > 0}
+                            editingItem={editingItems['Flight']}
+                            onCancelEdit={() => handleCancelEdit('Flight')}
                         />
 
 
@@ -247,6 +262,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Flight || []}
+                                onEdit={(item) => handleEditItem('Flight', item)}
                                 onDelete={(item) => {
                                     // Implement delete
                                     return sendRequest('deleteItem', {
@@ -386,6 +402,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Accommodation']}
+                            onCancelEdit={() => handleCancelEdit('Accommodation')}
                         />
 
                         <div className="mt-4">
@@ -393,6 +411,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Accommodation || []}
+                                onEdit={(item) => handleEditItem('Accommodation', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
@@ -457,6 +476,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Rental Car']}
+                            onCancelEdit={() => handleCancelEdit('Rental Car')}
                         />
 
                         <div className="mt-4">
@@ -464,6 +485,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.['Rental Car'] || []}
+                                onEdit={(item) => handleEditItem('Rental Car', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
@@ -528,6 +550,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Gas']}
+                            onCancelEdit={() => handleCancelEdit('Gas')}
                         />
 
                         <div className="mt-4">
@@ -535,6 +559,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Gas || []}
+                                onEdit={(item) => handleEditItem('Gas', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
@@ -582,6 +607,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Parking']}
+                            onCancelEdit={() => handleCancelEdit('Parking')}
                         />
 
                         <div className="mt-4">
@@ -589,6 +616,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Parking || []}
+                                onEdit={(item) => handleEditItem('Parking', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
@@ -636,6 +664,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Taxi']}
+                            onCancelEdit={() => handleCancelEdit('Taxi')}
                         />
 
                         <div className="mt-4">
@@ -643,6 +673,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Taxi || []}
+                                onEdit={(item) => handleEditItem('Taxi', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
@@ -690,6 +721,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Internet']}
+                            onCancelEdit={() => handleCancelEdit('Internet')}
                         />
 
                         <div className="mt-4">
@@ -697,6 +730,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Internet || []}
+                                onEdit={(item) => handleEditItem('Internet', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
@@ -744,6 +778,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Social']}
+                            onCancelEdit={() => handleCancelEdit('Social')}
                         />
 
                         <div className="mt-4">
@@ -751,6 +787,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Social || []}
+                                onEdit={(item) => handleEditItem('Social', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
@@ -798,6 +835,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Gift']}
+                            onCancelEdit={() => handleCancelEdit('Gift')}
                         />
 
                         <div className="mt-4">
@@ -805,6 +844,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Gift || []}
+                                onEdit={(item) => handleEditItem('Gift', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
@@ -852,6 +892,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Luggage Fee']}
+                            onCancelEdit={() => handleCancelEdit('Luggage Fee')}
                         />
 
                         <div className="mt-4">
@@ -859,6 +901,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.['Luggage Fee'] || []}
+                                onEdit={(item) => handleEditItem('Luggage Fee', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
@@ -906,6 +949,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Handing Fee']}
+                            onCancelEdit={() => handleCancelEdit('Handing Fee')}
                         />
 
                         <div className="mt-4">
@@ -913,6 +958,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.['Handing Fee'] || []}
+                                onEdit={(item) => handleEditItem('Handing Fee', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
@@ -962,6 +1008,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Per Diem']}
+                            onCancelEdit={() => handleCancelEdit('Per Diem')}
                         />
 
                         <div className="mt-4">
@@ -969,6 +1017,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.['Per Diem'] || []}
+                                onEdit={(item) => handleEditItem('Per Diem', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
@@ -1026,6 +1075,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Advance Payment']}
+                            onCancelEdit={() => handleCancelEdit('Advance Payment')}
                         />
 
                         <div className="mt-4">
@@ -1033,6 +1084,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.['Advance Payment'] || []}
+                                onEdit={(item) => handleEditItem('Advance Payment', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
@@ -1080,6 +1132,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Others']}
+                            onCancelEdit={() => handleCancelEdit('Others')}
                         />
 
                         <div className="mt-4">
@@ -1087,6 +1141,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.Others || []}
+                                onEdit={(item) => handleEditItem('Others', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
@@ -1135,6 +1190,8 @@ export default function Report() {
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
+                            editingItem={editingItems['Lunch & Learn']}
+                            onCancelEdit={() => handleCancelEdit('Lunch & Learn')}
                         />
 
                         <div className="mt-4">
@@ -1142,6 +1199,7 @@ export default function Report() {
                             <DataGrid
                                 keyField="次序"
                                 data={reportData?.items?.['Lunch & Learn'] || []}
+                                onEdit={(item) => handleEditItem('Lunch & Learn', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,

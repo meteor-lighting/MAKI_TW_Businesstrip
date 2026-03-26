@@ -33,9 +33,11 @@ interface FlightFormProps {
     onSubmitSuccess: () => Promise<void> | void;
     onLoadingChange?: (loading: boolean) => void;
     disabled?: boolean;
+    editingItem?: any;
+    onCancelEdit?: () => void;
 }
 
-export default function FlightForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false }: FlightFormProps) {
+export default function FlightForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false, editingItem, onCancelEdit }: FlightFormProps) {
     const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [rateLoading, setRateLoading] = useState(false);
@@ -67,6 +69,31 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
     const amount = watch('amount');
     const date = watch('date');
     const tripType = watch('tripType');
+
+    useEffect(() => {
+        if (editingItem) {
+            setValue('date', (editingItem['日期'] || '').replace(/\//g, '-'));
+            setValue('flightCode', editingItem['航班代號'] || '');
+            setValue('departure', editingItem['出發地'] || '');
+            setValue('arrival', editingItem['抵達地'] || '');
+            setValue('depTime', editingItem['出發時間'] || '');
+            setValue('arrTime', editingItem['抵達時間'] || '');
+            setValue('currency', editingItem['幣別'] || 'TWD');
+            setValue('amount', editingItem['金額'] || '');
+            setValue('twdAmount', editingItem['TWD金額'] || 0);
+            setValue('rate', editingItem['匯率'] || 1);
+            setValue('note', editingItem['備註'] || '');
+            
+            const isRoundTrip = editingItem['行程類型'] === 'round-trip';
+            setValue('tripType', isRoundTrip ? 'round-trip' : 'one-way');
+            setValue('returnDate', (editingItem['回程日期'] || '').replace(/\//g, '-'));
+            setValue('returnFlightCode', editingItem['回程航班代號'] || '');
+            setValue('returnDeparture', editingItem['回程出發地'] || '');
+            setValue('returnArrival', editingItem['回程抵達地'] || '');
+            setValue('returnDepTime', editingItem['回程出發時間'] || '');
+            setValue('returnArrTime', editingItem['回程抵達時間'] || '');
+        }
+    }, [editingItem, setValue]);
 
     // Rate Calculation Effect
     useEffect(() => {
@@ -186,30 +213,42 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
         setLoading(true);
         onLoadingChange?.(true);
         try {
-            await sendRequest('addItem', {
-                reportId,
-                category: 'Flight',
-                itemData: {
-                    '日期': data.date.replace(/-/g, '/'),
-                    '航班代號': data.flightCode,
-                    '出發地': data.departure,
-                    '抵達地': data.arrival,
-                    '出發時間': data.depTime,
-                    '抵達時間': data.arrTime,
-                    '幣別': data.currency,
-                    '金額': data.amount,
-                    'TWD金額': data.twdAmount,
-                    '匯率': data.rate,
-                    '備註': data.note,
-                    '行程類型': data.tripType,
-                    '回程日期': data.tripType === 'round-trip' ? data.returnDate.replace(/-/g, '/') : '',
-                    '回程航班代號': data.tripType === 'round-trip' ? data.returnFlightCode : '',
-                    '回程出發地': data.tripType === 'round-trip' ? data.returnDeparture : '',
-                    '回程抵達地': data.tripType === 'round-trip' ? data.returnArrival : '',
-                    '回程出發時間': data.tripType === 'round-trip' ? data.returnDepTime : '',
-                    '回程抵達時間': data.tripType === 'round-trip' ? data.returnArrTime : ''
-                }
-            });
+            const payloadData = {
+                '日期': data.date.replace(/-/g, '/'),
+                '航班代號': data.flightCode,
+                '出發地': data.departure,
+                '抵達地': data.arrival,
+                '出發時間': data.depTime,
+                '抵達時間': data.arrTime,
+                '幣別': data.currency,
+                '金額': data.amount,
+                'TWD金額': data.twdAmount,
+                '匯率': data.rate,
+                '備註': data.note,
+                '行程類型': data.tripType,
+                '回程日期': data.tripType === 'round-trip' ? data.returnDate.replace(/-/g, '/') : '',
+                '回程航班代號': data.tripType === 'round-trip' ? data.returnFlightCode : '',
+                '回程出發地': data.tripType === 'round-trip' ? data.returnDeparture : '',
+                '回程抵達地': data.tripType === 'round-trip' ? data.returnArrival : '',
+                '回程出發時間': data.tripType === 'round-trip' ? data.returnDepTime : '',
+                '回程抵達時間': data.tripType === 'round-trip' ? data.returnArrTime : ''
+            };
+
+            if (editingItem) {
+                await sendRequest('updateItem', {
+                    reportId,
+                    category: 'Flight',
+                    sequence: editingItem['次序'],
+                    itemData: payloadData
+                });
+                if (onCancelEdit) onCancelEdit();
+            } else {
+                await sendRequest('addItem', {
+                    reportId,
+                    category: 'Flight',
+                    itemData: payloadData
+                });
+            }
             console.log('Flight Submitted Payload:', {
                 '日期': data.date,
                 '航班代號': data.flightCode,
@@ -376,7 +415,23 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                 <input type="text" {...register('note')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
             </div>
 
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-end pt-4 gap-2">
+                {editingItem && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (onCancelEdit) onCancelEdit();
+                            setValue('amount', '');
+                            setValue('flightCode', '');
+                            setValue('date', '');
+                            setValue('note', '');
+                        }}
+                        disabled={loading || disabled}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 disabled:opacity-50"
+                    >
+                        {t('cancel', '取消')}
+                    </button>
+                )}
                 <button
                     type="submit"
                     disabled={loading || disabled || rateLoading}
@@ -388,7 +443,7 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                             <span>{t('saving')}...</span>
                         </>
                     ) : (
-                        t('add')
+                        editingItem ? t('save_changes', '儲存變更') : t('add')
                     )}
                 </button>
             </div>
