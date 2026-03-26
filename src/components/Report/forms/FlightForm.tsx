@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatDateYYYYMMDD, formatTimeHHmm } from '../../../utils/formatters';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { sendRequest, getAllFlights } from '../../../services/api';
@@ -72,12 +73,12 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
 
     useEffect(() => {
         if (editingItem) {
-            setValue('date', (editingItem['日期'] || '').replace(/\//g, '-'));
+            setValue('date', formatDateYYYYMMDD(editingItem['日期']));
             setValue('flightCode', editingItem['航班代號'] || '');
             setValue('departure', editingItem['出發地'] || '');
             setValue('arrival', editingItem['抵達地'] || '');
-            setValue('depTime', editingItem['出發時間'] || '');
-            setValue('arrTime', editingItem['抵達時間'] || '');
+            setValue('depTime', formatTimeHHmm(editingItem['出發時間']));
+            setValue('arrTime', formatTimeHHmm(editingItem['抵達時間']));
             setValue('currency', editingItem['幣別'] || 'TWD');
             setValue('amount', editingItem['金額'] || '');
             setValue('twdAmount', editingItem['TWD金額'] || 0);
@@ -86,12 +87,12 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
             
             const isRoundTrip = editingItem['行程類型'] === 'round-trip';
             setValue('tripType', isRoundTrip ? 'round-trip' : 'one-way');
-            setValue('returnDate', (editingItem['回程日期'] || '').replace(/\//g, '-'));
+            setValue('returnDate', formatDateYYYYMMDD(editingItem['回程日期']));
             setValue('returnFlightCode', editingItem['回程航班代號'] || '');
             setValue('returnDeparture', editingItem['回程出發地'] || '');
             setValue('returnArrival', editingItem['回程抵達地'] || '');
-            setValue('returnDepTime', editingItem['回程出發時間'] || '');
-            setValue('returnArrTime', editingItem['回程抵達時間'] || '');
+            setValue('returnDepTime', formatTimeHHmm(editingItem['回程出發時間']));
+            setValue('returnArrTime', formatTimeHHmm(editingItem['回程抵達時間']));
         }
     }, [editingItem, setValue]);
 

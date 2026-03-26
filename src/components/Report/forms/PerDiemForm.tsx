@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatDateYYYYMMDD, formatTimeHHmm } from '../../../utils/formatters';
 import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
@@ -54,8 +55,8 @@ export default function PerDiemForm({ reportId, headerRate, tripStartDate, tripE
 
     useEffect(() => {
         if (editingItem) {
-            setValue('startDate', (editingItem['開始日期'] || '').replace(/\//g, '-'));
-            setValue('endDate', (editingItem['結束日期'] || '').replace(/\//g, '-'));
+            setValue('startDate', formatDateYYYYMMDD(editingItem['開始日期']));
+            setValue('endDate', formatDateYYYYMMDD(editingItem['結束日期']));
             setValue('region', editingItem['地區'] || '');
             setValue('currency', editingItem['幣別'] || 'TWD');
             setValue('dailyAmount', editingItem['每日金額'] || '');
@@ -69,10 +70,10 @@ export default function PerDiemForm({ reportId, headerRate, tripStartDate, tripE
     // Auto-fill Dates
     useEffect(() => {
         if (tripStartDate && tripStartDate !== '-' && !startDate) {
-            setValue('startDate', tripStartDate.replace(/\//g, '-'));
+            setValue('startDate', formatDateYYYYMMDD(tripStartDate));
         }
         if (tripEndDate && tripEndDate !== '-' && !endDate) {
-            setValue('endDate', tripEndDate.replace(/\//g, '-'));
+            setValue('endDate', formatDateYYYYMMDD(tripEndDate));
         }
     }, [tripStartDate, tripEndDate, startDate, endDate, setValue]);
 

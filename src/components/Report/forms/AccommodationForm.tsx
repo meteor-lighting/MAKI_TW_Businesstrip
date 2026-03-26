@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatDateYYYYMMDD, formatTimeHHmm } from '../../../utils/formatters';
 import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
@@ -65,8 +66,8 @@ export default function AccommodationForm({ reportId, headerRate, tripStartDate,
 
     useEffect(() => {
         if (editingItem) {
-            setValue('checkInDate', (editingItem['入住日期'] || '').replace(/\//g, '-'));
-            setValue('checkOutDate', (editingItem['退房日期'] || '').replace(/\//g, '-'));
+            setValue('checkInDate', formatDateYYYYMMDD(editingItem['入住日期']));
+            setValue('checkOutDate', formatDateYYYYMMDD(editingItem['退房日期']));
             setValue('region', editingItem['地區'] || '');
             setValue('hotel', editingItem['飯店'] || '');
             setValue('currency', editingItem['幣別'] || 'TWD');

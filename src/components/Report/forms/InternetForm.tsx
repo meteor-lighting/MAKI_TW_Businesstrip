@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatDateYYYYMMDD, formatTimeHHmm } from '../../../utils/formatters';
 import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
@@ -47,7 +48,7 @@ export default function InternetForm({ reportId, headerRate, tripStartDate, onSu
 
     useEffect(() => {
         if (editingItem) {
-            setValue('date', (editingItem['日期'] || '').replace(/\//g, '-'));
+            setValue('date', formatDateYYYYMMDD(editingItem['日期']));
             setValue('region', editingItem['地區'] || '');
             setValue('currency', editingItem['幣別'] || 'TWD');
             setValue('amount', editingItem['金額'] || '');

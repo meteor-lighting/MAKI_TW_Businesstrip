@@ -24,3 +24,31 @@ export const formatTimeHHmm = (timeStr: any): string => {
 
     return str;
 };
+
+export const formatDateYYYYMMDD = (dateStr: any): string => {
+    if (!dateStr) return '';
+    const str = String(dateStr).trim();
+    
+    // Replace slashes with dashes
+    const dashed = str.replace(/\//g, '-');
+    
+    // Check if it's already YYYY-MM-DD or YYYY-M-D
+    const match = dashed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (match) {
+        const y = match[1];
+        const m = match[2].padStart(2, '0');
+        const d = match[3].padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+    
+    // Fallback to Date parsing
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = (d.getMonth() + 1).toString().padStart(2, '0');
+        const day = d.getDate().toString().padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+    
+    return str;
+};

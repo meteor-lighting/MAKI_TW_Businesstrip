@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatDateYYYYMMDD, formatTimeHHmm } from '../../../utils/formatters';
 import { useForm, Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
@@ -65,8 +66,8 @@ export default function RentalCarForm({ reportId, headerRate, tripStartDate, onS
 
     useEffect(() => {
         if (editingItem) {
-            setValue('rentalStartDate', (editingItem['借車日期'] || '').replace(/\//g, '-'));
-            setValue('rentalEndDate', (editingItem['還車日期'] || '').replace(/\//g, '-'));
+            setValue('rentalStartDate', formatDateYYYYMMDD(editingItem['借車日期']));
+            setValue('rentalEndDate', formatDateYYYYMMDD(editingItem['還車日期']));
             setValue('region', editingItem['地區'] || '');
             setValue('rentalCompany', editingItem['租車公司'] || '');
             setValue('currency', editingItem['幣別'] || 'TWD');
