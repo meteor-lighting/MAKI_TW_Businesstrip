@@ -631,12 +631,22 @@ export default function Report() {
                                 columns={[
                                     { key: '次序', header: t('sequence'), width: '60px' },
                                     {
-                                        key: '日期',
-                                        header: t('date'),
+                                        key: '開始日期',
+                                        header: t('start_date', '開始日期'),
                                         render: (item: any) => {
-                                            if (!item['日期']) return '';
-                                            const d = new Date(item['日期']);
-                                            return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+                                            const dVal = item['開始日期'] || item['日期'];
+                                            if (!dVal) return '';
+                                            const d = new Date(dVal);
+                                            return isNaN(d.getTime()) ? String(dVal) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
+                                        }
+                                    },
+                                    {
+                                        key: '結束日期',
+                                        header: t('end_date', '結束日期'),
+                                        render: (item: any) => {
+                                            if (!item['結束日期']) return '';
+                                            const d = new Date(item['結束日期']);
+                                            return isNaN(d.getTime()) ? String(item['結束日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
                                         }
                                     },
                                     { key: '地區', header: t('region') },

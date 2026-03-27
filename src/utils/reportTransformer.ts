@@ -220,16 +220,29 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         const catTotal = catItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
         catTotals[cat.key] = catTotal;
 
-        let columns = [
-            { header: t('date'), headerKey: 'date', accessorKey: '日期', width: 15, type: 'date' },
-            { header: t('region'), headerKey: 'region', accessorKey: '地區', width: 15 },
-            { header: t('hotel'), headerKey: 'hotel', accessorKey: '飯店', width: 15 }, // Added Hotel column as per instruction
-            { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
-            { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'currency' },
-            { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 10 },
-            { header: t('twd_amount'), headerKey: 'twd_amount', accessorKey: 'TWD金額', width: 10, type: 'currency' },
-            { header: t('remark'), headerKey: 'remark', accessorKey: '備註', width: 25 }
-        ];
+        let columns: any[] = [];
+        if (cat.key === 'Parking') {
+            columns = [
+                { header: t('start_date', '開始日期'), headerKey: 'start_date', accessorKey: '開始日期', width: 15, type: 'date' },
+                { header: t('end_date', '結束日期'), headerKey: 'end_date', accessorKey: '結束日期', width: 15, type: 'date' },
+                { header: t('region'), headerKey: 'region', accessorKey: '地區', width: 15 },
+                { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
+                { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'currency' },
+                { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 10 },
+                { header: t('twd_amount'), headerKey: 'twd_amount', accessorKey: 'TWD金額', width: 10, type: 'currency' },
+                { header: t('remark'), headerKey: 'remark', accessorKey: '備註', width: 25 }
+            ];
+        } else {
+            columns = [
+                { header: t('date'), headerKey: 'date', accessorKey: '日期', width: 15, type: 'date' },
+                { header: t('region'), headerKey: 'region', accessorKey: '地區', width: 15 },
+                { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
+                { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'currency' },
+                { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 10 },
+                { header: t('twd_amount'), headerKey: 'twd_amount', accessorKey: 'TWD金額', width: 10, type: 'currency' },
+                { header: t('remark'), headerKey: 'remark', accessorKey: '備註', width: 25 }
+            ];
+        }
 
         // Add 'Category' column for 'Others'
         if (cat.key === 'Others') {
