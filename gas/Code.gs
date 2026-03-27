@@ -49,6 +49,9 @@ function doPost(e) {
       case 'updateReportName': // Update report custom name
         result = updateReportName(payload);
         break;
+      case 'updateReportTripInfo': // Update trip days and dates manually
+        result = updateReportTripInfo(payload);
+        break;
       
       // Items CRUD
       case 'addItem':

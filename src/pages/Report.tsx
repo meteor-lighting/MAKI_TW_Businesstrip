@@ -224,11 +224,13 @@ export default function Report() {
                 {/* Header Info */}
                 {reportData && (
                     <ReportHeader
+                        reportId={reportId}
                         days={Number(reportData.header['商旅天數'] || 0)}
                         rate={Number(reportData.header['USD匯率'] || 0)}
                         startDate={reportData.header['商旅起始日']} 
                         endDate={reportData.header['商旅結束日']}
                         userName={user?.role === 'admin' ? (reportData.header['員工姓名'] || reportData.header['用戶編號']) : undefined}
+                        onUpdateSuccess={handleItemChanged}
                     />
                 )}
 

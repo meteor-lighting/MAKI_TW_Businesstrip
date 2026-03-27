@@ -62,6 +62,10 @@ export const updateReportStatus = async (reportId: string, status: string) => {
     return sendRequest('updateReportStatus', { reportId, status });
 };
 
+export const updateReportTripInfo = async (reportId: string, days: number | string, startDate: string, endDate: string) => {
+    return sendRequest('updateReportTripInfo', { reportId, days, startDate, endDate });
+};
+
 let cachedFlights: any[] | null = null;
 
 export const getAllFlights = async () => {
