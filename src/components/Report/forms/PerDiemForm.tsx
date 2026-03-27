@@ -346,7 +346,6 @@ export default function PerDiemForm({ reportId, headerRate, tripStartDate, tripE
                         type="number"
                         step="0.01"
                         {...register('dailyAmount', {
-                            required: t('please_enter_amount'),
                             min: 0
                         })}
                         disabled={loading || disabled}
