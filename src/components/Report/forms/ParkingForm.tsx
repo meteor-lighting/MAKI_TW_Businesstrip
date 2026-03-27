@@ -7,7 +7,8 @@ import CityAutocomplete from '../CityAutocomplete';
 import { Hourglass } from 'lucide-react';
 
 interface ParkingFormData {
-    date: string;
+    startDate: string;
+    endDate: string;
     region: string;
     currency: string;
     amount: number | string;
@@ -44,11 +45,13 @@ export default function ParkingForm({ reportId, headerRate, tripStartDate, onSub
     // Watch fields
     const currency = watch('currency');
     const amount = watch('amount');
-    const date = watch('date');
+    const startDate = watch('startDate');
 
     useEffect(() => {
         if (editingItem) {
-            setValue('date', formatDateYYYYMMDD(editingItem['日期']));
+            // Note: If the backend still sends '日期' for old records, we fallback to it for startDate
+            setValue('startDate', formatDateYYYYMMDD(editingItem['開始日期'] || editingItem['日期']));
+            setValue('endDate', formatDateYYYYMMDD(editingItem['結束日期']));
             setValue('region', editingItem['地區'] || '');
             setValue('currency', editingItem['幣別'] || 'TWD');
             setValue('amount', editingItem['金額'] || '');
@@ -71,9 +74,9 @@ export default function ParkingForm({ reportId, headerRate, tripStartDate, onSub
 
             const numericAmount = Number(amount);
 
-            let targetDate = date;
+            let targetDate = startDate;
             if (tripStartDate && tripStartDate !== '-' && tripStartDate !== '') {
-                const itemD = new Date(date);
+                const itemD = new Date(startDate);
                 const tripD = new Date(tripStartDate);
                 if (itemD > tripD) {
                     targetDate = tripStartDate;
@@ -107,14 +110,19 @@ export default function ParkingForm({ reportId, headerRate, tripStartDate, onSub
         fetchRate();
 
         return () => { isActive = false; };
-    }, [currency, amount, date, tripStartDate, setValue, headerRate]);
+    }, [currency, amount, startDate, tripStartDate, setValue, headerRate]);
 
     const onSubmit = async (data: ParkingFormData) => {
         setLoading(true);
         onLoadingChange?.(true);
         try {
             const payloadData = {
-                '日期': data.date.replace(/-/g, '/'),
+                // To support both entirely new format and old '日期' logic if needed,
+                // we save Start Date to '開始日期' and End Date to '結束日期'
+                '開始日期': data.startDate ? data.startDate.replace(/-/g, '/') : '',
+                '結束日期': data.endDate ? data.endDate.replace(/-/g, '/') : '',
+                // If backend requires '日期' for legacy scripts:
+                '日期': data.startDate ? data.startDate.replace(/-/g, '/') : '',
                 '地區': data.region,
                 '幣別': data.currency,
                 '金額': data.amount,
@@ -159,18 +167,28 @@ export default function ParkingForm({ reportId, headerRate, tripStartDate, onSub
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">{t('date')} (YYYY/MM/DD)</label>
+                    <label className="block text-sm font-medium text-gray-700">{t('start_date', '開始日期')} (YYYY/MM/DD)</label>
                     <input
                         type="date"
-                        {...register('date', {
+                        {...register('startDate', {
                             required: t('please_enter_date'),
                         })}
                         disabled={loading || disabled}
-                        className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.date ? 'border-red-500' : ''}`}
+                        className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.startDate ? 'border-red-500' : ''}`}
                     />
-                    {errors.date && <span className="text-red-500 text-sm">{errors.date.message}</span>}
+                    {errors.startDate && <span className="text-red-500 text-sm">{errors.startDate.message}</span>}
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">{t('end_date', '結束日期')} (YYYY/MM/DD)</label>
+                    <input
+                        type="date"
+                        {...register('endDate')}
+                        disabled={loading || disabled}
+                        className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.endDate ? 'border-red-500' : ''}`}
+                    />
+                    {errors.endDate && <span className="text-red-500 text-sm">{errors.endDate.message}</span>}
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('region')}</label>
@@ -237,7 +255,8 @@ export default function ParkingForm({ reportId, headerRate, tripStartDate, onSub
                         onClick={() => {
                             if (onCancelEdit) onCancelEdit();
                             setValue('amount', '');
-                            setValue('date', '');
+                            setValue('startDate', '');
+                            setValue('endDate', '');
                             setValue('note', '');
                         }}
                         disabled={loading || disabled}
