@@ -12,18 +12,18 @@ const CATEGORIES = [
     { value: 'Flight', label: 'flight' },
     { value: 'Accommodation', label: 'accommodation' },
     { value: 'Rental Car', label: 'rental_car' },
-    { value: 'Taxi', label: 'taxi' },
     { value: 'Gas', label: 'gas' },
     { value: 'Parking', label: 'parking' },
+    { value: 'Taxi', label: 'taxi' },
     { value: 'Internet', label: 'internet' },
     { value: 'Social', label: 'social' },
     { value: 'Gift', label: 'gift' },
     { value: 'Luggage Fee', label: 'luggage_fee' },
     { value: 'Handing Fee', label: 'handing_fee' },
     { value: 'Per Diem', label: 'per_diem' },
-    { value: 'Advance Payment', label: 'advance_payment' },
-    { value: 'Lunch & Learn', label: 'lunch_learn' },
-    { value: 'Others', label: 'others' }
+    { value: 'Advance Payment', label: 'advance_payment_category' },
+    { value: 'Others', label: 'others' },
+    { value: 'Lunch & Learn', label: 'lunch_learn' }
 ];
 
 const History: React.FC = () => {
