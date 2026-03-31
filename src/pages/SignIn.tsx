@@ -26,7 +26,7 @@ export default function SignIn() {
         setLoading(true);
         try {
             await signIn(username, password);
-            navigate('/dashboard');
+            navigate('/home');
         } catch (err: any) {
             setError(err.message || t('error'));
         } finally {

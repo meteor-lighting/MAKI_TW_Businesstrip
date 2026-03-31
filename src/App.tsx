@@ -5,6 +5,8 @@ import SignUp from './pages/SignUp';
 import Report from './pages/Report';
 import ExpenseReportPage from './components/Report/ExpenseReportPage';
 import Dashboard from './pages/Dashboard';
+import Home from './pages/Home';
+import History from './pages/History';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import './i18n';
 
@@ -24,6 +26,22 @@ function App() {
                 <Routes>
                     <Route path="/" element={<SignIn />} />
                     <Route path="/signup" element={<SignUp />} />
+                    <Route
+                        path="/home"
+                        element={
+                            <ProtectedRoute>
+                                <Home />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/history"
+                        element={
+                            <ProtectedRoute>
+                                <History />
+                            </ProtectedRoute>
+                        }
+                    />
                     <Route
                         path="/dashboard"
                         element={

@@ -40,6 +40,9 @@ function doPost(e) {
       case 'getUserReports': // Get all reports for a user
         result = getUserReports(payload);
         break;
+      case 'queryHistory':
+        result = queryHistoryData(payload);
+        break;
       case 'deleteReport': // Delete a complete report
         result = deleteReport(payload);
         break;
@@ -443,5 +446,85 @@ function updateReportName(payload) {
     }
   } else {
     return { status: 'error', message: 'System busy, try again later' };
+  }
+}
+
+/**
+ * Historical Data Query API
+ */
+function queryHistoryData(payload) {
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(10000)) {
+    try {
+      // payload = { employeeId, category, destination, reportName }
+      const headers = sheetDataToJson('Report Header');
+      
+      let matchedReports = headers;
+
+      // Filter by Employee ID
+      if (payload.employeeId) {
+        matchedReports = matchedReports.filter(r => String(r['員工姓名']).includes(payload.employeeId) || String(r['用戶編號']).includes(payload.employeeId));
+      }
+      
+      // Filter by Destination
+      if (payload.destination) {
+        matchedReports = matchedReports.filter(r => String(r['出差地點'] || '').includes(payload.destination));
+      }
+      
+      // Filter by Report Name
+      if (payload.reportName) {
+        matchedReports = matchedReports.filter(r => String(r['報告名稱'] || '').includes(payload.reportName));
+      }
+
+      // If category is all, just return matched reports
+      if (!payload.category || payload.category === 'All') {
+        return {
+          status: 'success',
+          type: 'reports',
+          data: matchedReports,
+          message: 'Historical reports fetched'
+        };
+      } else {
+        // Find specific items within the matched reports
+        const validReportIds = matchedReports.map(r => String(r['報告編號']));
+        
+        // Ensure safety on category mapping (Prevent accessing invalid sheets)
+        let safeCategory = payload.category;
+        
+        let targetItems = [];
+        try {
+          const catItems = sheetDataToJson(safeCategory);
+          
+          targetItems = catItems.filter(item => validReportIds.includes(String(item['報告編號'])));
+          
+          // Attach report context (Report Name, Employee ID) to each item
+          targetItems = targetItems.map(item => {
+            const parentR = matchedReports.find(r => String(r['報告編號']) === String(item['報告編號']));
+            return {
+              ...item,
+              '_報告名稱': parentR ? parentR['報告名稱'] : '',
+              '_員工編號': parentR ? parentR['用戶編號'] : '',
+              '_員工姓名': parentR ? parentR['員工姓名'] : ''
+            };
+          });
+          
+        } catch(e) {
+          console.error(e);
+        }
+
+        return {
+          status: 'success',
+          type: 'items',
+          data: targetItems,
+          message: 'Historical items fetched'
+        };
+      }
+    } catch (e) {
+      throw e;
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { status: 'error', message: 'Database busy' };
   }
 }
