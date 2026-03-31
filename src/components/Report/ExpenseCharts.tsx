@@ -25,9 +25,11 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 const RADIAN = Math.PI / 180;
-const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
-    // 增加外推半徑 (原本 outerRadius * 1.05，現在推遠一點避免字擠在圖邊緣)
-    const radius = innerRadius + (outerRadius - innerRadius) * 1.5;
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name, index }: any) => {
+    // 利用 index 的奇偶數，讓相鄰的標籤距離圓心有一點遠近落差 (例如 1.4 倍與 1.9 倍)
+    // 藉此避開彼此擠在一起擋住的問題
+    const distanceMultiplier = index % 2 === 0 ? 1.4 : 1.9;
+    const radius = innerRadius + (outerRadius - innerRadius) * distanceMultiplier;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
