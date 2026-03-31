@@ -25,6 +25,20 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 const RADIAN = Math.PI / 180;
+
+const renderCustomizedLabelLine = ({ cx, cy, midAngle, innerRadius, outerRadius, index }: any) => {
+    const distanceMultiplier = index % 2 === 0 ? 1.4 : 1.9;
+    const startRadius = outerRadius;
+    const endRadius = innerRadius + (outerRadius - innerRadius) * distanceMultiplier;
+    
+    const x1 = cx + startRadius * Math.cos(-midAngle * RADIAN);
+    const y1 = cy + startRadius * Math.sin(-midAngle * RADIAN);
+    const x2 = cx + endRadius * Math.cos(-midAngle * RADIAN);
+    const y2 = cy + endRadius * Math.sin(-midAngle * RADIAN);
+    
+    return <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#ccc" strokeWidth={1} />;
+};
+
 const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name, index }: any) => {
     // 利用 index 的奇偶數，讓相鄰的標籤距離圓心有一點遠近落差 (例如 1.4 倍與 1.9 倍)
     // 藉此避開彼此擠在一起擋住的問題
@@ -69,7 +83,7 @@ const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
                                 paddingAngle={2}
                                 dataKey="value"
                                 label={renderCustomizedLabel}
-                                labelLine={{ strokeWidth: 1, stroke: '#ccc' }}
+                                labelLine={renderCustomizedLabelLine}
                             >
                                 {pieData.map((_entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
