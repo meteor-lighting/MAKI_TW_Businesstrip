@@ -364,32 +364,21 @@ export default function Report() {
                                         key: '抵達時間',
                                         header: t('arrival_time'),
                                         render: (item: any) => {
+                                            const formatCD = (val: any) => val ? String(val).replace(/^'/, '') : '';
                                             const outT = formatTimeHHmm(item['抵達時間']);
+                                            const outCD = formatCD(item['跨日']) ? ` ${formatCD(item['跨日'])}` : '';
+                                            
                                             if (item['行程類型'] === 'round-trip') {
                                                 const retT = formatTimeHHmm(item['回程抵達時間']);
+                                                const retCD = formatCD(item['回程跨日']) ? ` ${formatCD(item['回程跨日'])}` : '';
                                                 return (
                                                     <div className="flex flex-col gap-1 text-sm">
-                                                        <span>{outT}</span>
-                                                        <span className="text-gray-500 pt-1 border-t border-gray-100">{retT || '-'}</span>
+                                                        <span>{outT}{outCD}</span>
+                                                        <span className="text-gray-500 pt-1 border-t border-gray-100">{retT ? `${retT}${retCD}` : '-'}</span>
                                                     </div>
                                                 );
                                             }
-                                            return outT;
-                                        }
-                                    },
-                                    {
-                                        key: '跨日',
-                                        header: t('cross_day', '跨日'),
-                                        render: (item: any) => {
-                                            if (item['行程類型'] === 'round-trip') {
-                                                return (
-                                                    <div className="flex flex-col gap-1 text-sm">
-                                                        <span>{item['跨日'] || '-'}</span>
-                                                        <span className="text-gray-500 pt-1 border-t border-gray-100">{item['回程跨日'] || '-'}</span>
-                                                    </div>
-                                                );
-                                            }
-                                            return item['跨日'] || '-';
+                                            return `${outT}${outCD}`;
                                         }
                                     },
                                     { key: '幣別', header: t('currency') },

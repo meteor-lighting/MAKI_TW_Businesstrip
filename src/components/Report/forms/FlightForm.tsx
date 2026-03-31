@@ -97,8 +97,8 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
             setValue('returnArrival', editingItem['回程抵達地'] || '');
             setValue('returnDepTime', formatTimeHHmm(editingItem['回程出發時間']));
             setValue('returnArrTime', formatTimeHHmm(editingItem['回程抵達時間']));
-            setValue('crossDay', editingItem['跨日'] || '');
-            setValue('returnCrossDay', editingItem['回程跨日'] || '');
+            setValue('crossDay', (editingItem['跨日'] || '').replace(/^'/, ''));
+            setValue('returnCrossDay', (editingItem['回程跨日'] || '').replace(/^'/, ''));
         }
     }, [editingItem, setValue]);
 
@@ -233,7 +233,7 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                 '金額': data.amount,
                 'TWD金額': data.twdAmount,
                 '匯率': data.rate,
-                '跨日': data.crossDay,
+                '跨日': data.crossDay ? (data.crossDay.startsWith('+') ? `'${data.crossDay}` : data.crossDay) : '',
                 '備註': data.note,
                 '行程類型': data.tripType,
                 '回程日期': data.tripType === 'round-trip' ? data.returnDate.replace(/-/g, '/') : '',
@@ -242,7 +242,7 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                 '回程抵達地': data.tripType === 'round-trip' ? data.returnArrival : '',
                 '回程出發時間': data.tripType === 'round-trip' ? data.returnDepTime : '',
                 '回程抵達時間': data.tripType === 'round-trip' ? data.returnArrTime : '',
-                '回程跨日': data.tripType === 'round-trip' ? data.returnCrossDay : ''
+                '回程跨日': data.tripType === 'round-trip' ? (data.returnCrossDay ? (data.returnCrossDay.startsWith('+') ? `'${data.returnCrossDay}` : data.returnCrossDay) : '') : ''
             };
 
             if (editingItem) {

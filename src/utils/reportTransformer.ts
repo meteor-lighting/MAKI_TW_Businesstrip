@@ -101,8 +101,11 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
             if (!tStr) return '';
             return formatTimeHHmm(tStr);
         };
+        const formatCD = (val: any) => val ? String(val).replace(/^'/, '') : '';
 
         if (item['行程類型'] === 'round-trip') {
+            const c1 = formatCD(item['跨日']) ? ` ${formatCD(item['跨日'])}` : '';
+            const c2 = formatCD(item['回程跨日']) ? ` ${formatCD(item['回程跨日'])}` : '';
             return {
                 ...item,
                 '日期_Formatted': formatD(item['日期']) + '\n' + formatD(item['回程日期']),
@@ -110,11 +113,11 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
                 '出發地_Formatted': `${item['出發地']}\n${item['回程出發地'] || ''}`,
                 '抵達地_Formatted': `${item['抵達地']}\n${item['回程抵達地'] || ''}`,
                 '出發時間_Formatted': formatT(item['出發時間']) + '\n' + formatT(item['回程出發時間']),
-                '抵達時間_Formatted': formatT(item['抵達時間']) + '\n' + formatT(item['回程抵達時間']),
-                '跨日_Formatted': (item['跨日'] || '') + '\n' + (item['回程跨日'] || ''),
+                '抵達時間_Formatted': `${formatT(item['抵達時間'])}${c1}\n${formatT(item['回程抵達時間'])}${c2}`,
             };
         }
         
+        const c = formatCD(item['跨日']) ? ` ${formatCD(item['跨日'])}` : '';
         return {
             ...item,
             '日期_Formatted': formatD(item['日期']),
@@ -122,8 +125,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
             '出發地_Formatted': item['出發地'],
             '抵達地_Formatted': item['抵達地'],
             '出發時間_Formatted': formatT(item['出發時間']),
-            '抵達時間_Formatted': formatT(item['抵達時間']),
-            '跨日_Formatted': item['跨日'] || '',
+            '抵達時間_Formatted': `${formatT(item['抵達時間'])}${c}`,
         };
     });
 
@@ -135,8 +137,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: t('departure'), headerKey: 'departure', accessorKey: '出發地_Formatted', width: 10 },
         { header: t('arrival'), headerKey: 'arrival', accessorKey: '抵達地_Formatted', width: 10 },
         { header: t('departure_time'), headerKey: 'departure_time', accessorKey: '出發時間_Formatted', width: 10 },
-        { header: t('arrival_time'), headerKey: 'arrival_time', accessorKey: '抵達時間_Formatted', width: 10 },
-        { header: t('cross_day', '跨日'), headerKey: 'cross_day', accessorKey: '跨日_Formatted', width: 10 },
+        { header: t('arrival_time'), headerKey: 'arrival_time', accessorKey: '抵達時間_Formatted', width: 15 },
         { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
         { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'number' },
         { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 15 },
