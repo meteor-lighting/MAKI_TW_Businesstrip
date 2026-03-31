@@ -7,7 +7,11 @@ interface ExpenseChartsProps {
     barData: ChartData[];
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+const COLORS = [
+    '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8',
+    '#E06C75', '#98C379', '#E5C07B', '#61AFEF', '#C678DD',
+    '#56B6C2', '#D19A66', '#ABB2BF', '#FF6666', '#AAAAAA'
+];
 
 const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
@@ -41,7 +45,12 @@ const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
                                 fill="#8884d8"
                                 paddingAngle={2}
                                 dataKey="value"
-                                label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                label={({ name, percent }: any) => {
+                                    // 比例小於 3% (0.03) 就不顯示文字標籤，避免互相重疊而被擋住
+                                    // 這些小項目還是可以透過游標 hover 在圖塊上時，藉由 Tooltip 看到實際內容
+                                    if (percent < 0.03) return '';
+                                    return `${name} ${(percent * 100).toFixed(0)}%`;
+                                }}
                             >
                                 {pieData.map((_entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
