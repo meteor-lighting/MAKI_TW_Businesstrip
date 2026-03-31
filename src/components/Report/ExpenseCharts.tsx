@@ -1,5 +1,5 @@
 import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LabelList } from 'recharts';
 import { ChartData } from '../../types/report';
 
 interface ExpenseChartsProps {
@@ -21,6 +21,9 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
+    // Sort bar data from largest to smallest value
+    const sortedBarData = [...barData].sort((a, b) => b.value - a.value);
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             {/* Pie Chart */}
@@ -57,14 +60,16 @@ const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                             layout="vertical"
-                            data={barData}
-                            margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                            data={sortedBarData}
+                            margin={{ top: 5, right: 60, left: 40, bottom: 5 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                             <XAxis type="number" />
                             <YAxis dataKey="name" type="category" width={100} interval={0} />
                             <Tooltip content={<CustomTooltip />} />
-                            <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20} />
+                            <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20}>
+                                <LabelList dataKey="value" position="right" fontSize={12} fill="#6b7280" />
+                            </Bar>
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
