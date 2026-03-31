@@ -24,6 +24,27 @@ const CustomTooltip = ({ active, payload }: any) => {
     return null;
 };
 
+const RADIAN = Math.PI / 180;
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
+    // 增加外推半徑 (原本 outerRadius * 1.05，現在推遠一點避免字擠在圖邊緣)
+    const radius = innerRadius + (outerRadius - innerRadius) * 1.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+        <text 
+            x={x} 
+            y={y} 
+            fill="black" 
+            textAnchor={x > cx ? 'start' : 'end'} 
+            dominantBaseline="central"
+            fontSize={11}
+        >
+            {`${name} ${(percent * 100).toFixed(0)}%`}
+        </text>
+    );
+};
+
 const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
     // Sort bar data from largest to smallest value
     const sortedBarData = [...barData].sort((a, b) => b.value - a.value);
@@ -40,17 +61,13 @@ const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
                                 data={pieData}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={40}
-                                outerRadius={80}
+                                innerRadius={25}
+                                outerRadius={55}
                                 fill="#8884d8"
                                 paddingAngle={2}
                                 dataKey="value"
-                                label={({ name, percent }: any) => {
-                                    // 比例小於 3% (0.03) 就不顯示文字標籤，避免互相重疊而被擋住
-                                    // 這些小項目還是可以透過游標 hover 在圖塊上時，藉由 Tooltip 看到實際內容
-                                    if (percent < 0.03) return '';
-                                    return `${name} ${(percent * 100).toFixed(0)}%`;
-                                }}
+                                label={renderCustomizedLabel}
+                                labelLine={{ strokeWidth: 1, stroke: '#ccc' }}
                             >
                                 {pieData.map((_entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
