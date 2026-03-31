@@ -111,6 +111,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
                 '抵達地_Formatted': `${item['抵達地']}\n${item['回程抵達地'] || ''}`,
                 '出發時間_Formatted': formatT(item['出發時間']) + '\n' + formatT(item['回程出發時間']),
                 '抵達時間_Formatted': formatT(item['抵達時間']) + '\n' + formatT(item['回程抵達時間']),
+                '跨日_Formatted': (item['跨日'] || '') + '\n' + (item['回程跨日'] || ''),
             };
         }
         
@@ -122,6 +123,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
             '抵達地_Formatted': item['抵達地'],
             '出發時間_Formatted': formatT(item['出發時間']),
             '抵達時間_Formatted': formatT(item['抵達時間']),
+            '跨日_Formatted': item['跨日'] || '',
         };
     });
 
@@ -134,6 +136,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: t('arrival'), headerKey: 'arrival', accessorKey: '抵達地_Formatted', width: 10 },
         { header: t('departure_time'), headerKey: 'departure_time', accessorKey: '出發時間_Formatted', width: 10 },
         { header: t('arrival_time'), headerKey: 'arrival_time', accessorKey: '抵達時間_Formatted', width: 10 },
+        { header: t('cross_day', '跨日'), headerKey: 'cross_day', accessorKey: '跨日_Formatted', width: 10 },
         { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
         { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'number' },
         { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 15 },

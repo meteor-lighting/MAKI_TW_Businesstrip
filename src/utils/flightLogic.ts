@@ -3,6 +3,7 @@ export interface FlightInfo {
     arrival: string;
     depTime: string;
     arrTime: string;
+    crossDay?: string;
 }
 
 function formatTime(val: any): string {
@@ -48,6 +49,7 @@ export const searchFlightLocal = (codeStr: string, dateStr: string, data: any[])
     const keyArr = findKey(['arrival', 'arr', 'destination', 'to', 'arrivalairportid', '抵達地']);
     const keyDepTime = findKey(['dep time', 'departuretime', 'std', '出發時間']);
     const keyArrTime = findKey(['arr time', 'arrivaltime', 'sta', '抵達時間']);
+    const keyCrossDay = findKey(['cross day', 'crossday', '跨日']);
 
     if (!keyCode) return null;
 
@@ -88,7 +90,8 @@ export const searchFlightLocal = (codeStr: string, dateStr: string, data: any[])
             departure: keyDep ? (match[keyDep] || '') : '',
             arrival: keyArr ? (match[keyArr] || '') : '',
             depTime: keyDepTime ? formatTime(match[keyDepTime]) : '',
-            arrTime: keyArrTime ? formatTime(match[keyArrTime]) : ''
+            arrTime: keyArrTime ? formatTime(match[keyArrTime]) : '',
+            crossDay: keyCrossDay ? (match[keyCrossDay] || '') : ''
         };
     }
 

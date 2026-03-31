@@ -377,6 +377,21 @@ export default function Report() {
                                             return outT;
                                         }
                                     },
+                                    {
+                                        key: '跨日',
+                                        header: t('cross_day', '跨日'),
+                                        render: (item: any) => {
+                                            if (item['行程類型'] === 'round-trip') {
+                                                return (
+                                                    <div className="flex flex-col gap-1 text-sm">
+                                                        <span>{item['跨日'] || '-'}</span>
+                                                        <span className="text-gray-500 pt-1 border-t border-gray-100">{item['回程跨日'] || '-'}</span>
+                                                    </div>
+                                                );
+                                            }
+                                            return item['跨日'] || '-';
+                                        }
+                                    },
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount') },
                                     { key: 'TWD金額', header: t('twd_amount') },

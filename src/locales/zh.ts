@@ -129,6 +129,8 @@ export const zh = {
         "return_arrival": "回程抵達地",
         "return_departure_time": "回程出發時間",
         "return_arrival_time": "回程抵達時間",
+        "cross_day": "跨日",
+        "return_cross_day": "回程跨日",
         "total_amount_text": "總額",
         "personal_total": "個人",
         "overall_total": "總體總額",

@@ -25,6 +25,8 @@ interface FlightFormData {
     returnArrival: string;
     returnDepTime: string;
     returnArrTime: string;
+    crossDay: string;
+    returnCrossDay: string;
 }
 
 interface FlightFormProps {
@@ -62,7 +64,9 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
             returnDeparture: '',
             returnArrival: '',
             returnDepTime: '',
-            returnArrTime: ''
+            returnArrTime: '',
+            crossDay: '',
+            returnCrossDay: ''
         }
     });
 
@@ -93,6 +97,8 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
             setValue('returnArrival', editingItem['回程抵達地'] || '');
             setValue('returnDepTime', formatTimeHHmm(editingItem['回程出發時間']));
             setValue('returnArrTime', formatTimeHHmm(editingItem['回程抵達時間']));
+            setValue('crossDay', editingItem['跨日'] || '');
+            setValue('returnCrossDay', editingItem['回程跨日'] || '');
         }
     }, [editingItem, setValue]);
 
@@ -169,6 +175,7 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                             setValue('arrival', match.arrival);
                             setValue('depTime', match.depTime);
                             setValue('arrTime', match.arrTime);
+                            setValue('crossDay', match.crossDay || '');
                         }
                     }
                 } catch (e) {
@@ -200,6 +207,7 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                             setValue('returnArrival', match.arrival);
                             setValue('returnDepTime', match.depTime);
                             setValue('returnArrTime', match.arrTime);
+                            setValue('returnCrossDay', match.crossDay || '');
                         }
                     }
                 } catch (e) {
@@ -225,6 +233,7 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                 '金額': data.amount,
                 'TWD金額': data.twdAmount,
                 '匯率': data.rate,
+                '跨日': data.crossDay,
                 '備註': data.note,
                 '行程類型': data.tripType,
                 '回程日期': data.tripType === 'round-trip' ? data.returnDate.replace(/-/g, '/') : '',
@@ -232,7 +241,8 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                 '回程出發地': data.tripType === 'round-trip' ? data.returnDeparture : '',
                 '回程抵達地': data.tripType === 'round-trip' ? data.returnArrival : '',
                 '回程出發時間': data.tripType === 'round-trip' ? data.returnDepTime : '',
-                '回程抵達時間': data.tripType === 'round-trip' ? data.returnArrTime : ''
+                '回程抵達時間': data.tripType === 'round-trip' ? data.returnArrTime : '',
+                '回程跨日': data.tripType === 'round-trip' ? data.returnCrossDay : ''
             };
 
             if (editingItem) {
@@ -350,6 +360,10 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                     <label className="block text-sm font-medium text-gray-700">{t('arrival_time')}</label>
                     <input type="time" {...register('arrTime')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
                 </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">{t('cross_day')}</label>
+                    <input type="text" {...register('crossDay')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" placeholder="+1" />
+                </div>
             </div>
 
             {tripType === 'round-trip' && (
@@ -393,6 +407,10 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                         <div>
                             <label className="block text-sm font-medium text-gray-700">{t('return_arrival_time')}</label>
                             <input type="time" {...register('returnArrTime')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">{t('return_cross_day')}</label>
+                            <input type="text" {...register('returnCrossDay')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" placeholder="+1" />
                         </div>
                     </div>
                 </div>
