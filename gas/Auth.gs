@@ -14,12 +14,12 @@ function handleSignUp(payload) {
       // Check username uniqueness (Column Index 1: Name)
       const exists = data.some(row => row[1] === payload.username);
       if (exists) {
-        return { status: 'error', message: '此用戶名稱已存在！' };
+        return { status: 'error', message: '此員工編號已存在！' };
       }
 
       // Validation
       if (!payload.password || payload.password.length < 8) {
-        return { status: 'error', message: '用戶密碼必須包含英數字至少8位！' };
+        return { status: 'error', message: '密碼必須包含英數字至少8位！' };
       }
       
       // TODO: strict email validation if needed
@@ -48,7 +48,7 @@ function handleSignUp(payload) {
         new Date()
       ]);
 
-      return { status: 'success', message: '用戶註冊成功！', userId: newId };
+      return { status: 'success', message: '員工編號註冊成功！', userId: newId };
 
     } catch (e) {
       throw e;
@@ -66,7 +66,7 @@ function handleSignIn(payload) {
   const user = sheetData.find(u => u['用戶名稱'] === payload.username);
   
   if (!user) {
-    return { status: 'error', message: '此用戶名稱不存在！' };
+    return { status: 'error', message: '找不到此員工編號！' };
   }
 
   const inputHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, payload.password)
@@ -115,7 +115,7 @@ function handleForgotPassword(payload) {
       }
       
       if (rowIndex === -1) {
-        return { status: 'error', message: '找不到此用戶電郵地址！' };
+        return { status: 'error', message: '找不到此電郵地址！' };
       }
       
       // Generate new password
@@ -178,7 +178,7 @@ function handleChangePassword(payload) {
       }
       
       if (rowIndex === -1) {
-        return { status: 'error', message: '找不到此用戶！' };
+        return { status: 'error', message: '找不到此員工編號！' };
       }
       
       // Verify Old Password

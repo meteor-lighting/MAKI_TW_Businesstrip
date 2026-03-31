@@ -18,7 +18,7 @@ export const generateWordDocument = async (data: ReportData, chartImageBase64?: 
     sections.push(
         new Paragraph({
             children: [
-                new TextRun({ text: `用戶: ${data.user}   `, bold: true }),
+                new TextRun({ text: `員工編號: ${data.user}   `, bold: true }),
                 new TextRun({ text: `商機天數: ${data.summary.days}天   ` }),
                 new TextRun({ text: `USD產率: ${data.summary.rateUSD}   ` }),
                 new TextRun({ text: `期間: ${data.summary.period}` }),

@@ -17,7 +17,7 @@ export const exportToExcel = (reportData: ReportData, reportId: string) => {
     const summaryRows = [
         ['商務旅行費用報告 (Business Travel Expense Report)'],
         ['報告編號', reportData.header['報告編號']],
-        ['用戶編號', reportData.header['用戶編號']],
+        ['員工編號', reportData.header['用戶編號']],
         ['商旅天數', reportData.header['商旅天數']],
         ['USD匯率', reportData.header['USD匯率']],
         ['建立時間', reportData.header['建立時間']],
