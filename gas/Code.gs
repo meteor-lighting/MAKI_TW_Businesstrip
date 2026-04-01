@@ -476,20 +476,22 @@ function queryHistoryData(payload) {
         matchedReports = matchedReports.filter(r => String(r['報告名稱'] || '').includes(payload.reportName));
       }
 
+      // Populate true member names into matchedReports
+      const memberData = sheetDataToJson('Member');
+      const userMap = {};
+      if (memberData && memberData.length > 0) {
+        memberData.forEach(m => {
+          userMap[String(m['用戶編號'])] = m['用戶名稱'];
+        });
+      }
+      
+      matchedReports = matchedReports.map(r => ({
+        ...r,
+        '員工姓名': userMap[String(r['用戶編號'])] || r['員工姓名'] || r['用戶編號']
+      }));
+
       // If category is all, just return matched reports
       if (!payload.category || payload.category === 'All') {
-        const memberData = sheetDataToJson('Member');
-        const userMap = {};
-        if (memberData && memberData.length > 0) {
-          memberData.forEach(m => {
-            userMap[String(m['用戶編號'])] = m['用戶名稱'];
-          });
-        }
-        
-        matchedReports = matchedReports.map(r => ({
-          ...r,
-          '員工姓名': userMap[String(r['用戶編號'])] || r['員工姓名'] || r['用戶編號']
-        }));
         // Since "合計TWD總體總額" exists in the Report Header, we don't need to recalculate.
         // We can just map it to guarantee its existence, or let the frontend read it directly.
 

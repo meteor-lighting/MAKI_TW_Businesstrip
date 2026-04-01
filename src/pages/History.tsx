@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { sendRequest } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DataGrid from '../components/Report/DataGrid';
+import { formatTimeHHmm } from '../utils/formatters';
 
 // Known categories from Setup.gs
 const CATEGORIES = [
@@ -79,7 +80,10 @@ const History: React.FC = () => {
         if (resultType === 'reports') {
             // Static report header columns
             cols = [
-                { key: '建立時間', header: t('date', '日期'), render: (item: any) => new Date(item['建立時間']).toLocaleDateString() },
+                { key: '建立時間', header: t('date', '日期'), render: (item: any) => {
+                    const d = new Date(item['建立時間']);
+                    return isNaN(d.getTime()) ? '-' : `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+                }},
                 { key: '報告名稱', header: t('report_name', '報告名稱') },
                 { key: '員工姓名', header: t('user', '員工姓名'), render: (i: any) => i['員工姓名'] || i['用戶編號'] },
                 { key: '出差地點', header: t('region', '地區'), render: (item: any) => {
@@ -105,9 +109,30 @@ const History: React.FC = () => {
 
             // Dynamic item keys
             keys.forEach(k => {
+                let renderFn;
+                
+                if (k === '地區' || k === '出差地點') {
+                     renderFn = (item: any) => {
+                         let d = item[k];
+                         try { const p = JSON.parse(d); if(Array.isArray(p)) return p.join(', '); } catch(e){}
+                         return d || '-';
+                     };
+                } else if (k.includes('日期') || k === '建立時間' || k === '最後修改時間') {
+                     renderFn = (item: any) => {
+                         if (!item[k]) return '-';
+                         const d = new Date(item[k]);
+                         return isNaN(d.getTime()) ? String(item[k]) : `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+                     };
+                } else if (k.includes('時間')) {
+                     renderFn = (item: any) => formatTimeHHmm(item[k]);
+                } else if (k.includes('金額') || k === '金額' || k === '合計TWD總體總額') {
+                     renderFn = (item: any) => item[k] ? Number(item[k]).toLocaleString() : item[k] === 0 ? '0' : '-';
+                }
+
                 cols.push({
                     key: k,
                     header: t(k.toLowerCase(), k), // Fallback to raw key if no matching translation
+                    render: renderFn
                 });
             });
             
