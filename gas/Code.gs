@@ -478,6 +478,9 @@ function queryHistoryData(payload) {
 
       // If category is all, just return matched reports
       if (!payload.category || payload.category === 'All') {
+        // Since "合計TWD總體總額" exists in the Report Header, we don't need to recalculate.
+        // We can just map it to guarantee its existence, or let the frontend read it directly.
+
         return {
           status: 'success',
           type: 'reports',

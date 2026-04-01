@@ -81,10 +81,14 @@ const History: React.FC = () => {
             cols = [
                 { key: '建立時間', header: t('date', '日期'), render: (item: any) => new Date(item['建立時間']).toLocaleDateString() },
                 { key: '報告名稱', header: t('report_name', '報告名稱') },
-                { key: '員工姓名', header: t('user', '員工姓名') },
-                { key: '用戶編號', header: t('user_id', '員工編號') },
-                { key: '出差地點', header: t('region', '地區') },
+                { key: '員工姓名', header: t('user', '員工姓名'), render: (i: any) => i['員工姓名'] || i['用戶編號'] },
+                { key: '出差地點', header: t('region', '地區'), render: (item: any) => {
+                    let d = item['出差地點'];
+                    try { const p = JSON.parse(d); if(Array.isArray(p)) return p.join(', '); } catch(e){}
+                    return d || '-';
+                }},
                 { key: '商旅天數', header: t('trip_duration', '商旅天數') },
+                { key: '合計TWD總體總額', header: t('total_twd', '合計總額(TWD)'), render: (item: any) => item['合計TWD總體總額'] ? Number(item['合計TWD總體總額']).toLocaleString() : '0' },
                 { key: '狀態', header: t('status', '狀態'), render: (i: any) => <span className="px-2 py-1 rounded text-xs bg-gray-100">{i['狀態'] || 'Draft'}</span> },
             ];
         } else if (resultType === 'items') {
