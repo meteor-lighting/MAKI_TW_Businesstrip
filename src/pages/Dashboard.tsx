@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getUserReports, getReport, deleteReport, updateReportStatus } from '../services/api';
-import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut } from 'lucide-react';
+import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut, ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { transformReportData } from '../utils/reportTransformer';
@@ -142,7 +142,15 @@ const Dashboard: React.FC = () => {
     return (
         <div className="max-w-6xl mx-auto p-4 md:p-6 pb-24">
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">{t('my_reports')}</h1>
+                <div className="flex items-center gap-4">
+                    <button 
+                        onClick={() => navigate('/home')}
+                        className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-600"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <h1 className="text-2xl font-bold text-gray-800">{t('my_reports')}</h1>
+                </div>
                 <div className="flex items-center gap-3">
                     <button
                         onClick={handleLogout}
