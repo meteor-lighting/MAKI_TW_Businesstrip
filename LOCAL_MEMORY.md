@@ -32,6 +32,7 @@
 1. **直接更新此文件**：每次新增重大功能或修復棘手 Bug 後，必須自行更新此 `LOCAL_MEMORY.md`，新增開發日誌。
 2. **多語系 (i18n)**：所有 UI 上的文字需要先在 `src/locales/zh.ts` 中註冊 Key，並依賴 `t('key', 'default_value')` 來呈現。
 3. **保持元件分離**：獨立表單元件抽離在 `forms` 目錄，而共同 UI (如 DataGrid) 則是抽象獨立的層級。
+4. **Git Ignore 同步**：若專案中的 `.gitignore` 內容有發生異動，必須同時記錄、同步並覆蓋儲存到根目錄下的 `gitignore.md` 當中。
 
 ---
 ## 開發日誌 (Changelog)
