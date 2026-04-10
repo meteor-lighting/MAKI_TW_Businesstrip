@@ -174,46 +174,20 @@ export default function TransportationForm({ reportId, headerRate, tripStartDate
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="flex gap-4">
-                    <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700">{t('date')} (YYYY/MM/DD)</label>
-                        <input
-                            type="date"
-                            {...register('date', {
-                                required: t('please_enter_date'),
-                            })}
-                            disabled={loading || disabled}
-                            className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.date ? 'border-red-500' : ''}`}
-                        />
-                        {errors.date && <span className="text-red-500 text-sm">{errors.date.message}</span>}
-                    </div>
+                <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700">{t('date')} (YYYY/MM/DD)</label>
+                    <input
+                        type="date"
+                        {...register('date', {
+                            required: t('please_enter_date'),
+                        })}
+                        disabled={loading || disabled}
+                        className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.date ? 'border-red-500' : ''}`}
+                    />
+                    {errors.date && <span className="text-red-500 text-sm">{errors.date.message}</span>}
                 </div>
-                <div className="col-span-1 md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700">{t('transportation_type', '交通工具')}</label>
-                    <div className="flex gap-2 mt-1">
-                        <select 
-                            {...register('transportationType')} 
-                            disabled={loading || disabled} 
-                            className="block w-1/2 rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100"
-                        >
-                            <option value="計程車">{t('taxi_short', '計程車')}</option>
-                            <option value="火車">{t('train', '火車')}</option>
-                            <option value="公車">{t('bus', '公車')}</option>
-                            <option value="其他">{t('other', '其他')}</option>
-                        </select>
-                        {(transportationType === '其他' || transportationType === 'Other') && (
-                            <input
-                                type="text"
-                                placeholder={t('please_specify', '請註明')}
-                                {...register('transportationOther', { required: t('required', '必填') })}
-                                disabled={loading || disabled}
-                                className={`block w-1/2 rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 ${errors.transportationOther ? 'border-red-500' : ''}`}
-                            />
-                        )}
-                    </div>
-                    {errors.transportationOther && <span className="text-red-500 text-sm mt-1">{errors.transportationOther.message}</span>}
-                </div>
-                <div>
+                
+                <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700">{t('region')}</label>
                     <Controller
                         control={control}
@@ -229,9 +203,7 @@ export default function TransportationForm({ reportId, headerRate, tripStartDate
                         )}
                     />
                 </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('currency')}</label>
                     <select {...register('currency')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100">
@@ -265,9 +237,36 @@ export default function TransportationForm({ reportId, headerRate, tripStartDate
                     <label className="block text-sm font-medium text-gray-700">{t('twd_amount')}</label>
                     <input type="number" {...register('twdAmount')} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100 font-bold text-blue-600" />
                 </div>
-                <div className="col-span-1 md:col-span-4">
+
+                <div className="col-span-1 md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700">{t('remark')}</label>
                     <input type="text" {...register('note')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
+                </div>
+
+                <div className="col-span-1 md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700">{t('transportation_type', '交通工具')}</label>
+                    <div className="flex gap-2 mt-1">
+                        <select 
+                            {...register('transportationType')} 
+                            disabled={loading || disabled} 
+                            className="block w-1/2 rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100"
+                        >
+                            <option value="計程車">{t('taxi_short', '計程車')}</option>
+                            <option value="火車">{t('train', '火車')}</option>
+                            <option value="公車">{t('bus', '公車')}</option>
+                            <option value="其他">{t('other', '其他')}</option>
+                        </select>
+                        {(transportationType === '其他' || transportationType === 'Other') && (
+                            <input
+                                type="text"
+                                placeholder={t('please_specify', '請註明')}
+                                {...register('transportationOther', { required: t('required', '必填') })}
+                                disabled={loading || disabled}
+                                className={`block w-1/2 rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 ${errors.transportationOther ? 'border-red-500' : ''}`}
+                            />
+                        )}
+                    </div>
+                    {errors.transportationOther && <span className="text-red-500 text-sm mt-1">{errors.transportationOther.message}</span>}
                 </div>
             </div>
 
