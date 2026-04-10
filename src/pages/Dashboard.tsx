@@ -198,50 +198,52 @@ const Dashboard: React.FC = () => {
                                     : 'bg-white shadow-sm border-gray-100 hover:shadow-md hover:border-blue-200'}
                             `}
                         >
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex flex-col gap-2">
-                                    <span className={`text-xs font-semibold px-2 py-1 rounded inline-block w-max
-                                        ${report.status ? 'bg-gray-200 text-gray-600' : 'bg-blue-50 text-blue-600'}`}>
+                            <div className="flex justify-between items-start mb-4 gap-4">
+                                <div className="flex flex-col gap-2 flex-1 min-w-0">
+                                    <span className={`text-xs font-semibold px-2 py-1 rounded inline-block truncate w-full max-w-max
+                                        ${report.status ? 'bg-gray-200 text-gray-600' : 'bg-blue-50 text-blue-600'}`} title={report.reportName || report.reportId}>
                                         {report.reportName || report.reportId}
                                     </span>
                                     {user?.role === 'admin' && report.userName && (
-                                        <span className="text-xs font-semibold px-2 py-0.5 rounded inline-block w-max bg-purple-100 text-purple-700">
+                                        <span className="text-xs font-semibold px-2 py-0.5 rounded inline-block truncate max-w-max bg-purple-100 text-purple-700" title={report.userName}>
                                             {report.userName}
                                         </span>
                                     )}
                                     {report.status && (
-                                        <span className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded flex items-center gap-1 w-max">
-                                            <Lock className="w-3 h-3" />
-                                            {report.status}
+                                        <span className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded flex items-center gap-1 truncate max-w-max">
+                                            <Lock className="w-3 h-3 flex-shrink-0" />
+                                            <span className="truncate">{report.status}</span>
                                         </span>
                                     )}
                                 </div>
-                                <div className="text-xs text-gray-400 flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    {formatDate(report.createdAt)}
-                                </div>
-                                <div className="flex z-10 relative">
-                                    {user?.role === 'admin' && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => toggleLock(e, report)}
-                                            className={`p-1.5 rounded-full transition ml-2 flex items-center justify-center 
-                                                ${report.status ? 'text-amber-500 hover:bg-amber-50' : 'text-gray-400 hover:text-amber-500 hover:bg-amber-50'}`}
-                                            title={report.status ? t('unlock') : t('lock')}
-                                        >
-                                            {report.status ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
-                                        </button>
-                                    )}
-                                    {!report.status && (
-                                        <button
-                                            type="button"
-                                            onClick={(e) => handleDeleteClick(e, report)}
-                                            className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-full transition ml-2"
-                                            title={t('delete')}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    )}
+                                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                    <div className="text-xs text-gray-400 flex items-center gap-1 whitespace-nowrap">
+                                        <Clock className="w-3 h-3 flex-shrink-0" />
+                                        {formatDate(report.createdAt)}
+                                    </div>
+                                    <div className="flex z-10 relative">
+                                        {user?.role === 'admin' && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => toggleLock(e, report)}
+                                                className={`p-1.5 rounded-full transition flex items-center justify-center 
+                                                    ${report.status ? 'text-amber-500 hover:bg-amber-50' : 'text-gray-400 hover:text-amber-500 hover:bg-amber-50'}`}
+                                                title={report.status ? t('unlock') : t('lock')}
+                                            >
+                                                {report.status ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                                            </button>
+                                        )}
+                                        {!report.status && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => handleDeleteClick(e, report)}
+                                                className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-full transition ml-1"
+                                                title={t('delete')}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
