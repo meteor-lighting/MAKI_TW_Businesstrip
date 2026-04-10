@@ -666,35 +666,35 @@ export default function Report() {
                     </div>
                 </SectionAccordion>
 
-                {/* Taxi */}
+                {/* Transportation */}
                 <SectionAccordion
-                    title={t('taxi')}
+                    title={t('transportation')}
                     totalAmountText={t('total_amount_text')}
-                    totalAmount={Number(reportData?.header['計程車費總額'] || 0)}
+                    totalAmount={Number(reportData?.header['交通運輸費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
                 >
                     <div className="space-y-6">
-                        <TaxiForm
+                        <TransportationForm
                             reportId={reportId}
                             headerRate={Number(reportData?.header['USD匯率'] || 0)}
                             tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
-                            editingItem={editingItems['Taxi']}
-                            onCancelEdit={() => handleCancelEdit('Taxi')}
+                            editingItem={editingItems['Transportation']}
+                            onCancelEdit={() => handleCancelEdit('Transportation')}
                         />
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             <DataGrid
                                 keyField="次序"
-                                data={reportData?.items?.Taxi || []}
-                                onEdit={(item) => handleEditItem('Taxi', item)}
+                                data={reportData?.items?.Transportation || []}
+                                onEdit={(item) => handleEditItem('Transportation', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
                                         reportId,
-                                        category: 'Taxi',
+                                        category: 'Transportation',
                                         sequence: item.次序
                                     }).then(handleItemChanged);
                                 }}
@@ -711,6 +711,7 @@ export default function Report() {
                                             return isNaN(d.getTime()) ? String(item['日期']) : d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '/');
                                         }
                                     },
+                                    { key: '交通工具', header: t('transportation_type', '交通工具') },
                                     { key: '地區', header: t('region') },
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
