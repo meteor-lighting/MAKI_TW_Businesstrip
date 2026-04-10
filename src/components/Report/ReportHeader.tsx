@@ -120,19 +120,10 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
                         </div>
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2 mt-1 group">
+                    <div className="flex items-center gap-2 mt-1">
                         <span className="font-semibold text-gray-900">
                             {startDate || '-'} ~ {endDate || '-'}
                         </span>
-                        {reportId && (
-                            <button 
-                                onClick={() => setIsEditing(true)}
-                                className="p-1 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-blue-50"
-                                title="Edit Trip Info"
-                            >
-                                <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                        )}
                     </div>
                 )}
             </div>
@@ -147,7 +138,18 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
                         className="mt-1 block w-full border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
                     />
                 ) : (
-                    <span className="font-semibold text-gray-900 mt-1">{destination || '-'}</span>
+                    <div className="flex items-center gap-2 mt-1 group">
+                        <span className="font-semibold text-gray-900">{destination || '-'}</span>
+                        {reportId && (
+                            <button 
+                                onClick={() => setIsEditing(true)}
+                                className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-blue-50"
+                                title="Edit Trip Info"
+                            >
+                                <Pencil className="w-6 h-6" />
+                            </button>
+                        )}
+                    </div>
                 )}
             </div>
         </div>
