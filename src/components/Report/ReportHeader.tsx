@@ -93,7 +93,7 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
                 <span className="font-semibold text-gray-900 mt-1">{rate.toFixed(2)}</span>
             </div>
 
-            <div className="flex flex-col">
+            <div className={`flex flex-col ${isEditing ? 'md:col-span-2 lg:col-span-2' : ''}`}>
                 <span className="text-sm text-gray-500">期間</span>
                 {isEditing ? (
                     <div className="flex items-center gap-2 mt-1">
@@ -110,14 +110,6 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
                             onChange={(e) => setEditEnd(e.target.value)}
                             className="border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none w-[135px]"
                         />
-                        <div className="flex gap-1 ml-2">
-                            <button onClick={handleSave} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Save">
-                                <Check className="w-4 h-4" />
-                            </button>
-                            <button onClick={handleCancel} className="p-1 text-gray-400 hover:bg-gray-100 rounded" title="Cancel">
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2 mt-1">
@@ -131,12 +123,22 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
             <div className="flex flex-col">
                 <span className="text-sm text-gray-500">國家</span>
                 {isEditing ? (
-                    <input 
-                        type="text" 
-                        value={editDestination}
-                        onChange={(e) => setEditDestination(e.target.value)}
-                        className="mt-1 block w-full border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                    />
+                    <div className="flex items-center gap-2 mt-1">
+                        <input 
+                            type="text" 
+                            value={editDestination}
+                            onChange={(e) => setEditDestination(e.target.value)}
+                            className="block w-full min-w-[120px] border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                        />
+                        <div className="flex gap-1 shrink-0 ml-1">
+                            <button onClick={handleSave} className="p-1 text-green-600 hover:bg-green-50 rounded shrink-0" title="Save">
+                                <Check className="w-5 h-5" />
+                            </button>
+                            <button onClick={handleCancel} className="p-1 text-gray-400 hover:bg-gray-100 rounded shrink-0" title="Cancel">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
                 ) : (
                     <div className="flex items-center gap-2 mt-1 group">
                         <span className="font-semibold text-gray-900">{destination || '-'}</span>
