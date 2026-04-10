@@ -237,7 +237,7 @@ function deleteReportItem(payload) {
 }
 
 function updateReportTripInfo(payload) {
-    const { reportId, days, startDate, endDate } = payload;
+    const { reportId, days, startDate, endDate, destination } = payload;
     if (!reportId) return { status: 'error', message: 'Missing reportId' };
     
     const lock = LockService.getScriptLock();
@@ -258,10 +258,12 @@ function updateReportTripInfo(payload) {
             const colDays = headers.indexOf('商旅天數');
             const colStart = headers.indexOf('商旅起始日');
             const colEnd = headers.indexOf('商旅結束日');
+            const colDest = headers.indexOf('出差國家');
             
             if (colDays > -1 && days !== undefined && days !== '') sheet.getRange(rowIndex, colDays + 1).setValue(days);
             if (colStart > -1 && startDate !== undefined && startDate !== '') sheet.getRange(rowIndex, colStart + 1).setValue(startDate.replace(/-/g, '/'));
             if (colEnd > -1 && endDate !== undefined && endDate !== '') sheet.getRange(rowIndex, colEnd + 1).setValue(endDate.replace(/-/g, '/'));
+            if (colDest > -1 && destination !== undefined) sheet.getRange(rowIndex, colDest + 1).setValue(destination);
             
             SpreadsheetApp.flush();
             

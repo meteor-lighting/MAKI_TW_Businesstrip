@@ -229,6 +229,7 @@ export default function Report() {
                         rate={Number(reportData.header['USD匯率'] || 0)}
                         startDate={reportData.header['商旅起始日']} 
                         endDate={reportData.header['商旅結束日']}
+                        destination={reportData.header['出差國家']}
                         userName={user?.role === 'admin' ? (reportData.header['員工姓名'] || reportData.header['用戶編號']) : undefined}
                         onUpdateSuccess={handleItemChanged}
                     />

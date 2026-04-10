@@ -468,7 +468,7 @@ function queryHistoryData(payload) {
       
       // Filter by Destination
       if (payload.destination) {
-        matchedReports = matchedReports.filter(r => String(r['出差地點'] || '').includes(payload.destination));
+        matchedReports = matchedReports.filter(r => String(r['出差國家'] || '').includes(payload.destination));
       }
       
       // Filter by Report Name

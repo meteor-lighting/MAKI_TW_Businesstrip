@@ -12,23 +12,26 @@ interface ReportHeaderProps {
     rate: number;
     startDate?: string;
     endDate?: string;
+    destination?: string;
     userName?: string;
     onUpdateSuccess?: () => void;
 }
 
-export default function ReportHeader({ reportId, days, rate, startDate, endDate, userName, onUpdateSuccess }: ReportHeaderProps) {
+export default function ReportHeader({ reportId, days, rate, startDate, endDate, destination, userName, onUpdateSuccess }: ReportHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
     
     const [editDays, setEditDays] = useState<number | string>(days);
     const [editStart, setEditStart] = useState<string>(formatDateYYYYMMDD(startDate));
     const [editEnd, setEditEnd] = useState<string>(formatDateYYYYMMDD(endDate));
+    const [editDestination, setEditDestination] = useState<string>(destination || '');
 
     useEffect(() => {
         setEditDays(days);
         setEditStart(formatDateYYYYMMDD(startDate));
         setEditEnd(formatDateYYYYMMDD(endDate));
-    }, [days, startDate, endDate]);
+        setEditDestination(destination || '');
+    }, [days, startDate, endDate, destination]);
 
     const handleSave = async () => {
         if (!reportId) return;
@@ -37,7 +40,7 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
             const formattedStart = editStart.replace(/-/g, '/');
             const formattedEnd = editEnd.replace(/-/g, '/');
             
-            await updateReportTripInfo(reportId, editDays, formattedStart, formattedEnd);
+            await updateReportTripInfo(reportId, editDays, formattedStart, formattedEnd, editDestination);
             setIsEditing(false);
             if (onUpdateSuccess) onUpdateSuccess();
         } catch (error) {
@@ -52,11 +55,12 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
         setEditDays(days);
         setEditStart(formatDateYYYYMMDD(startDate));
         setEditEnd(formatDateYYYYMMDD(endDate));
+        setEditDestination(destination || '');
         setIsEditing(false);
     };
 
     return (
-        <div className={`grid grid-cols-1 md:grid-cols-2 ${userName ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200 relative`}>
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${userName ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200 relative`}>
             {loading && (
                 <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-lg">
                     <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
@@ -130,6 +134,20 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
                             </button>
                         )}
                     </div>
+                )}
+            </div>
+
+            <div className="flex flex-col">
+                <span className="text-sm text-gray-500">國家</span>
+                {isEditing ? (
+                    <input 
+                        type="text" 
+                        value={editDestination}
+                        onChange={(e) => setEditDestination(e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                    />
+                ) : (
+                    <span className="font-semibold text-gray-900 mt-1">{destination || '-'}</span>
                 )}
             </div>
         </div>

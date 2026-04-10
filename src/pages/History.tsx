@@ -86,8 +86,8 @@ const History: React.FC = () => {
                 }},
                 { key: '報告名稱', header: t('report_name', '報告名稱') },
                 { key: '員工姓名', header: t('user', '員工姓名'), render: (i: any) => i['員工姓名'] || i['用戶編號'] },
-                { key: '出差地點', header: t('region', '地區'), render: (item: any) => {
-                    let d = item['出差地點'];
+                { key: '出差國家', header: t('country', '國家'), render: (item: any) => {
+                    let d = item['出差國家'];
                     try { const p = JSON.parse(d); if(Array.isArray(p)) return p.join(', '); } catch(e){}
                     return d || '-';
                 }},
@@ -111,7 +111,7 @@ const History: React.FC = () => {
             keys.forEach(k => {
                 let renderFn;
                 
-                if (k === '地區' || k === '出差地點') {
+                if (k === '地區' || k === '出差國家') {
                      renderFn = (item: any) => {
                          let d = item[k];
                          try { const p = JSON.parse(d); if(Array.isArray(p)) return p.join(', '); } catch(e){}
