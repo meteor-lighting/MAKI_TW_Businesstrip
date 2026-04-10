@@ -229,6 +229,9 @@ export default function TransportationForm({ reportId, headerRate, tripStartDate
                         )}
                     />
                 </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('currency')}</label>
                     <select {...register('currency')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100">
@@ -240,9 +243,6 @@ export default function TransportationForm({ reportId, headerRate, tripStartDate
                         <option value="THB">THB</option>
                     </select>
                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('amount')}</label>
                     <input
@@ -265,7 +265,7 @@ export default function TransportationForm({ reportId, headerRate, tripStartDate
                     <label className="block text-sm font-medium text-gray-700">{t('twd_amount')}</label>
                     <input type="number" {...register('twdAmount')} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100 font-bold text-blue-600" />
                 </div>
-                <div className="col-span-2">
+                <div className="col-span-1 md:col-span-4">
                     <label className="block text-sm font-medium text-gray-700">{t('remark')}</label>
                     <input type="text" {...register('note')} disabled={loading || disabled} className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100" />
                 </div>
