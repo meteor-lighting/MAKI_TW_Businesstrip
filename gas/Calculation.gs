@@ -287,7 +287,7 @@ function updateReportTripInfo(payload) {
 function recalculateHeader(reportId, triggerCategory = null) {
     let startDateStr = '';
     // Sum up all categories for this reportId
-    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
+    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Transportation', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
     
     let totals = {
         '機票費總額': 0,
