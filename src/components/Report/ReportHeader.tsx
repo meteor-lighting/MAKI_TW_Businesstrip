@@ -114,7 +114,7 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
                 ) : (
                     <div className="flex items-center gap-2 mt-1">
                         <span className="font-semibold text-gray-900">
-                            {startDate || '-'} ~ {endDate || '-'}
+                            {formatDateYYYYMMDD(startDate) || '-'} ~ {formatDateYYYYMMDD(endDate) || '-'}
                         </span>
                     </div>
                 )}
