@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getUserReports, getReport, deleteReport, updateReportStatus } from '../services/api';
-import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut, ArrowLeft } from 'lucide-react';
+import { getUserReports, getReport, deleteReport, updateReportStatus, copyReport } from '../services/api';
+import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut, ArrowLeft, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { transformReportData } from '../utils/reportTransformer';
@@ -133,6 +133,27 @@ const Dashboard: React.FC = () => {
         }
     };
 
+    const handleCopyReport = async (e: React.MouseEvent, report: ReportSummary) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!user?.id) return;
+        
+        try {
+            setLoading(true);
+            const res = await copyReport(report.reportId, user.id);
+            if (res.status === 'success' && res.reportId) {
+                sessionStorage.setItem('activeReportId', res.reportId);
+                navigate('/report');
+            } else {
+                setError(res.message || t('error'));
+            }
+        } catch (err: any) {
+            setError(err.message || t('error'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const formatDate = (dateStr: string) => {
         if (!dateStr) return '';
         const d = new Date(dateStr);
@@ -233,6 +254,14 @@ const Dashboard: React.FC = () => {
                                                 {report.status ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
                                             </button>
                                         )}
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleCopyReport(e, report)}
+                                            className="text-gray-400 hover:text-blue-500 hover:bg-blue-50 p-1.5 rounded-full transition ml-1"
+                                            title={t('copy_report', '複製')}
+                                        >
+                                            <Copy className="w-4 h-4" />
+                                        </button>
                                         {!report.status && (
                                             <button
                                                 type="button"

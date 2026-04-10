@@ -43,6 +43,9 @@ function doPost(e) {
       case 'queryHistory':
         result = queryHistoryData(payload);
         break;
+      case 'copyReport': // Copy existing report
+        result = copyReport(payload);
+        break;
       case 'deleteReport': // Delete a complete report
         result = deleteReport(payload);
         break;
@@ -537,6 +540,122 @@ function queryHistoryData(payload) {
       }
     } catch (e) {
       throw e;
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { status: 'error', message: 'Database busy' };
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+function copyReport(payload) {
+  const sourceReportId = payload.sourceReportId;
+  const userId = payload.userId;
+  if (!sourceReportId || !userId) {
+    return { status: 'error', message: 'Missing sourceReportId or userId' };
+  }
+
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(10000)) {
+    try {
+      const headerSheet = getSheet('Report Header');
+      const headerData = headerSheet.getDataRange().getValues();
+      
+      // 1. Generate new Report ID
+      let lastNum = 0;
+      if (headerData.length > 1) {
+          // Iterate backwards or just search for max
+          for (let i = 1; i < headerData.length; i++) {
+             const p = String(headerData[i][0]).split('-');
+             if (p.length === 2 && p[0] === 'BR') {
+                const n = parseInt(p[1], 10);
+                if (n > lastNum) lastNum = n;
+             }
+          }
+      }
+      const newNum = lastNum + 1;
+      const newReportId = 'BR-' + String(newNum).padStart(8, '0');
+
+      // 2. Duplicate Header
+      const headers = headerData[0];
+      const idIdx = headers.indexOf('報告編號');
+      const userIdx = headers.indexOf('用戶編號');
+      const timeIdx = headers.indexOf('建立時間');
+      const modIdx = headers.indexOf('最後修改時間');
+      const statusIdx = headers.indexOf('狀態');
+      const nameIdx = headers.indexOf('報告名稱');
+      const empIdx = headers.indexOf('員工姓名');
+      
+      let sourceRow = null;
+      for (let i = 1; i < headerData.length; i++) {
+        if (String(headerData[i][idIdx]) === String(sourceReportId)) {
+          sourceRow = [...headerData[i]];
+          break;
+        }
+      }
+      
+      if (!sourceRow) {
+        return { status: 'error', message: 'Source report not found' };
+      }
+      
+      // Overwrite specific fields
+      sourceRow[idIdx] = newReportId;
+      if (userIdx !== -1) sourceRow[userIdx] = userId;
+      if (timeIdx !== -1) sourceRow[timeIdx] = new Date();
+      if (modIdx !== -1) sourceRow[modIdx] = '';
+      if (statusIdx !== -1) sourceRow[statusIdx] = '';
+      
+      // Update Name with suffix if it exists
+      if (nameIdx !== -1) {
+        if (sourceRow[nameIdx]) {
+           sourceRow[nameIdx] = String(sourceRow[nameIdx]) + ' (複製)';
+        } else {
+           sourceRow[nameIdx] = sourceReportId + ' (複製)'; 
+        }
+      }
+      
+      // Populate true member name if mapping is possible, but frontend handles this via userMap anyway.
+      
+      headerSheet.appendRow(sourceRow);
+      
+      // 3. Duplicate Items in all category sheets
+      const categories = ['Flight', 'Accommodation', 'Rental Car', 'Transportation', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
+      
+      categories.forEach(cat => {
+        const sheet = getSheet(cat);
+        if (!sheet) return;
+        const data = sheet.getDataRange().getValues();
+        if (data.length < 2) return;
+        
+        const catHeaders = data[0];
+        const catIdIdx = catHeaders.indexOf('報告編號');
+        if (catIdIdx === -1) return;
+        
+        let targetRows = [];
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][catIdIdx]) === String(sourceReportId)) {
+            const rowCopy = [...data[i]];
+            rowCopy[catIdIdx] = newReportId;
+            
+            // Re-map internal dates which might format weirdly in Google Sheet if we don't handle Date objects
+            // Actually `getValues()` returns native Date objects for dates, and so `setValues()` will write them correctly.
+            targetRows.push(rowCopy);
+          }
+        }
+        
+        if (targetRows.length > 0) {
+           sheet.getRange(sheet.getLastRow() + 1, 1, targetRows.length, targetRows[0].length).setValues(targetRows);
+        }
+      });
+      
+      SpreadsheetApp.flush();
+      
+      return { status: 'success', reportId: newReportId };
+      
+    } catch(e) {
+      return { status: 'error', message: e.toString() };
     } finally {
       lock.releaseLock();
     }
