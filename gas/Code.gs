@@ -163,8 +163,7 @@ function getReportFullData(payload) {
   
   // 2. Get All Items
   const items = {};
-  const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
-  
+  const categories = ['Flight', 'Accommodation', 'Rental Car', 'Transportation', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
   categories.forEach(cat => {
       let reportItems = [];
       const sheet = sheetMap[cat];
@@ -319,7 +318,7 @@ function deleteReport(payload) {
       headerSheet.deleteRow(targetRowIndex);
 
       // 3. Delete from all item sheets
-      const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
+      const categories = ['Flight', 'Accommodation', 'Rental Car', 'Transportation', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
       
       categories.forEach(cat => {
         try {

@@ -40,7 +40,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         Flight: 0,
         Accommodation: 0,
         'Rental Car': 0,
-        Taxi: 0,
+        Transportation: 0,
         Gas: 0,
         Parking: 0,
         Internet: 0,
@@ -187,21 +187,21 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: t('remark'), headerKey: 'remark', accessorKey: '備註', width: 20 }
     ], 'rentalCar', rentalCarTotalTWD);
 
-    // Taxi Sheet Headers: ..., 幣別, 金額, TWD金額, 匯率, 備註
-    // Taxi Sheet Headers
-    const taxiItems = raw.items['Taxi'] || [];
-    const taxiTotalTWD = taxiItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
-    catTotals['Taxi'] = taxiTotalTWD;
+    // Transportation Sheet Headers: ..., 交通工具, 幣別, 金額, TWD金額, 匯率, 備註
+    const transportationItems = raw.items['Transportation'] || [];
+    const transportationTotalTWD = transportationItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
+    catTotals['Transportation'] = transportationTotalTWD;
 
-    createSection('Taxi', `${t('taxi_details')} (Taxi Details)`, [
+    createSection('Transportation', `${t('transportation_details')} (Transportation Details)`, [
         { header: t('date'), headerKey: 'date', accessorKey: '日期', width: 15, type: 'date' },
+        { header: t('transportation_type', '交通工具'), headerKey: 'transportation_type', accessorKey: '交通工具', width: 15 },
         { header: t('region'), headerKey: 'region', accessorKey: '地區', width: 15 },
         { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
         { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'currency' },
         { header: t('exchange_rate'), headerKey: 'exchange_rate', accessorKey: '匯率', width: 10 },
         { header: t('twd_amount'), headerKey: 'twd_amount', accessorKey: 'TWD金額', width: 10, type: 'currency' },
         { header: t('remark'), headerKey: 'remark', accessorKey: '備註', width: 25 }
-    ], 'taxi', taxiTotalTWD);
+    ], 'transportation', transportationTotalTWD);
 
     // Others - using generic keys
     // Mapping keys to IDs. Backend uses 'Handing Fee' and 'Per Diem' with spaces.

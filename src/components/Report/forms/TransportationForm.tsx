@@ -6,8 +6,10 @@ import { sendRequest } from '../../../services/api';
 import CityAutocomplete from '../CityAutocomplete';
 import { Hourglass } from 'lucide-react';
 
-interface TaxiFormData {
+interface TransportationFormData {
     date: string;
+    transportationType: string;
+    transportationOther?: string;
     region: string;
     currency: string;
     amount: number | string;
@@ -16,7 +18,7 @@ interface TaxiFormData {
     note: string;
 }
 
-interface TaxiFormProps {
+interface TransportationFormProps {
     reportId: string;
     headerRate?: number;
     tripStartDate?: string;
@@ -27,10 +29,11 @@ interface TaxiFormProps {
     onCancelEdit?: () => void;
 }
 
-export default function TaxiForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false, editingItem, onCancelEdit }: TaxiFormProps) {
+export default function TransportationForm({ reportId, headerRate, tripStartDate, onSubmitSuccess, onLoadingChange, disabled = false, editingItem, onCancelEdit }: TransportationFormProps) {
     const { t } = useTranslation();
-    const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<TaxiFormData>({
+    const { register, handleSubmit, watch, setValue, control, formState: { errors } } = useForm<TransportationFormData>({
         defaultValues: {
+            transportationType: '計程車',
             currency: 'TWD',
             amount: '',
             rate: 1,
@@ -45,10 +48,18 @@ export default function TaxiForm({ reportId, headerRate, tripStartDate, onSubmit
     const currency = watch('currency');
     const amount = watch('amount');
     const date = watch('date');
+    const transportationType = watch('transportationType');
 
     useEffect(() => {
         if (editingItem) {
             setValue('date', formatDateYYYYMMDD(editingItem['日期']));
+            const tType = editingItem['交通工具'] || '';
+            if (['計程車', '火車', '公車', 'Taxi', 'Train', 'Bus'].includes(tType)) {
+                setValue('transportationType', tType);
+            } else {
+                setValue('transportationType', '其他');
+                setValue('transportationOther', tType);
+            }
             setValue('region', editingItem['地區'] || '');
             setValue('currency', editingItem['幣別'] || 'TWD');
             setValue('amount', editingItem['金額'] || '');
@@ -109,12 +120,14 @@ export default function TaxiForm({ reportId, headerRate, tripStartDate, onSubmit
         return () => { isActive = false; };
     }, [currency, amount, date, tripStartDate, setValue, headerRate]);
 
-    const onSubmit = async (data: TaxiFormData) => {
+    const onSubmit = async (data: TransportationFormData) => {
         setLoading(true);
         onLoadingChange?.(true);
         try {
+            const finalTransport = (data.transportationType === '其他' || data.transportationType === 'Other') ? (data.transportationOther || '') : data.transportationType;
             const payloadData = {
                 '日期': data.date.replace(/-/g, '/'),
+                '交通工具': finalTransport,
                 '地區': data.region,
                 '幣別': data.currency,
                 '金額': data.amount,
@@ -126,7 +139,7 @@ export default function TaxiForm({ reportId, headerRate, tripStartDate, onSubmit
             if (editingItem) {
                 await sendRequest('updateItem', {
                     reportId,
-                    category: 'Taxi',
+                    category: 'Transportation',
                     sequence: editingItem['次序'],
                     itemData: payloadData
                 });
@@ -134,7 +147,7 @@ export default function TaxiForm({ reportId, headerRate, tripStartDate, onSubmit
             } else {
                 await sendRequest('addItem', {
                     reportId,
-                    category: 'Taxi',
+                    category: 'Transportation',
                     itemData: payloadData
                 });
             }
@@ -142,6 +155,7 @@ export default function TaxiForm({ reportId, headerRate, tripStartDate, onSubmit
             setValue('amount', '');
             setValue('twdAmount', 0);
             setValue('note', '');
+            setValue('transportationOther', '');
         } catch (e) {
             alert('Error saving taxi expense: ' + e);
         } finally {
@@ -160,17 +174,44 @@ export default function TaxiForm({ reportId, headerRate, tripStartDate, onSubmit
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700">{t('date')} (YYYY/MM/DD)</label>
-                    <input
-                        type="date"
-                        {...register('date', {
-                            required: t('please_enter_date'),
-                        })}
-                        disabled={loading || disabled}
-                        className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.date ? 'border-red-500' : ''}`}
-                    />
-                    {errors.date && <span className="text-red-500 text-sm">{errors.date.message}</span>}
+                <div className="flex gap-4">
+                    <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700">{t('date')} (YYYY/MM/DD)</label>
+                        <input
+                            type="date"
+                            {...register('date', {
+                                required: t('please_enter_date'),
+                            })}
+                            disabled={loading || disabled}
+                            className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 [&:-webkit-autofill]:shadow-[0_0_0_1000px_white_inset] [&:-webkit-autofill]:!bg-white ${errors.date ? 'border-red-500' : ''}`}
+                        />
+                        {errors.date && <span className="text-red-500 text-sm">{errors.date.message}</span>}
+                    </div>
+                </div>
+                <div className="col-span-1 md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700">{t('transportation_type', '交通工具')}</label>
+                    <div className="flex gap-2 mt-1">
+                        <select 
+                            {...register('transportationType')} 
+                            disabled={loading || disabled} 
+                            className="block w-1/2 rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100"
+                        >
+                            <option value="計程車">{t('taxi_short', '計程車')}</option>
+                            <option value="火車">{t('train', '火車')}</option>
+                            <option value="公車">{t('bus', '公車')}</option>
+                            <option value="其他">{t('other', '其他')}</option>
+                        </select>
+                        {(transportationType === '其他' || transportationType === 'Other') && (
+                            <input
+                                type="text"
+                                placeholder={t('please_specify', '請註明')}
+                                {...register('transportationOther', { required: t('required', '必填') })}
+                                disabled={loading || disabled}
+                                className={`block w-1/2 rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 ${errors.transportationOther ? 'border-red-500' : ''}`}
+                            />
+                        )}
+                    </div>
+                    {errors.transportationOther && <span className="text-red-500 text-sm mt-1">{errors.transportationOther.message}</span>}
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('region')}</label>
@@ -199,6 +240,9 @@ export default function TaxiForm({ reportId, headerRate, tripStartDate, onSubmit
                         <option value="THB">THB</option>
                     </select>
                 </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('amount')}</label>
                     <input
@@ -212,9 +256,6 @@ export default function TaxiForm({ reportId, headerRate, tripStartDate, onSubmit
                         className={`mt-1 block w-full rounded border-gray-300 shadow-sm p-2 disabled:bg-gray-100 ${errors.amount ? 'border-red-500' : ''}`}
                     />
                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">{t('exchange_rate')}</label>
                     <input type="number" step="0.0001" {...register('rate')} readOnly className="mt-1 block w-full rounded border-gray-300 shadow-sm p-2 bg-gray-100" />

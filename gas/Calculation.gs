@@ -295,7 +295,7 @@ function recalculateHeader(reportId, triggerCategory = null) {
         '總體住宿費總額': 0,
         '個人租車費總額': 0,
         '總體租車費總額': 0,
-        '計程車費總額': 0,
+        '交通運輸費總額': 0,
         '瓦斯費總額': 0,
         '停車費總額': 0,
         '網路費總額': 0,
@@ -344,7 +344,7 @@ function recalculateHeader(reportId, triggerCategory = null) {
                 });
                 totals['總體租車費總額'] = overallSum;
             }
-            if (cat === 'Taxi') totals['計程車費總額'] = sum;
+            if (cat === 'Transportation') totals['交通運輸費總額'] = sum;
             if (cat === 'Gas') totals['瓦斯費總額'] = sum;
             if (cat === 'Parking') totals['停車費總額'] = sum;
             if (cat === 'Internet') totals['網路費總額'] = sum;
@@ -394,7 +394,7 @@ function recalculateHeader(reportId, triggerCategory = null) {
       categories.forEach(cat => {
              // Mapping based on category code naming in 'totals' object
              if (cat === 'Flight') { totalPersonalTWD += totals['機票費總額']; totalOverallTWD += totals['機票費總額']; }
-             else if (cat === 'Taxi') { totalPersonalTWD += totals['計程車費總額']; totalOverallTWD += totals['計程車費總額']; }
+             else if (cat === 'Transportation') { totalPersonalTWD += totals['交通運輸費總額']; totalOverallTWD += totals['交通運輸費總額']; }
              else if (cat === 'Gas') { totalPersonalTWD += totals['瓦斯費總額']; totalOverallTWD += totals['瓦斯費總額']; }
              else if (cat === 'Parking') { totalPersonalTWD += totals['停車費總額']; totalOverallTWD += totals['停車費總額']; }
              else if (cat === 'Internet') { totalPersonalTWD += totals['網路費總額']; totalOverallTWD += totals['網路費總額']; }

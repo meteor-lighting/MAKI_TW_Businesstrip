@@ -15,7 +15,7 @@ const CATEGORIES = [
     { value: 'Rental Car', label: 'rental_car' },
     { value: 'Gas', label: 'gas' },
     { value: 'Parking', label: 'parking' },
-    { value: 'Taxi', label: 'taxi' },
+    { value: 'Transportation', label: 'transportation' },
     { value: 'Internet', label: 'internet' },
     { value: 'Social', label: 'social' },
     { value: 'Gift', label: 'gift' },
