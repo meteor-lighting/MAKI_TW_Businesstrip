@@ -470,7 +470,11 @@ function queryHistoryData(payload) {
       
       // Filter by Destination
       if (payload.destination) {
-        matchedReports = matchedReports.filter(r => String(r['出差國家'] || '').includes(payload.destination));
+        const destArray = payload.destination.split(',').map(s => s.trim()).filter(Boolean);
+        matchedReports = matchedReports.filter(r => {
+          const reportDest = String(r['出差國家'] || '');
+          return destArray.some(d => reportDest.includes(d));
+        });
       }
       
       // Filter by Report Name

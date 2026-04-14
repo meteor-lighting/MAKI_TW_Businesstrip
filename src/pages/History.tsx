@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import DataGrid from '../components/Report/DataGrid';
 import { formatTimeHHmm } from '../utils/formatters';
 import { transformReportData } from '../utils/reportTransformer';
+import CountryMultiSelect from '../components/Report/CountryMultiSelect';
 
 // Known categories from Setup.gs
 const CATEGORIES = [
@@ -225,18 +226,30 @@ const History: React.FC = () => {
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                {t('region', '出差國家/地點')}
-                            </label>
-                            <input 
-                                type="text" 
-                                value={destination}
-                                onChange={(e) => setDestination(e.target.value)}
-                                className="w-full rounded border-gray-300 shadow-sm p-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                                placeholder="地名或代號"
-                            />
-                        </div>
+                        {category === 'All' ? (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    {t('country', '出差國家')}
+                                </label>
+                                <CountryMultiSelect 
+                                    value={destination ? destination.split(',').map(s => s.trim()).filter(Boolean) : []}
+                                    onChange={(val) => setDestination(val.join(', '))}
+                                />
+                            </div>
+                        ) : (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    {t('region', '地區')}
+                                </label>
+                                <input 
+                                    type="text" 
+                                    value={destination}
+                                    onChange={(e) => setDestination(e.target.value)}
+                                    className="w-full rounded border-gray-300 shadow-sm p-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                    placeholder="地名或代號"
+                                />
+                            </div>
+                        )}
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
