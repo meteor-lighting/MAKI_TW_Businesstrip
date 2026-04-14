@@ -288,7 +288,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
 
     // Sort sections to match the exact input page sequence
     const desiredOrder = [
-        'flight', 'accommodation', 'rentalCar', 'gas', 'parking', 'taxi',
+        'flight', 'accommodation', 'rentalCar', 'gas', 'parking', 'transportation',
         'internet', 'social', 'gift', 'luggageFee', 'handingFee', 'perDiem',
         'advancePayment', 'others', 'lunchLearn'
     ];
