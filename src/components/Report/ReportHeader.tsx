@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Pencil, Check, X, Loader2 } from 'lucide-react';
 import { updateReportTripInfo } from '../../services/api';
 import { formatDateYYYYMMDD } from '../../utils/formatters';
+import CountryMultiSelect from './CountryMultiSelect';
 
 interface ReportHeaderProps {
     reportId?: string;
@@ -124,11 +125,10 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
                 <span className="text-sm text-gray-500">國家</span>
                 {isEditing ? (
                     <div className="flex items-center gap-2 mt-1">
-                        <input 
-                            type="text" 
-                            value={editDestination}
-                            onChange={(e) => setEditDestination(e.target.value)}
-                            className="block w-full min-w-[120px] border border-gray-300 rounded px-2 py-1 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                        <CountryMultiSelect
+                            value={editDestination ? editDestination.split(',').map(s => s.trim()).filter(Boolean) : []}
+                            onChange={(val) => setEditDestination(val.join(', '))}
+                            className="flex-1"
                         />
                         <div className="flex gap-1 shrink-0 ml-1">
                             <button onClick={handleSave} className="p-1 text-green-600 hover:bg-green-50 rounded shrink-0" title="Save">
