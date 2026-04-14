@@ -45,6 +45,9 @@ const History: React.FC = () => {
     const [flightArrival, setFlightArrival] = useState('');
     const [flightCurrency, setFlightCurrency] = useState('');
 
+    // Accommodation specific filters
+    const [accommodationCurrency, setAccommodationCurrency] = useState('');
+
     // Results
     const [loading, setLoading] = useState(false);
     const [resultType, setResultType] = useState<'reports' | 'items' | null>(null);
@@ -68,6 +71,9 @@ const History: React.FC = () => {
                     flightDeparture,
                     flightArrival,
                     flightCurrency
+                }),
+                ...(category === 'Accommodation' && {
+                    accommodationCurrency
                 })
             });
 
@@ -317,6 +323,21 @@ const History: React.FC = () => {
                                     />
                                 </div>
                             </>
+                        )}
+
+                        {category === 'Accommodation' && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    {t('currency', '幣別')}
+                                </label>
+                                <input 
+                                    type="text" 
+                                    value={accommodationCurrency}
+                                    onChange={(e) => setAccommodationCurrency(e.target.value)}
+                                    className="w-full rounded border-gray-300 shadow-sm p-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 uppercase"
+                                    placeholder="THB, USD, TWD..."
+                                />
+                            </div>
                         )}
 
                         <button

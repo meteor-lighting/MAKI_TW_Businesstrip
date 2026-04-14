@@ -534,6 +534,14 @@ function queryHistoryData(payload) {
             }
           }
           
+          // Accommodation Specific Filters
+          if (safeCategory === 'Accommodation') {
+            if (payload.accommodationCurrency) {
+              const q = String(payload.accommodationCurrency).toLowerCase();
+              targetItems = targetItems.filter(item => String(item['幣別'] || '').toLowerCase().includes(q));
+            }
+          }
+          
           // Attach report context (Report Name, Employee ID) to each item
           targetItems = targetItems.map(item => {
             const parentR = matchedReports.find(r => String(r['報告編號']) === String(item['報告編號']));
