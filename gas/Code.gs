@@ -481,12 +481,21 @@ function queryHistoryData(payload) {
       }
       
       // Filter by Destination
+      let destArray = [];
+      let isGlobalDestFiltered = false;
       if (payload.destination) {
-        const destArray = payload.destination.split(',').map(s => s.trim()).filter(Boolean);
-        matchedReports = matchedReports.filter(r => {
-          const reportDest = String(r['出差國家'] || '');
-          return destArray.some(d => reportDest.includes(d));
-        });
+        destArray = payload.destination.split(',').map(s => s.trim()).filter(Boolean);
+        
+        // If we only want Reports, we strictly filter the Report Header right now.
+        // If we want specific items, we defer this filter to ensure we don't accidentally drop a report
+        // whose item has a matching lower-level destination but whose header lacks it.
+        if (!payload.category || payload.category === 'All') {
+          matchedReports = matchedReports.filter(r => {
+            const reportDest = String(r['出差國家'] || '');
+            return destArray.some(d => reportDest.toLowerCase().includes(d.toLowerCase()));
+          });
+          isGlobalDestFiltered = true;
+        }
       }
       
       // Filter by Report Name
@@ -517,6 +526,16 @@ function queryHistoryData(payload) {
           const catItems = sheetDataToJson(safeCategory);
           
           targetItems = catItems.filter(item => validReportIds.includes(String(item['報告編號'])));
+          
+          // Destination filter for specific items
+          if (payload.destination && !isGlobalDestFiltered && destArray.length > 0) {
+            targetItems = targetItems.filter(item => {
+              // Check item-specific location columns
+              const itemRegion = String(item['地區'] || item['出差國家'] || item['出發地'] || item['抵達地'] || '');
+              
+              return destArray.some(d => itemRegion.toLowerCase().includes(d.toLowerCase()));
+            });
+          }
           
           // Flight Specific Filters
           if (safeCategory === 'Flight') {
