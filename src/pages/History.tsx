@@ -70,6 +70,7 @@ const History: React.FC = () => {
             setError(err.message || 'Error occurred');
         } finally {
             setLoading(false);
+        }
     };
 
     const handleOpenReport = async (reportId: string, userNameStr: string) => {
