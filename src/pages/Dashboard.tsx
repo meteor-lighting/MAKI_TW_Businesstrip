@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getUserReports, getReport, deleteReport, updateReportStatus, copyReport } from '../services/api';
-import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut, ArrowLeft, Copy } from 'lucide-react';
+import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut, ArrowLeft, Copy, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { transformReportData } from '../utils/reportTransformer';
@@ -27,6 +27,7 @@ const Dashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [reportToDelete, setReportToDelete] = useState<ReportSummary | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const fetchReports = useCallback(async () => {
         if (!user?.id) return;
@@ -160,6 +161,26 @@ const Dashboard: React.FC = () => {
         return isNaN(d.getTime()) ? dateStr : format(d, 'yyyy/MM/dd');
     };
 
+    const filteredReports = reports.filter(report => {
+        if (!searchQuery) return true;
+        const q = searchQuery.toLowerCase();
+        
+        const idMatch = report.reportId?.toLowerCase().includes(q) || false;
+        const nameMatch = report.reportName?.toLowerCase().includes(q) || false;
+        const userMatch = report.userName?.toLowerCase().includes(q) || false;
+        
+        // Use formatted date for matching so it matches what user sees
+        const formattedStart = formatDate(report.startDate);
+        const formattedEnd = formatDate(report.endDate);
+        
+        const startDateMatch = formattedStart.includes(q);
+        const endDateMatch = formattedEnd.includes(q);
+        const daysMatch = String(report.days || '').includes(q);
+        const statusMatch = report.status?.toLowerCase().includes(q) || false;
+
+        return idMatch || nameMatch || userMatch || startDateMatch || endDateMatch || daysMatch || statusMatch;
+    });
+
     return (
         <div className="max-w-6xl mx-auto p-4 md:p-6 pb-24">
             <div className="flex justify-between items-center mb-6">
@@ -190,6 +211,20 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
+            {/* Search Bar */}
+            <div className="mb-6 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                    type="text"
+                    placeholder={t('search_reports', '搜尋報告 (編號、名稱、用戶、日期、天數、狀態)...')}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all duration-200"
+                />
+            </div>
+
             {error && (
                 <div className="bg-red-50 text-red-600 p-4 rounded mb-6 border border-red-200">
                     {error}
@@ -207,9 +242,15 @@ const Dashboard: React.FC = () => {
                     <h3 className="text-lg font-medium text-gray-900 mb-2">{t('no_reports_yet')}</h3>
                     <p className="text-gray-500">{t('click_new_to_start')}</p>
                 </div>
+            ) : filteredReports.length === 0 ? (
+                <div className="text-center bg-gray-50 rounded-lg p-12 border border-gray-200 border-dashed">
+                    <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">{t('no_matching_reports', '未找到符合條件的報告')}</h3>
+                    <p className="text-gray-500">{t('try_different_keyword', '請嘗試調整搜尋關鍵字')}</p>
+                </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {reports.map((report) => (
+                    {filteredReports.map((report) => (
                         <div
                             key={report.reportId}
                             onClick={() => handleOpenReport(report)}
