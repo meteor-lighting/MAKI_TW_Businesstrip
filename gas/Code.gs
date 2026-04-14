@@ -459,9 +459,21 @@ function queryHistoryData(payload) {
   if (lock.tryLock(10000)) {
     try {
       // payload = { employeeId, category, destination, reportName }
-      const headers = sheetDataToJson('Report Header');
+      let matchedReports = sheetDataToJson('Report Header');
       
-      let matchedReports = headers;
+      // Populate true member names into matchedReports BEFORE filtering
+      const memberData = sheetDataToJson('Member');
+      const userMap = {};
+      if (memberData && memberData.length > 0) {
+        memberData.forEach(m => {
+          userMap[String(m['用戶編號'])] = m['用戶名稱'];
+        });
+      }
+      
+      matchedReports = matchedReports.map(r => ({
+        ...r,
+        '員工姓名': userMap[String(r['用戶編號'])] || r['員工姓名'] || r['用戶編號']
+      }));
 
       // Filter by Employee ID
       if (payload.employeeId) {
@@ -481,20 +493,6 @@ function queryHistoryData(payload) {
       if (payload.reportName) {
         matchedReports = matchedReports.filter(r => String(r['報告名稱'] || '').includes(payload.reportName));
       }
-
-      // Populate true member names into matchedReports
-      const memberData = sheetDataToJson('Member');
-      const userMap = {};
-      if (memberData && memberData.length > 0) {
-        memberData.forEach(m => {
-          userMap[String(m['用戶編號'])] = m['用戶名稱'];
-        });
-      }
-      
-      matchedReports = matchedReports.map(r => ({
-        ...r,
-        '員工姓名': userMap[String(r['用戶編號'])] || r['員工姓名'] || r['用戶編號']
-      }));
 
       // If category is all, just return matched reports
       if (!payload.category || payload.category === 'All') {
