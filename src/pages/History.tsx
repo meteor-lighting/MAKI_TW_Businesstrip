@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Search, Loader2, History as HistoryIcon } from 'lucide-react';
+import { ArrowLeft, Search, Loader2, History as HistoryIcon, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { sendRequest } from '../services/api';
+import { sendRequest, getReport } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DataGrid from '../components/Report/DataGrid';
 import { formatTimeHHmm } from '../utils/formatters';
+import { transformReportData } from '../utils/reportTransformer';
 
 // Known categories from Setup.gs
 const CATEGORIES = [
@@ -69,6 +70,22 @@ const History: React.FC = () => {
             setError(err.message || 'Error occurred');
         } finally {
             setLoading(false);
+    };
+
+    const handleOpenReport = async (reportId: string, userNameStr: string) => {
+        try {
+            setLoading(true);
+            const res = await getReport(reportId);
+            if (res.status === 'success' && res.data) {
+                const formattedData = transformReportData(res.data, reportId, userNameStr, t);
+                navigate('/report/summary', { state: { reportData: formattedData } });
+            } else {
+                setError(res.message || t('error'));
+            }
+        } catch (err: any) {
+            setError(err.message || t('error'));
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -94,6 +111,20 @@ const History: React.FC = () => {
                 { key: '商旅天數', header: t('trip_duration', '商旅天數') },
                 { key: '合計TWD總體總額', header: t('total_twd', '合計總額(TWD)'), render: (item: any) => item['合計TWD總體總額'] ? Number(item['合計TWD總體總額']).toLocaleString() : '0' },
                 { key: '狀態', header: t('status', '狀態'), render: (i: any) => <span className="px-2 py-1 rounded text-xs bg-gray-100">{i['狀態'] || 'Draft'}</span> },
+                { key: '操作', header: t('actions', '操作'), render: (i: any) => (
+                    <div className="flex justify-center w-full">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenReport(i['報告編號'], i['員工姓名'] || i['用戶編號']);
+                            }}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors flex items-center justify-center"
+                            title={t('preview_report', '預覽報告')}
+                        >
+                            <FileText className="w-5 h-5" />
+                        </button>
+                    </div>
+                )},
             ];
         } else if (resultType === 'items') {
             // Dynamic columns based on the category sheet plus context
