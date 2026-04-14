@@ -31,11 +31,25 @@ function sheetDataToJson(sheetName, ssPassed = null) {
   if (data.length < 2) return [];
   
   const headers = data[0];
+  const tz = ss.getSpreadsheetTimeZone();
   
   return data.slice(1).map(row => {
     let obj = {};
     headers.forEach((header, index) => {
-      obj[header] = row[index];
+      let val = row[index];
+      
+      // Fix TimeZone offset issues natively here rather than in frontend
+      if (val instanceof Date) {
+        // If it's a "Time-Only" field from Google Sheets, the year defaults to 1899
+        if (val.getFullYear() === 1899) {
+            val = Utilities.formatDate(val, tz, "HH:mm");
+        } else {
+            // General Date formatting that strips T/Z so browsers act literally
+            val = Utilities.formatDate(val, tz, "yyyy/MM/dd HH:mm:ss");
+        }
+      }
+      
+      obj[header] = val;
     });
     return obj;
   });
