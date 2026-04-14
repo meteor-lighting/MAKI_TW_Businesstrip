@@ -39,6 +39,11 @@ const History: React.FC = () => {
     const [reportName, setReportName] = useState('');
     const [destination, setDestination] = useState('');
     const [category, setCategory] = useState('All');
+    
+    // Flight specific filters
+    const [flightDeparture, setFlightDeparture] = useState('');
+    const [flightArrival, setFlightArrival] = useState('');
+    const [flightCurrency, setFlightCurrency] = useState('');
 
     // Results
     const [loading, setLoading] = useState(false);
@@ -58,7 +63,12 @@ const History: React.FC = () => {
                 employeeId,
                 reportName,
                 destination,
-                category
+                category,
+                ...(category === 'Flight' && {
+                    flightDeparture,
+                    flightArrival,
+                    flightCurrency
+                })
             });
 
             if (res.status === 'success') {
@@ -267,6 +277,47 @@ const History: React.FC = () => {
                                 ))}
                             </select>
                         </div>
+
+                        {category === 'Flight' && (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        {t('departure', '出發地')}
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        value={flightDeparture}
+                                        onChange={(e) => setFlightDeparture(e.target.value)}
+                                        className="w-full rounded border-gray-300 shadow-sm p-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                        placeholder="TPE, HKG..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        {t('arrival', '抵達地')}
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        value={flightArrival}
+                                        onChange={(e) => setFlightArrival(e.target.value)}
+                                        className="w-full rounded border-gray-300 shadow-sm p-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                        placeholder="BKK, NRT..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        {t('currency', '幣別')}
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        value={flightCurrency}
+                                        onChange={(e) => setFlightCurrency(e.target.value)}
+                                        className="w-full rounded border-gray-300 shadow-sm p-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 uppercase"
+                                        placeholder="TWD, USD..."
+                                    />
+                                </div>
+                            </>
+                        )}
 
                         <button
                             type="submit"

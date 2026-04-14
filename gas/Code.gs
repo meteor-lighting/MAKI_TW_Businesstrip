@@ -518,6 +518,22 @@ function queryHistoryData(payload) {
           
           targetItems = catItems.filter(item => validReportIds.includes(String(item['報告編號'])));
           
+          // Flight Specific Filters
+          if (safeCategory === 'Flight') {
+            if (payload.flightDeparture) {
+              const q = String(payload.flightDeparture).toLowerCase();
+              targetItems = targetItems.filter(item => String(item['出發地'] || '').toLowerCase().includes(q));
+            }
+            if (payload.flightArrival) {
+              const q = String(payload.flightArrival).toLowerCase();
+              targetItems = targetItems.filter(item => String(item['抵達地'] || '').toLowerCase().includes(q));
+            }
+            if (payload.flightCurrency) {
+              const q = String(payload.flightCurrency).toLowerCase();
+              targetItems = targetItems.filter(item => String(item['幣別'] || '').toLowerCase().includes(q));
+            }
+          }
+          
           // Attach report context (Report Name, Employee ID) to each item
           targetItems = targetItems.map(item => {
             const parentR = matchedReports.find(r => String(r['報告編號']) === String(item['報告編號']));
