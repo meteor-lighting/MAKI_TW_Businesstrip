@@ -1,6 +1,6 @@
 import { ReportData, ReportSection, ChartData } from '../types/report';
 import { TFunction } from 'i18next';
-import { formatTimeHHmm } from './formatters';
+import { formatTimeHHmm, formatDateYYYYMMDD } from './formatters';
 
 // Define the raw data structure coming from the API (Report.tsx)
 export interface RawReportData {
@@ -31,7 +31,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     // 1. Calculate Summary Totals
     const days = Number(header['商旅天數'] || 0);
     const rateUSD = Number(header['USD匯率'] || 0);
-    const period = `${header['商旅起始日'] || ''} - ${header['商旅結束日'] || ''}`;
+    const period = `${formatDateYYYYMMDD(header['商旅起始日']).replace(/-/g, '/') || ''} - ${formatDateYYYYMMDD(header['商旅結束日']).replace(/-/g, '/') || ''}`;
 
     // Aggregating Totals from Categories (for Charts)
     // Aggregating Totals from Categories (for Charts)
