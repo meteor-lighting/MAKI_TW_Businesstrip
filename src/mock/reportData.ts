@@ -8,8 +8,10 @@ export const mockReportData: ReportData = {
         personalTWD: 22666,
         avgDayTWD: 6436,
         totalUSD: 920.01,
+        personalUSD: 720.01,
         avgDayUSD: 167.31,
         advancePaymentTWD: 0,
+        paymentCurrency: 'TWD',
         period: '2024/02/01 - 2024/02/10',
         days: 4.5,
         rateUSD: 31.48
