@@ -14,11 +14,12 @@ interface ReportHeaderProps {
     startDate?: string;
     endDate?: string;
     destination?: string;
+    paymentCurrency?: string;
     userName?: string;
     onUpdateSuccess?: () => void;
 }
 
-export default function ReportHeader({ reportId, days, rate, startDate, endDate, destination, userName, onUpdateSuccess }: ReportHeaderProps) {
+export default function ReportHeader({ reportId, days, rate, startDate, endDate, destination, paymentCurrency, userName, onUpdateSuccess }: ReportHeaderProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
     
@@ -26,13 +27,15 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
     const [editStart, setEditStart] = useState<string>(formatDateYYYYMMDD(startDate));
     const [editEnd, setEditEnd] = useState<string>(formatDateYYYYMMDD(endDate));
     const [editDestination, setEditDestination] = useState<string>(destination || '');
+    const [editCurrency, setEditCurrency] = useState<string>(paymentCurrency || 'TWD');
 
     useEffect(() => {
         setEditDays(days);
         setEditStart(formatDateYYYYMMDD(startDate));
         setEditEnd(formatDateYYYYMMDD(endDate));
         setEditDestination(destination || '');
-    }, [days, startDate, endDate, destination]);
+        setEditCurrency(paymentCurrency || 'TWD');
+    }, [days, startDate, endDate, destination, paymentCurrency]);
 
     const handleSave = async () => {
         if (!reportId) return;
@@ -41,7 +44,7 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
             const formattedStart = editStart.replace(/-/g, '/');
             const formattedEnd = editEnd.replace(/-/g, '/');
             
-            await updateReportTripInfo(reportId, editDays, formattedStart, formattedEnd, editDestination);
+            await updateReportTripInfo(reportId, editDays, formattedStart, formattedEnd, editDestination, editCurrency);
             setIsEditing(false);
             if (onUpdateSuccess) onUpdateSuccess();
         } catch (error) {
@@ -57,11 +60,12 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
         setEditStart(formatDateYYYYMMDD(startDate));
         setEditEnd(formatDateYYYYMMDD(endDate));
         setEditDestination(destination || '');
+        setEditCurrency(paymentCurrency || 'TWD');
         setIsEditing(false);
     };
 
     return (
-        <div className={`grid grid-cols-1 md:grid-cols-2 ${userName ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200 relative`}>
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${userName ? 'lg:grid-cols-7' : 'lg:grid-cols-6'} gap-4 mb-6 bg-white p-4 rounded-lg shadow-sm border border-gray-200 relative`}>
             {loading && (
                 <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-lg">
                     <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
@@ -131,6 +135,29 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
                             className="flex-1"
                         />
                         <div className="flex gap-1 shrink-0 ml-1">
+                            {/* Buttons moved to Currency cell to avoid overflow */}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2 mt-1 group">
+                        <span className="font-semibold text-gray-900">{destination || '-'}</span>
+                    </div>
+                )}
+            </div>
+
+            <div className="flex flex-col">
+                <span className="text-sm text-gray-500">支付幣別</span>
+                {isEditing ? (
+                    <div className="flex items-center gap-2 mt-1">
+                        <select 
+                            value={editCurrency}
+                            onChange={(e) => setEditCurrency(e.target.value)}
+                            className="border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none max-w-[80px]"
+                        >
+                            <option value="TWD">TWD</option>
+                            <option value="USD">USD</option>
+                        </select>
+                        <div className="flex gap-1 shrink-0 ml-1">
                             <button onClick={handleSave} className="p-1 text-green-600 hover:bg-green-50 rounded shrink-0" title="Save">
                                 <Check className="w-5 h-5" />
                             </button>
@@ -141,7 +168,7 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
                     </div>
                 ) : (
                     <div className="flex items-center gap-2 mt-1 group">
-                        <span className="font-semibold text-gray-900">{destination || '-'}</span>
+                        <span className="font-semibold text-gray-900">{paymentCurrency || 'TWD'}</span>
                         {reportId && (
                             <button 
                                 onClick={() => setIsEditing(true)}

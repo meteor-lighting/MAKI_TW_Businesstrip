@@ -7,24 +7,30 @@ interface SummaryCardsProps {
     summary: ReportSummary;
 }
 
-const formatCurrency = (amount: number) => {
+const formatCurrency = (amount: number, isUSD: boolean) => {
     return new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
+        minimumFractionDigits: isUSD ? 2 : 0,
+        maximumFractionDigits: isUSD ? 2 : 0,
     }).format(amount);
 };
 
 const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
     const { t } = useTranslation();
 
+    const isUSD = summary.paymentCurrency === 'USD';
+    const curSym = isUSD ? 'USD' : 'TWD';
+    const totalDisp = isUSD ? summary.totalUSD : summary.totalTWD;
+    const personalDisp = isUSD ? summary.personalUSD : summary.personalTWD;
+    const avgDisp = isUSD ? summary.avgDayUSD : summary.avgDayTWD;
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
             {/* Total Card */}
             <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm h-full">
                 <div>
-                    <h3 className="text-gray-600 font-bold mb-1">{t('total_amount_text')}</h3>
+                    <h3 className="text-gray-600 font-bold mb-1">{t('total_amount_text', `總計`)} ({curSym})</h3>
 
-                    <div className="text-5xl font-bold text-gray-800">{formatCurrency(summary.totalTWD)}</div>
+                    <div className="text-5xl font-bold text-gray-800">{formatCurrency(totalDisp, isUSD)}</div>
                 </div>
                 <div className="text-teal-600">
                     <Coins size={64} strokeWidth={1.5} />
@@ -34,9 +40,9 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
             {/* Personal Card */}
             <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm h-full">
                 <div>
-                    <h3 className="text-gray-600 font-bold mb-1">{t('personal_total')}</h3>
+                    <h3 className="text-gray-600 font-bold mb-1">{t('personal_total', `個人總計`)} ({curSym})</h3>
 
-                    <div className="text-5xl font-bold text-gray-800">{formatCurrency(summary.personalTWD)}</div>
+                    <div className="text-5xl font-bold text-gray-800">{formatCurrency(personalDisp, isUSD)}</div>
                 </div>
                 <div className="text-blue-500">
                     <User size={64} strokeWidth={1.5} />
@@ -46,9 +52,9 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
             {/* Avg/Day Card */}
             <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm h-full">
                 <div>
-                    <h3 className="text-gray-600 font-bold mb-1">{t('avg_day_twd')}</h3>
+                    <h3 className="text-gray-600 font-bold mb-1">{t('avg_day', `平均每天`)} ({curSym})</h3>
 
-                    <div className="text-5xl font-bold text-gray-800">{formatCurrency(summary.avgDayTWD)}</div>
+                    <div className="text-5xl font-bold text-gray-800">{formatCurrency(avgDisp, isUSD)}</div>
                 </div>
                 <div className="text-teal-600">
                     <Calendar size={64} strokeWidth={1.5} />

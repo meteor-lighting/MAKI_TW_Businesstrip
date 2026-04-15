@@ -37,6 +37,22 @@ const ExpenseReportPage: React.FC = () => {
         );
     }
 
+    const isUSD = reportData.summary.paymentCurrency === 'USD';
+    const curSym = isUSD ? 'USD' : 'TWD';
+    const altCurSym = isUSD ? 'TWD' : 'USD';
+
+    // Main Totals
+    const dispTotalOverall = isUSD ? reportData.summary.totalUSD : reportData.summary.totalTWD;
+    const dispTotalPersonal = isUSD ? reportData.summary.personalUSD : reportData.summary.personalTWD;
+    const dispAdvance = isUSD ? (reportData.summary.advancePaymentTWD / (reportData.summary.rateUSD || 1)) : reportData.summary.advancePaymentTWD;
+    const dispPayable = dispTotalOverall - dispAdvance;
+    const dispAvgDay = isUSD ? reportData.summary.avgDayUSD : reportData.summary.avgDayTWD;
+
+    // Alt Totals (for the bottom 2 rows)
+    const altTotalOverall = isUSD ? reportData.summary.totalTWD : reportData.summary.totalUSD;
+    const altTotalPersonal = isUSD ? reportData.summary.personalTWD : (reportData.summary.rateUSD > 0 ? reportData.summary.personalTWD / reportData.summary.rateUSD : 0);
+    const altAvgDay = isUSD ? reportData.summary.avgDayTWD : reportData.summary.avgDayUSD;
+
     const { signOut } = useAuth();
 
     const handleLogout = () => {
@@ -137,47 +153,47 @@ const ExpenseReportPage: React.FC = () => {
                                 <div className="bg-slate-800 p-3 text-center font-bold border-b border-slate-500">{t('expense_summary')}</div>
                                 <div className="p-4 grid grid-cols-1 gap-4 text-sm">
                                     <div className="flex justify-between border-b border-slate-500 pb-2 text-red-300">
-                                        <span>{t('advance_payment_summary')}(TWD):</span>
+                                        <span>{t('advance_payment_summary', '預支費用')}({curSym}):</span>
                                         <div className="text-right">
-                                            <span>{reportData.summary.advancePaymentTWD.toLocaleString()}</span>
+                                            <span>{dispAdvance.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 2 : 0 })}</span>
                                         </div>
                                     </div>
                                     <div className="flex justify-between border-b border-slate-500 pb-2">
-                                        <span>{t('total_twd')}:</span>
+                                        <span>{t('total_amount_text', '總金額')}({curSym}):</span>
                                         <div className="text-right">
-                                            <span>{reportData.summary.personalTWD.toLocaleString()} ({t('personal')})</span>
+                                            <span>{dispTotalPersonal.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 2 : 0 })} ({t('personal')})</span>
                                             <span className="mx-1">/</span>
-                                            <span>{reportData.summary.totalTWD.toLocaleString()} ({t('overall')})</span>
+                                            <span>{dispTotalOverall.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 2 : 0 })} ({t('overall')})</span>
                                         </div>
                                     </div>
                                     <div className="flex justify-between border-b border-slate-500 pb-2 text-blue-300 font-bold">
-                                        <span>{t('payable_summary')}(TWD):</span>
+                                        <span>{t('payable_summary', '應付金額')}({curSym}):</span>
                                         <div className="text-right">
-                                            <span>{(reportData.summary.totalTWD - reportData.summary.advancePaymentTWD).toLocaleString()}</span>
+                                            <span>{dispPayable.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 2 : 0 })}</span>
                                         </div>
                                     </div>
                                     <div className="flex justify-between border-b border-slate-500 pb-2">
-                                        <span>{t('avg_day_twd')}:</span>
+                                        <span>{t('avg_day', '平均每天')}({curSym}):</span>
                                         <div className="text-right">
-                                            <span>{reportData.summary.days > 0 ? (reportData.summary.personalTWD / reportData.summary.days).toFixed(1) : '0.0'}</span>
+                                            <span>{(reportData.summary.days > 0 ? dispTotalPersonal / reportData.summary.days : 0).toLocaleString(undefined, { maximumFractionDigits: isUSD ? 2 : 0 })}</span>
                                             <span className="mx-1">/</span>
-                                            <span>{reportData.summary.avgDayTWD.toLocaleString()}</span>
+                                            <span>{dispAvgDay.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 2 : 0 })}</span>
                                         </div>
                                     </div>
                                     <div className="flex justify-between border-b border-slate-500 pb-2">
-                                        <span>{t('total_usd')}:</span>
+                                        <span>{t('total_amount_text', '總金額')}({altCurSym}):</span>
                                         <div className="text-right">
-                                            <span>{reportData.summary.rateUSD > 0 ? (reportData.summary.personalTWD / reportData.summary.rateUSD).toFixed(2) : '0.00'}</span>
+                                            <span>{altTotalPersonal.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 0 : 2 })}</span>
                                             <span className="mx-1">/</span>
-                                            <span>{reportData.summary.totalUSD.toLocaleString()}</span>
+                                            <span>{altTotalOverall.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 0 : 2 })}</span>
                                         </div>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span>{t('avg_day_usd')}:</span>
+                                        <span>{t('avg_day', '平均每天')}({altCurSym}):</span>
                                         <div className="text-right">
-                                            <span>{(reportData.summary.rateUSD > 0 && reportData.summary.days > 0) ? ((reportData.summary.personalTWD / reportData.summary.rateUSD) / reportData.summary.days).toFixed(2) : '0.00'}</span>
+                                            <span>{(reportData.summary.days > 0 ? altTotalPersonal / reportData.summary.days : 0).toLocaleString(undefined, { maximumFractionDigits: isUSD ? 0 : 2 })}</span>
                                             <span className="mx-1">/</span>
-                                            <span>{reportData.summary.avgDayUSD.toLocaleString()}</span>
+                                            <span>{altAvgDay.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 0 : 2 })}</span>
                                         </div>
                                     </div>
                                 </div>
