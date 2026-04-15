@@ -16,6 +16,11 @@ interface ReportSummary {
     createdAt: string;
     userName?: string;
     reportName?: string;
+    paymentCurrency?: string;
+    totalAmount?: number;
+    advanceAmount?: number;
+    totalUSDAmount?: number;
+    rate?: number;
 }
 
 const Dashboard: React.FC = () => {
@@ -95,7 +100,7 @@ const Dashboard: React.FC = () => {
         
         try {
             setLoading(true);
-            const res = await deleteReport(reportToDelete.reportId, user?.id || '');
+            const res = await deleteReport(reportToDelete.reportId, user?.id || '', user?.role);
             if (res.status === 'success') {
                 setReportToDelete(null);
                 fetchReports(); // Refresh the list
@@ -337,8 +342,8 @@ const Dashboard: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="mt-5 pt-4 border-t border-gray-50 flex justify-end">
-                                <span className={`text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1
+                            <div className="mt-5 pt-4 border-t border-gray-50 flex justify-between items-end">
+                                <span className={`text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 mb-1
                                     ${report.status ? 'text-gray-500' : 'text-blue-600'}`}>
                                     {report.status ? (
                                         <>
@@ -350,6 +355,14 @@ const Dashboard: React.FC = () => {
                                         </>
                                     )}
                                 </span>
+                                <div className="flex flex-col items-end gap-1">
+                                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                                        {t('total_amount', '總額')}: {report.paymentCurrency} {(report.paymentCurrency === 'USD' ? report.totalUSDAmount : report.totalAmount)?.toLocaleString(undefined, { minimumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0, maximumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0 }) || 0}
+                                    </span>
+                                    <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
+                                        {t('payable_amount', '應付金額')}: {report.paymentCurrency} {(report.paymentCurrency === 'USD' ? ((report.totalUSDAmount || 0) - ((report.advanceAmount || 0)/(report.rate || 1))) : ((report.totalAmount || 0) - (report.advanceAmount || 0)))?.toLocaleString(undefined, { minimumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0, maximumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0 }) || 0}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     ))}
