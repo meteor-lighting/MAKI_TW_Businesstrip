@@ -31,6 +31,7 @@ function createNewReport(payload) {
                      case '用戶編號': return payload.userId;
                      case '建立時間': return new Date();
                      case 'USD匯率': return payload.exchangeRate || 0; // Default 0 if not provided
+                     case '支付幣別': return 'TWD';
                      // Initialize Numeric Columns to 0
                      case '商旅天數':
                      case '機票費總額':
@@ -237,7 +238,7 @@ function deleteReportItem(payload) {
 }
 
 function updateReportTripInfo(payload) {
-    const { reportId, days, startDate, endDate, destination } = payload;
+    const { reportId, days, startDate, endDate, destination, paymentCurrency } = payload;
     if (!reportId) return { status: 'error', message: 'Missing reportId' };
     
     const lock = LockService.getScriptLock();
@@ -259,11 +260,19 @@ function updateReportTripInfo(payload) {
             const colStart = headers.indexOf('商旅起始日');
             const colEnd = headers.indexOf('商旅結束日');
             const colDest = headers.indexOf('出差國家');
+            const colCurrency = headers.indexOf('支付幣別');
             
             if (colDays > -1 && days !== undefined && days !== '') sheet.getRange(rowIndex, colDays + 1).setValue(days);
             if (colStart > -1 && startDate !== undefined && startDate !== '') sheet.getRange(rowIndex, colStart + 1).setValue(startDate.replace(/-/g, '/'));
             if (colEnd > -1 && endDate !== undefined && endDate !== '') sheet.getRange(rowIndex, colEnd + 1).setValue(endDate.replace(/-/g, '/'));
             if (colDest > -1 && destination !== undefined) sheet.getRange(rowIndex, colDest + 1).setValue(destination);
+            
+            if (colCurrency > -1 && paymentCurrency !== undefined) sheet.getRange(rowIndex, colCurrency + 1).setValue(paymentCurrency);
+            else if (colCurrency === -1 && paymentCurrency !== undefined) {
+                const headCurRange = sheet.getRange(1, headers.length + 1);
+                headCurRange.setValue('支付幣別');
+                sheet.getRange(rowIndex, headers.length + 1).setValue(paymentCurrency);
+            }
             
             SpreadsheetApp.flush();
             
@@ -424,6 +433,13 @@ function recalculateHeader(reportId, triggerCategory = null) {
           rateCell = headerSheet.getRange(rowIndex, rateCol + 1);
           let val = Number(rateCell.getValue());
           if (val && val > 0) rate = val;
+      }
+      
+      const currencyCol = headers.indexOf('支付幣別');
+      let paymentCurrency = 'TWD';
+      if (currencyCol > -1) {
+          let val = headerSheet.getRange(rowIndex, currencyCol + 1).getDisplayValue();
+          if (val) paymentCurrency = val;
       }
       
       // [Sync Rate] Logic
@@ -614,9 +630,38 @@ function recalculateHeader(reportId, triggerCategory = null) {
       let totalPersonalUSD = 0;
       let totalOverallUSD = 0;
       
-      if (rate && rate > 0) {
-          totalPersonalUSD = totalPersonalTWD / rate;
-          totalOverallUSD = totalOverallTWD / rate;
+      if (paymentCurrency === 'USD') {
+          // Calculate exact USD from details natively without integer rounding losses
+          categories.forEach(cat => {
+              if (cat === 'Advance Payment') return; // Skip advance payment in overall summations
+              try {
+                  const data = sheetDataToJson(cat);
+                  const reportItems = data.filter(r => String(r['報告編號']) === String(reportId));
+                  reportItems.forEach(item => {
+                      let itemCurrency = String(item['幣別'] || '').toUpperCase();
+                      let itemRate = Number(item['匯率'] || 1);
+                      let isPersonal = (cat === 'Accommodation' || cat === 'Rental Car') ? Number(item['個人金額'] || 0) : Number(item['金額'] || 0);
+                      let isOverall = (cat === 'Accommodation' || cat === 'Rental Car') ? Number(item['總體金額'] || 0) : Number(item['金額'] || 0);
+
+                      let localToUsd = 0;
+                      if (itemCurrency === 'USD') {
+                         localToUsd = 1;
+                      } else if (itemCurrency === 'TWD') {
+                         localToUsd = rate > 0 ? (1 / rate) : 1;
+                      } else {
+                         localToUsd = rate > 0 ? (itemRate / rate) : itemRate;
+                      }
+                      
+                      totalPersonalUSD += (isPersonal * localToUsd);
+                      totalOverallUSD += (isOverall * localToUsd);
+                  });
+              } catch(e) {}
+          });
+      } else {
+          if (rate && rate > 0) {
+              totalPersonalUSD = totalPersonalTWD / rate;
+              totalOverallUSD = totalOverallTWD / rate;
+          }
       }
       
       const colTotalPersonalUSD = findCol('合計USD個人總額');

@@ -247,7 +247,12 @@ function getUserReports(payload) {
         endDate: r['商旅結束日'],
         status: r['狀態'],
         createdAt: r['建立時間'],
-        reportName: r['報告名稱']
+        reportName: r['報告名稱'],
+        paymentCurrency: r['支付幣別'] || 'TWD',
+        totalAmount: Number(r['合計TWD總體總額'] || 0),
+        advanceAmount: Number(r['預支費用總額'] || 0),
+        totalUSDAmount: Number(r['合計USD總體總額'] || 0),
+        rate: Number(r['USD匯率'] || 1)
       }))
       // Sort by creation date descending
       .sort((a, b) => {
@@ -269,6 +274,7 @@ function getUserReports(payload) {
 function deleteReport(payload) {
   const reportId = payload.reportId;
   const userId = payload.userId;
+  const role = payload.role;
   
   if (!reportId || !userId) {
     return { status: 'error', message: 'Missing reportId or userId' };
@@ -294,7 +300,7 @@ function deleteReport(payload) {
       for (let i = 1; i < headerValues.length; i++) {
         if (String(headerValues[i][reportIdIndex]).trim() === String(reportId).trim()) {
           // Found report, verify ownership and status
-          if (String(headerValues[i][userIdIndex]).trim() !== String(userId).trim()) {
+          if (role !== 'admin' && String(headerValues[i][userIdIndex]).trim() !== String(userId).trim()) {
              errorMsg = 'Unauthorized: Report belongs to another user (Sheet userId: ' + String(headerValues[i][userIdIndex]) + ', Request userId: ' + String(userId) + ')';
              break;
           }
