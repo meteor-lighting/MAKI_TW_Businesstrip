@@ -3,8 +3,10 @@ export interface ReportSummary {
     personalTWD: number;
     avgDayTWD: number;
     totalUSD: number;
+    personalUSD: number;
     avgDayUSD: number;
     advancePaymentTWD: number;
+    paymentCurrency?: string;
     period: string;
     days: number;
     rateUSD: number;
