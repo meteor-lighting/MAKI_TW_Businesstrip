@@ -54,8 +54,8 @@ export const getReport = async (reportId: string) => {
     return sendRequest('getReport', { reportId });
 };
 
-export const deleteReport = async (reportId: string, userId: string) => {
-    return sendRequest('deleteReport', { reportId, userId });
+export const deleteReport = async (reportId: string, userId: string, role?: string) => {
+    return sendRequest('deleteReport', { reportId, userId, role });
 };
 
 export const updateReportStatus = async (reportId: string, status: string) => {
@@ -66,8 +66,8 @@ export const copyReport = async (sourceReportId: string, userId: string) => {
     return sendRequest('copyReport', { sourceReportId, userId });
 };
 
-export const updateReportTripInfo = async (reportId: string, days: number | string, startDate: string, endDate: string, destination?: string) => {
-    return sendRequest('updateReportTripInfo', { reportId, days, startDate, endDate, destination });
+export const updateReportTripInfo = async (reportId: string, days: number | string, startDate: string, endDate: string, destination?: string, paymentCurrency?: string) => {
+    return sendRequest('updateReportTripInfo', { reportId, days, startDate, endDate, destination, paymentCurrency });
 };
 
 let cachedFlights: any[] | null = null;
