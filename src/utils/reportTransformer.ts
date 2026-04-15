@@ -30,7 +30,6 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
 
     // 1. Calculate Summary Totals
     const days = Number(header['商旅天數'] || 0);
-    const rateUSD = Number(header['USD匯率'] || 0);
     const period = `${formatDateYYYYMMDD(header['商旅起始日']).replace(/-/g, '/') || ''} - ${formatDateYYYYMMDD(header['商旅結束日']).replace(/-/g, '/') || ''}`;
 
     // Aggregating Totals from Categories (for Charts)
@@ -55,12 +54,6 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     };
 
     // Use Header values for Summary Totals as per user request
-    const totalTWD = Number(header['合計TWD總體總額'] || 0);
-    const personalTWD = Number(header['合計TWD個人總額'] || 0);
-    const avgDayTWD = Number(header['合計TWD總體平均'] || 0);
-
-    const totalUSD = Number(header['合計USD總體總額'] || 0);
-    const avgDayUSD = Number(header['合計USD總體平均'] || 0);
 
     // 3. Sections
     const sections: ReportSection[] = [];
@@ -303,22 +296,30 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     });
 
     // Build Chart Data
+    
+    // Helper to safely parse localized currency strings like "$ 1,234.56"
+    const safeNum = (val: any) => {
+        const str = String(val || 0).replace(/[^\d.-]/g, '');
+        const n = Number(str);
+        return isNaN(n) ? 0 : n;
+    };
+
     return {
         reportId,
         user: userName,
         summary: {
             reportName: header['報告名稱'] || '',
-            totalTWD,
-            personalTWD,
-            avgDayTWD,
-            totalUSD,
-            personalUSD: Number(header['合計USD個人總額'] || 0),
-            avgDayUSD,
-            advancePaymentTWD: Number(header['預支費用總額'] || 0),
+            totalTWD: safeNum(header['合計TWD總體總額']),
+            personalTWD: safeNum(header['合計TWD個人總額']),
+            avgDayTWD: safeNum(header['合計TWD總體平均']),
+            totalUSD: safeNum(header['合計USD總體總額']),
+            personalUSD: safeNum(header['合計USD個人總額']),
+            avgDayUSD: safeNum(header['合計USD總體平均']),
+            advancePaymentTWD: safeNum(header['預支費用總額']),
             paymentCurrency: header['支付幣別'] || 'TWD',
             period,
             days,
-            rateUSD,
+            rateUSD: safeNum(header['USD匯率'] || 1),
             headerDetails: {
                 currency: header['幣別'] || '', // Assuming '幣別' exists
                 personalAmount: header['合計個人此幣別金額'] || header['個人金額'] || '0',
