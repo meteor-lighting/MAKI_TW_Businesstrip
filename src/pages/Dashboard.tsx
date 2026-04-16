@@ -14,6 +14,7 @@ interface ReportSummary {
     endDate: string;
     status?: string;
     createdAt: string;
+    userId?: string;
     userName?: string;
     reportName?: string;
     paymentCurrency?: string;
@@ -66,7 +67,9 @@ const Dashboard: React.FC = () => {
     };
 
     const handleOpenReport = async (report: ReportSummary) => {
-        if (report.status) {
+        const isReadonly = report.status || (user?.role !== 'admin' && String(report.userId) !== String(user?.id));
+        
+        if (isReadonly) {
             // Read-only mode - fetch full report and go to summary
             try {
                 setLoading(true);
@@ -308,7 +311,7 @@ const Dashboard: React.FC = () => {
                                         >
                                             <Copy className="w-4 h-4" />
                                         </button>
-                                        {!report.status && (
+                                        {!report.status && (user?.role === 'admin' || String(report.userId) === String(user?.id)) && (
                                             <button
                                                 type="button"
                                                 onClick={(e) => handleDeleteClick(e, report)}
@@ -344,8 +347,8 @@ const Dashboard: React.FC = () => {
 
                             <div className="mt-5 pt-4 border-t border-gray-50 flex justify-between items-end">
                                 <span className={`text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 mb-1
-                                    ${report.status ? 'text-gray-500' : 'text-blue-600'}`}>
-                                    {report.status ? (
+                                    ${(report.status || (user?.role !== 'admin' && String(report.userId) !== String(user?.id))) ? 'text-gray-500' : 'text-blue-600'}`}>
+                                    {(report.status || (user?.role !== 'admin' && String(report.userId) !== String(user?.id))) ? (
                                         <>
                                             <Eye className="w-4 h-4" /> {t('view_summary')} &rarr;
                                         </>
