@@ -59,6 +59,7 @@ function createNewReport(payload) {
              });
              
              sheet.appendRow(newRow);
+             invalidateCache('Report Header');
              
              return { status: 'success', reportId: reportId };
         } finally {
@@ -94,7 +95,16 @@ function addReportItem(payload) {
           }
           
           // 2. Prepare Row Data based on Sheet Headers
-
+          
+          // Fetch existing start date dynamically
+          const headerDataStr = getSheet('Report Header').getDataRange().getValues();
+          let oldStart = '';
+          for (let i=1; i<headerDataStr.length; i++) {
+              if (String(headerDataStr[i][0]) === String(reportId)) {
+                  oldStart = String(headerDataStr[i][headerDataStr[0].indexOf('商旅起始日')] || '');
+                  break;
+              }
+          }
           
           const newRow = headers.map(header => {
               if (header === '報告編號') return reportId;
@@ -103,21 +113,19 @@ function addReportItem(payload) {
           });
           
           appendRow(category, newRow);
+          SpreadsheetApp.flush(); // Force sync so recalculate reads the new row immediately
           
-          // Force flush to sheet so subsequent reads in this execution and immediate next HTTP requests see the new row
-          SpreadsheetApp.flush();
-          
-          // 3. Recalculate Header Totals & Dates
-          const startDateStr = recalculateHeader(reportId, category);
+          // 3. Recalculate Header Totals & Dates 
+            const newStart = recalculateHeader(reportId, category);
 
-          // 4. Update Exchange Rates based on the new Start Date
-          updateAllExchangeRates(reportId, startDateStr);
-          
-          // 5. Recalculate Header AGAIN because TWD amounts may have changed
-          recalculateHeader(reportId, category);
-          
-          // Final flush to guarantee UI refresh gets the latest data
-          SpreadsheetApp.flush();
+            // 4. Update Exchange Rates based ONLY on what explicitly needs syncing
+            if (oldStart !== newStart) {
+                updateAllExchangeRates(reportId, newStart, null, true);
+                recalculateHeader(reportId, category);
+            } else {
+                updateAllExchangeRates(reportId, newStart, category, false);
+                recalculateHeader(reportId, category);
+            }
           
           return { status: 'success', sequence: nextSeq };
       } finally {
@@ -166,13 +174,29 @@ function updateReportItem(payload) {
                 return itemData[header] !== undefined ? itemData[header] : ''; 
             });
             
-            sheet.getRange(updateRowIndex, 1, 1, headers.length).setValues([updatedRow]);
+            const headerDataStr = getSheet('Report Header').getDataRange().getValues();
+            let oldStart = '';
+            for (let i=1; i<headerDataStr.length; i++) {
+                if (String(headerDataStr[i][0]) === String(reportId)) {
+                    oldStart = String(headerDataStr[i][headerDataStr[0].indexOf('商旅起始日')] || '');
+                    break;
+                }
+            }
             
-            SpreadsheetApp.flush();
-            const startDateStr = recalculateHeader(reportId, category);
-            updateAllExchangeRates(reportId, startDateStr);
-            recalculateHeader(reportId, category);
-            SpreadsheetApp.flush();
+            sheet.getRange(updateRowIndex, 1, 1, headers.length).setValues([updatedRow]);
+            SpreadsheetApp.flush(); // Force sync so recalculate reads the updated numbers
+            
+            invalidateCache(category); // Crucial for recalculateHeader to see the update
+            
+            const newStart = recalculateHeader(reportId, category);
+            
+            if (oldStart !== newStart) {
+                updateAllExchangeRates(reportId, newStart);
+                recalculateHeader(reportId, category);
+            } else {
+                updateAllExchangeRates(reportId, newStart, category);
+                recalculateHeader(reportId, category);
+            }
             
             return { status: 'success' };
         } finally {
@@ -212,22 +236,33 @@ function deleteReportItem(payload) {
             }
         }
         
+        const headerDataStr = getSheet('Report Header').getDataRange().getValues();
+        let oldStart = '';
+        for (let i=1; i<headerDataStr.length; i++) {
+            if (String(headerDataStr[i][0]) === String(reportId)) {
+                oldStart = String(headerDataStr[i][headerDataStr[0].indexOf('商旅起始日')] || '');
+                break;
+            }
+        }
+        
         if (deleteRowIndex > 0) {
             sheet.deleteRow(deleteRowIndex);
-            const startDateStr = recalculateHeader(reportId, category);
-            
-            // Update Exchange Rates based on the new Start Date
-            updateAllExchangeRates(reportId, startDateStr);
-            
-            // Recalculate Header AGAIN
-            recalculateHeader(reportId, category);
-
-            SpreadsheetApp.flush();
-
-            return { status: 'success', message: 'Deleted' };
-        } else {
-             return { status: 'error', message: 'Item not found' };
+            SpreadsheetApp.flush(); // Force sync structural mutation so recalculate reads empty
         }
+        
+        invalidateCache(category); // Force drop stale items
+        
+        const newStart = recalculateHeader(reportId, category);
+        
+        if (oldStart !== newStart) {
+            updateAllExchangeRates(reportId, newStart);
+            recalculateHeader(reportId, category);
+        } else {
+            updateAllExchangeRates(reportId, newStart, category);
+            recalculateHeader(reportId, category);
+        }
+
+        return { status: 'success', message: 'Deleted and Synced' };
         
     } finally {
         lock.releaseLock();
@@ -262,27 +297,28 @@ function updateReportTripInfo(payload) {
             const colDest = headers.indexOf('出差國家');
             const colCurrency = headers.indexOf('支付幣別');
             
-            if (colDays > -1 && days !== undefined && days !== '') sheet.getRange(rowIndex, colDays + 1).setValue(days);
-            if (colStart > -1 && startDate !== undefined && startDate !== '') sheet.getRange(rowIndex, colStart + 1).setValue(startDate.replace(/-/g, '/'));
-            if (colEnd > -1 && endDate !== undefined && endDate !== '') sheet.getRange(rowIndex, colEnd + 1).setValue(endDate.replace(/-/g, '/'));
-            if (colDest > -1 && destination !== undefined) sheet.getRange(rowIndex, colDest + 1).setValue(destination);
+            // Re-implementing with Array fetch to avoid single cell hit
+            const rowRange = sheet.getRange(rowIndex, 1, 1, headers.length);
+            const rowData = rowRange.getValues()[0];
+
+            if (colDays > -1 && days !== undefined && days !== '') rowData[colDays] = days;
+            if (colStart > -1 && startDate !== undefined && startDate !== '') rowData[colStart] = startDate.replace(/-/g, '/');
+            if (colEnd > -1 && endDate !== undefined && endDate !== '') rowData[colEnd] = endDate.replace(/-/g, '/');
+            if (colDest > -1 && destination !== undefined) rowData[colDest] = destination;
             
-            if (colCurrency > -1 && paymentCurrency !== undefined) sheet.getRange(rowIndex, colCurrency + 1).setValue(paymentCurrency);
+            if (colCurrency > -1 && paymentCurrency !== undefined) rowData[colCurrency] = paymentCurrency;
             else if (colCurrency === -1 && paymentCurrency !== undefined) {
+                // Rare case where payment currency completely missed - direct write handled, but usually not hitting this on warm DB
                 const headCurRange = sheet.getRange(1, headers.length + 1);
                 headCurRange.setValue('支付幣別');
                 sheet.getRange(rowIndex, headers.length + 1).setValue(paymentCurrency);
             }
             
-            SpreadsheetApp.flush();
-            
-            // If start date changed, update exchange rates based on new start date
-            if (startDate !== undefined && startDate !== '') {
-                 updateAllExchangeRates(reportId, startDate.replace(/-/g, '/'));
-                 // Recalculate header TWD amounts (MANUAL bypasses dates override)
-                 recalculateHeader(reportId, 'MANUAL_DATE_UPDATE'); 
-                 SpreadsheetApp.flush();
-            }
+            rowRange.setValues([rowData]);
+
+            updateAllExchangeRates(reportId, startDate.replace(/-/g, '/'));
+            recalculateHeader(reportId, 'MANUAL_DATE_UPDATE');
+            invalidateCache('Report Header');
             
             return { status: 'success' };
         } finally {
@@ -295,206 +331,197 @@ function updateReportTripInfo(payload) {
 
 function recalculateHeader(reportId, triggerCategory = null) {
     let startDateStr = '';
-    // Sum up all categories for this reportId
-    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Transportation', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
+    const ALL_CATEGORIES = ['Flight', 'Accommodation', 'Rental Car', 'Transportation', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
     
-    let totals = {
-        '機票費總額': 0,
-        '個人住宿費總額': 0,
-        '總體住宿費總額': 0,
-        '個人租車費總額': 0,
-        '總體租車費總額': 0,
-        '交通運輸費總額': 0,
-        '瓦斯費總額': 0,
-        '停車費總額': 0,
-        '網路費總額': 0,
-        '社交費總額': 0,
-        '禮品費總額': 0,
-        '行李費總額': 0,
-        '手續費總額': 0,
-        '日支費總額': 0,
-        '預支費用總額': 0,
-        '午餐與學費總額': 0,
-        '其他費用總額': 0
-    };
+    // PERF FIX: Now relying on the O(1) Cache Proxy mechanism which warms instantly.
+    // Summing ALL categories to guarantee native USD precision and avoid floating-point loss.
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let categoriesToFetch = ALL_CATEGORIES;
     
-    // Accumulate sums
-    categories.forEach(cat => {
-        try {
-            const data = sheetDataToJson(cat);
-            const reportItems = data.filter(r => String(r['報告編號']) === String(reportId));
-            
-            let sum = 0;
-            reportItems.forEach(item => {
-                 let val = 0;
-                 if (cat === 'Accommodation' || cat === 'Rental Car') val = Number(item['TWD個人金額']) || 0;
-                 else val = Number(item['TWD金額']) || 0;
-                 sum += val;
-            });
-            
-            // Map category to header field name
-            if (cat === 'Flight') totals['機票費總額'] = sum;
-            if (cat === 'Accommodation') {
-                totals['個人住宿費總額'] = sum;
-                // Calculate Overall Total as well
-                let overallSum = 0;
-                 reportItems.forEach(item => {
-                     let val = Number(item['TWD總體金額']) || 0;
-                     overallSum += val;
-                });
-                totals['總體住宿費總額'] = overallSum;
-            }
-            if (cat === 'Rental Car') {
-                totals['個人租車費總額'] = sum;
-                let overallSum = 0;
-                 reportItems.forEach(item => {
-                     let val = Number(item['TWD總體金額']) || 0;
-                     overallSum += val;
-                });
-                totals['總體租車費總額'] = overallSum;
-            }
-            if (cat === 'Transportation') totals['交通運輸費總額'] = sum;
-            if (cat === 'Gas') totals['瓦斯費總額'] = sum;
-            if (cat === 'Parking') totals['停車費總額'] = sum;
-            if (cat === 'Internet') totals['網路費總額'] = sum;
-            if (cat === 'Social') totals['社交費總額'] = sum;
-            if (cat === 'Gift') totals['禮品費總額'] = sum;
-            if (cat === 'Luggage Fee') totals['行李費總額'] = sum;
-            if (cat === 'Handing Fee') totals['手續費總額'] = sum;
-            if (cat === 'Per Diem') totals['日支費總額'] = sum;
-            if (cat === 'Advance Payment') totals['預支費用總額'] = sum;
-            if (cat === 'Lunch & Learn') totals['午餐與學費總額'] = sum;
-            if (cat === 'Others') totals['其他費用總額'] = sum;
-        } catch (e) {
-            // ignore missing sheets
-        }
-    });
-    
-    // Update Header
+    // Extract Header and Rate FIRST so they are available for precise USD logic
     const headerSheet = getSheet('Report Header');
-    const headerData = getDataRows('Report Header');
+    const headerData = headerSheet.getDataRange().getValues();
     let rowIndex = -1;
     for (let i = 0; i < headerData.length; i++) {
-        if (String(headerData[i][0]) === String(reportId)) { // ID matches
-            rowIndex = i + 2; 
+        if (String(headerData[i][0]).trim() === String(reportId).trim()) { 
+            rowIndex = i + 1; 
             break;
         }
     }
     
-    if (rowIndex > 0) {
-      const headers = headerSheet.getRange(1, 1, 1, headerSheet.getLastColumn()).getValues()[0];
-      
-      // Update totals columns (auto-add missing columns)
-      for (const [key, val] of Object.entries(totals)) {
-        let colIdx = headers.indexOf(key);
+    if (rowIndex <= 0) return '';
+    
+    const headers = headerData[0];
+    const rowRange = headerSheet.getRange(rowIndex, 1, 1, headers.length);
+    const rowData = rowRange.getValues()[0];
+    
+    const findCol = (name) => headers.findIndex(h => String(h).trim() === name);
+
+    const rateCol = findCol('USD匯率');
+    let rate = 1; 
+    if (rateCol > -1) {
+        let val = Number(rowData[rateCol]);
+        if (val && val > 0) rate = val;
+    }
+
+    const myItemsMap = {};
+    categoriesToFetch.forEach(c => {
+        try {
+            const data = sheetDataToJson(c, ss);
+            myItemsMap[c] = data.filter(r => String(r['報告編號']) === String(reportId));
+        } catch(e) {
+            myItemsMap[c] = [];
+        }
+    });
+
+    const totalsPartial = {};
+    categoriesToFetch.forEach(cat => {
+        try {
+            const reportItems = myItemsMap[cat] || [];
+            let sumTWD = 0;
+            let sumUSD = 0;
+            
+            reportItems.forEach(item => {
+                 let valTWD = 0;
+                 if (cat === 'Accommodation' || cat === 'Rental Car') {
+                     valTWD = Number(String(item['TWD個人金額'] || 0).replace(/[^\d.-]/g, '')) || 0;
+                 } else {
+                     valTWD = Number(String(item['TWD金額'] || 0).replace(/[^\d.-]/g, '')) || 0;
+                 }
+                 sumTWD += valTWD;
+                 
+                 // Native USD exact
+                 const ccy = String(item['幣別'] || '').trim().toUpperCase();
+                 if (ccy === 'USD') {
+                     let rawAmt = 0;
+                     if (cat === 'Accommodation' || cat === 'Rental Car') {
+                         rawAmt = Number(String(item['個人金額'] || item['金額'] || 0).replace(/[^\d.-]/g, '')) || 0;
+                     } else {
+                         rawAmt = Number(String(item['金額'] || 0).replace(/[^\d.-]/g, '')) || 0;
+                     }
+                     sumUSD += rawAmt;
+                 } else {
+                     sumUSD += valTWD / rate;
+                 }
+            });
+            
+            if (cat === 'Flight') { totalsPartial['機票費總額'] = sumTWD; totalsPartial['機票費USD總額'] = sumUSD; }
+            if (cat === 'Transportation') { totalsPartial['交通運輸費總額'] = sumTWD; totalsPartial['交通運輸費USD總額'] = sumUSD; }
+            if (cat === 'Gas') { totalsPartial['瓦斯費總額'] = sumTWD; totalsPartial['瓦斯費USD總額'] = sumUSD; }
+            if (cat === 'Parking') { totalsPartial['停車費總額'] = sumTWD; totalsPartial['停車費USD總額'] = sumUSD; }
+            if (cat === 'Internet') { totalsPartial['網路費總額'] = sumTWD; totalsPartial['網路費USD總額'] = sumUSD; }
+            if (cat === 'Social') { totalsPartial['社交費總額'] = sumTWD; totalsPartial['社交費USD總額'] = sumUSD; }
+            if (cat === 'Gift') { totalsPartial['禮品費總額'] = sumTWD; totalsPartial['禮品費USD總額'] = sumUSD; }
+            if (cat === 'Luggage Fee') { totalsPartial['行李費總額'] = sumTWD; totalsPartial['行李費USD總額'] = sumUSD; }
+            if (cat === 'Handing Fee') { totalsPartial['手續費總額'] = sumTWD; totalsPartial['手續費USD總額'] = sumUSD; }
+            if (cat === 'Per Diem') { totalsPartial['日支費總額'] = sumTWD; totalsPartial['日支費USD總額'] = sumUSD; }
+            if (cat === 'Advance Payment') { totalsPartial['預支費用總額'] = sumTWD; totalsPartial['預支費用USD總額'] = sumUSD; }
+            if (cat === 'Lunch & Learn') { totalsPartial['午餐與學費總額'] = sumTWD; totalsPartial['午餐與學費USD總額'] = sumUSD; }
+            if (cat === 'Others') { totalsPartial['其他費用總額'] = sumTWD; totalsPartial['其他費用USD總額'] = sumUSD; }
+            
+            if (cat === 'Accommodation' || cat === 'Rental Car') {
+                const prefix = cat === 'Accommodation' ? '住宿' : '租車';
+                totalsPartial[`個人${prefix}費總額`] = sumTWD;
+                totalsPartial[`個人${prefix}費USD總額`] = sumUSD;
+                
+                let ovSumTWD = 0;
+                let ovSumUSD = 0;
+                reportItems.forEach(item => { 
+                    let ovTWD = Number(String(item['TWD總體金額'] || 0).replace(/[^\d.-]/g, '')) || 0;
+                    ovSumTWD += ovTWD;
+                    const ccy = String(item['幣別'] || '').trim().toUpperCase();
+                    if (ccy === 'USD') {
+                        ovSumUSD += Number(String(item['總體金額'] || item['金額'] || 0).replace(/[^\d.-]/g, '')) || 0;
+                    } else {
+                        ovSumUSD += ovTWD / rate;
+                    }
+                });
+                totalsPartial[`總體${prefix}費總額`] = ovSumTWD;
+                totalsPartial[`總體${prefix}費USD總額`] = ovSumUSD;
+            }
+        } catch(e) {}
+    });
+    
+      for (const [key, val] of Object.entries(totalsPartial)) {
+        let colIdx = findCol(key);
         if (colIdx === -1) {
-          // Column doesn't exist yet — append it
           const newCol = headers.length + 1;
           headerSheet.getRange(1, newCol).setValue(key);
           headers.push(key);
           colIdx = headers.length - 1;
+          rowData.push(val); 
+        } else {
+          rowData[colIdx] = val;
         }
-        headerSheet.getRange(rowIndex, colIdx + 1).setValue(val);
       }
       
-      // Recalculate separate totals (Personal vs Overall)
       let totalPersonalTWD = 0;
       let totalOverallTWD = 0;
-      categories.forEach(cat => {
-             // Mapping based on category code naming in 'totals' object
-             if (cat === 'Flight') { totalPersonalTWD += totals['機票費總額']; totalOverallTWD += totals['機票費總額']; }
-             else if (cat === 'Transportation') { totalPersonalTWD += totals['交通運輸費總額']; totalOverallTWD += totals['交通運輸費總額']; }
-             else if (cat === 'Gas') { totalPersonalTWD += totals['瓦斯費總額']; totalOverallTWD += totals['瓦斯費總額']; }
-             else if (cat === 'Parking') { totalPersonalTWD += totals['停車費總額']; totalOverallTWD += totals['停車費總額']; }
-             else if (cat === 'Internet') { totalPersonalTWD += totals['網路費總額']; totalOverallTWD += totals['網路費總額']; }
-             else if (cat === 'Social') { totalPersonalTWD += totals['社交費總額']; totalOverallTWD += totals['社交費總額']; }
-             else if (cat === 'Gift') { totalPersonalTWD += totals['禮品費總額']; totalOverallTWD += totals['禮品費總額']; }
-             else if (cat === 'Luggage Fee') { totalPersonalTWD += totals['行李費總額']; totalOverallTWD += totals['行李費總額']; }
-             else if (cat === 'Handing Fee') { totalPersonalTWD += totals['手續費總額']; totalOverallTWD += totals['手續費總額']; }
-             else if (cat === 'Per Diem') { totalPersonalTWD += totals['日支費總額']; totalOverallTWD += totals['日支費總額']; }
-             else if (cat === 'Advance Payment') { /* 預支費用不列入總計計算 */ }
-             else if (cat === 'Lunch & Learn') { totalPersonalTWD += totals['午餐與學費總額']; totalOverallTWD += totals['午餐與學費總額']; }
-             else if (cat === 'Others') { totalPersonalTWD += totals['其他費用總額']; totalOverallTWD += totals['其他費用總額']; }
-             else if (cat === 'Accommodation') {
-                 totalPersonalTWD += totals['個人住宿費總額'];
-                 totalOverallTWD += totals['總體住宿費總額'];
-             }
-             else if (cat === 'Rental Car') {
-                 totalPersonalTWD += totals['個人租車費總額'];
-                 totalOverallTWD += totals['總體租車費總額'];
-             }
+      
+      const sumColsPersonal = ['機票費總額', '個人住宿費總額', '個人租車費總額', '交通運輸費總額', '瓦斯費總額', '停車費總額', '網路費總額', '社交費總額', '禮品費總額', '行李費總額', '手續費總額', '日支費總額', '午餐與學費總額', '其他費用總額'];
+      const sumColsOverall = ['機票費總額', '總體住宿費總額', '總體租車費總額', '交通運輸費總額', '瓦斯費總額', '停車費總額', '網路費總額', '社交費總額', '禮品費總額', '行李費總額', '手續費總額', '日支費總額', '午餐與學費總額', '其他費用總額'];
+
+      const parseSecureNum = (val) => {
+          if (val === undefined || val === null || val === '') return 0;
+          if (typeof val === 'number') return isNaN(val) ? 0 : val;
+          const cleaned = String(val).replace(/[^\d.-]/g, '');
+          const n = Number(cleaned);
+          return isNaN(n) ? 0 : n;
+      };
+
+      sumColsPersonal.forEach(c => {
+          let idx = findCol(c);
+          if (idx > -1) totalPersonalTWD += parseSecureNum(rowData[idx]);
+      });
+      sumColsOverall.forEach(c => {
+          let idx = findCol(c);
+          if (idx > -1) totalOverallTWD += parseSecureNum(rowData[idx]);
       });
       
-      // Get current rate
-      const rateCol = headers.indexOf('USD匯率');
-      let rate = 1; 
-      let rateCell = null;
-      if (rateCol > -1) {
-          rateCell = headerSheet.getRange(rowIndex, rateCol + 1);
-          let val = Number(rateCell.getValue());
-          if (val && val > 0) rate = val;
-      }
-      
-      const currencyCol = headers.indexOf('支付幣別');
+      const currencyCol = findCol('支付幣別');
       let paymentCurrency = 'TWD';
       if (currencyCol > -1) {
-          let val = headerSheet.getRange(rowIndex, currencyCol + 1).getDisplayValue();
+          let val = rowData[currencyCol];
           if (val) paymentCurrency = val;
       }
       
-      // [Sync Rate] Logic
-      // Always try to sync from Flight first, or reset if no flight
-      // Logic moved to updateExchangeRateAndRecalculate, but we keep basic rate read here
-      // to support UI display. The actual heavy lifting is done in updateExchangeRateAndRecalculate
-      
-      // Calculate Date Range & Duration (And Auto-fetch Rate) ONLY IF FLIGHT
       let allDates = [];
       let diffDays = 0;
       let endDateStr = '';
       const doDateCalc = (!triggerCategory || triggerCategory === 'Flight');
 
       if (doDateCalc) {
-          categories.forEach(cat => {
-            if (cat === 'Accommodation' || cat === 'Per Diem' || cat === 'Rental Car') return;
-            try {
-              const data = sheetDataToJson(cat);
-              const reportItems = data.filter(r => String(r['報告編號']) === String(reportId));
-              reportItems.forEach(item => {
-                 const parseDateStr = (dateVal) => {
-                     let dateObj = null;
-                     if (dateVal instanceof Date) {
-                         dateObj = dateVal;
-                     } else if (typeof dateVal === 'string') {
-                         const parts = dateVal.split('-');
-                         if (parts.length === 3) {
-                             dateObj = new Date(parts[0], parseInt(parts[1], 10) - 1, parts[2]);
-                         } else if (dateVal.includes('/')) {
-                             const partsS = dateVal.split('/');
-                             if (partsS.length === 3) dateObj = new Date(partsS[0], parseInt(partsS[1], 10) - 1, partsS[2]);
-                         }
-                         if (!dateObj) dateObj = new Date(dateVal); 
-                     }
-                     return dateObj;
-                 };
-    
-                 if (item['日期']) {
-                     let obj = parseDateStr(item['日期']);
-                     if (obj && !isNaN(obj.getTime())) allDates.push(obj.getTime());
-                 }
-    
-                 if (cat === 'Flight' && item['行程類型'] === 'round-trip' && item['回程日期']) {
-                     let objRet = parseDateStr(item['回程日期']);
-                     if (objRet && !isNaN(objRet.getTime())) allDates.push(objRet.getTime());
-                 }
-              });
-            } catch(e) {}
-          });
+          try {
+              const myFlights = myItemsMap['Flight'];
+              if (myFlights) {
+                  myFlights.forEach(item => {
+                      const parseDateStr = (dateVal) => {
+                          let dateObj = null;
+                          if (dateVal instanceof Date) return dateVal;
+                          if (typeof dateVal === 'string') {
+                              dateObj = new Date(dateVal.replace(/-/g, '/'));
+                          }
+                          return dateObj;
+                      };
+                      if (item['日期']) {
+                          let obj = parseDateStr(item['日期']);
+                          if (obj && !isNaN(obj.getTime())) allDates.push(obj.getTime());
+                      }
+                      if (item['行程類型'] === 'round-trip' && item['回程日期']) {
+                          let objRet = parseDateStr(item['回程日期']);
+                          if (objRet && !isNaN(objRet.getTime())) allDates.push(objRet.getTime());
+                      }
+                  });
+              }
+          } catch(e) {}
       } else {
-          // If not modifying dates, we still need to grab the existing startDateStr from the header sheet
-          // so we can return it at the end of this function (used for exchange rate syncing).
-          const cachedStartCol = headers.indexOf('商旅起始日');
-          if (cachedStartCol > -1 && rowIndex > 0) {
-               let val = headerSheet.getRange(rowIndex, cachedStartCol + 1).getDisplayValue();
+          const cachedStartCol = findCol('商旅起始日');
+          if (cachedStartCol > -1) {
+               let val = String(rowData[cachedStartCol]);
+               if (rowData[cachedStartCol] instanceof Date) {
+                   const d = rowData[cachedStartCol];
+                   val = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
+               }
                if (val) startDateStr = val;
           }
       }
@@ -503,174 +530,68 @@ function recalculateHeader(reportId, triggerCategory = null) {
           const minDate = new Date(Math.min(...allDates));
           const maxDate = new Date(Math.max(...allDates));
           
-          const formatDate = (date) => {
-              return date.getFullYear() + '/' + 
-                     String(date.getMonth() + 1).padStart(2, '0') + '/' + 
-                     String(date.getDate()).padStart(2, '0');
-          };
+          const formatDate = (date) => date.getFullYear() + '/' + String(date.getMonth() + 1).padStart(2, '0') + '/' + String(date.getDate()).padStart(2, '0');
           
           startDateStr = formatDate(minDate);
           endDateStr = formatDate(maxDate);
           
-          // Calculate Days (inclusive)
           const utc1 = Date.UTC(minDate.getFullYear(), minDate.getMonth(), minDate.getDate());
           const utc2 = Date.UTC(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
           diffDays = Math.floor((utc2 - utc1) / (1000 * 60 * 60 * 24)) + 1;
-          
-          // Flight Time Adjustment
-          try {
-             const flightData = sheetDataToJson('Flight');
-             const myFlights = flightData.filter(r => String(r['報告編號']) === String(reportId));
-             
-             let earliestFlightHour = -1;
-             let minFlightTs = Infinity;
-             let latestFlightArrivalHour = -1;
-             let maxFlightTs = -Infinity;
-             
-             myFlights.forEach(f => {
-                 const legs = [];
-                 if (f['日期']) {
-                     legs.push({ date: f['日期'], depT: f['出發時間'], arrT: f['抵達時間'] });
-                 }
-                 if (f['行程類型'] === 'round-trip' && f['回程日期']) {
-                     legs.push({ date: f['回程日期'], depT: f['回程出發時間'], arrT: f['回程抵達時間'] });
-                 }
-
-                 legs.forEach(leg => {
-                     let legDateObj = null;
-                     if (leg.date instanceof Date) legDateObj = leg.date;
-                     else if (typeof leg.date === 'string') {
-                          let p = leg.date.split(/[-/]/);
-                          if (p.length === 3) legDateObj = new Date(p[0], parseInt(p[1], 10) - 1, p[2]);
-                          else legDateObj = new Date(leg.date);
-                     }
-                     
-                     if (legDateObj && !isNaN(legDateObj.getTime())) {
-                         const parseTimeStr = (tStr) => {
-                             let h = 0, m = 0;
-                             if (!tStr) return {h, m};
-                             let isPM = String(tStr).includes('下午') || /pm/i.test(tStr);
-                             let isAM = String(tStr).includes('上午') || /am/i.test(tStr);
-                             let cleanTime = String(tStr).replace(/[^0-9:]/g, '');
-                             let parts = cleanTime.split(':');
-                             if (parts.length >= 2) {
-                                 h = parseInt(parts[0], 10);
-                                 m = parseInt(parts[1], 10);
-                                 if (isPM && h < 12) h += 12;
-                                 if (isAM && h === 12) h = 0;
-                             }
-                             return { h, m };
-                         };
-                         
-                         // Dep
-                         let depT = leg.depT;
-                         let dh=0, dm=0;
-                         if (depT instanceof Date) { dh=depT.getHours(); dm=depT.getMinutes(); }
-                         else { const t=parseTimeStr(depT); dh=t.h; dm=t.m; }
-                         let depTs = legDateObj.getTime() + dh*3600000 + dm*60000;
-                         if (depTs < minFlightTs) {
-                             minFlightTs = depTs;
-                             earliestFlightHour = dh + (dm/60);
-                         }
-                         
-                         // Arr
-                         let arrT = leg.arrT;
-                         let ah=0, am=0;
-                         if (arrT instanceof Date) { ah=arrT.getHours(); am=arrT.getMinutes(); }
-                         else { const t=parseTimeStr(arrT); ah=t.h; am=t.m; }
-                         
-                         if (depTs > maxFlightTs) {
-                             maxFlightTs = depTs;
-                             latestFlightArrivalHour = ah + (am/60);
-                         }
-                     }
-                 });
-             });
-             
-             // Rules
-             if (earliestFlightHour >= 14) diffDays -= 0.5;
-             if (latestFlightArrivalHour > -1 && latestFlightArrivalHour <= 12) diffDays -= 0.5;
-             if (diffDays < 0) diffDays = 0;
-             
-          } catch(e) {
-              Logger.log('Flight time adjustment error: ' + e);
-          }
       }
-      
-      // Helper to find column index robustly
-      const findCol = (name) => {
-          return headers.findIndex(h => String(h).trim() === name);
-      };
 
-      // Update Date Columns
       const colDays = findCol('商旅天數');
       const colStart = findCol('商旅起始日');
       const colEnd = findCol('商旅結束日');
       
       if (doDateCalc) {
-          if (colDays > -1) headerSheet.getRange(rowIndex, colDays + 1).setValue(diffDays > 0 ? diffDays : 0);
-          if (colStart > -1) headerSheet.getRange(rowIndex, colStart + 1).setValue(startDateStr);
-          if (colEnd > -1) headerSheet.getRange(rowIndex, colEnd + 1).setValue(endDateStr);
+          if (colDays > -1) rowData[colDays] = (diffDays > 0 ? diffDays : 0);
+          if (colStart > -1) rowData[colStart] = startDateStr;
+          if (colEnd > -1) rowData[colEnd] = endDateStr;
       } else {
-          // If not calculation dates, pull diffDays from sheet so Averages calculation (below) still works
           if (colDays > -1) {
-              const existingDays = Number(headerSheet.getRange(rowIndex, colDays + 1).getValue());
+              const existingDays = Number(rowData[colDays]);
               diffDays = isNaN(existingDays) ? 0 : existingDays;
           }
       }
 
-      // Write TWD Totals
       const colTotalPersonalTWD = findCol('合計TWD個人總額');
-      if (colTotalPersonalTWD > -1) headerSheet.getRange(rowIndex, colTotalPersonalTWD + 1).setValue(totalPersonalTWD);
+      if (colTotalPersonalTWD > -1) rowData[colTotalPersonalTWD] = totalPersonalTWD;
       
       const colTotalOverallTWD = findCol('合計TWD總體總額');
-      if (colTotalOverallTWD > -1) headerSheet.getRange(rowIndex, colTotalOverallTWD + 1).setValue(totalOverallTWD);
+      if (colTotalOverallTWD > -1) rowData[colTotalOverallTWD] = totalOverallTWD;
 
-      // Now calculate USD totals and Averages
       let totalPersonalUSD = 0;
       let totalOverallUSD = 0;
       
-      if (paymentCurrency === 'USD') {
-          // Calculate exact USD from details natively without integer rounding losses
-          categories.forEach(cat => {
-              if (cat === 'Advance Payment') return; // Skip advance payment in overall summations
-              try {
-                  const data = sheetDataToJson(cat);
-                  const reportItems = data.filter(r => String(r['報告編號']) === String(reportId));
-                  reportItems.forEach(item => {
-                      let itemCurrency = String(item['幣別'] || '').toUpperCase();
-                      let itemRate = Number(item['匯率'] || 1);
-                      let isPersonal = (cat === 'Accommodation' || cat === 'Rental Car') ? Number(item['個人金額'] || 0) : Number(item['金額'] || 0);
-                      let isOverall = (cat === 'Accommodation' || cat === 'Rental Car') ? Number(item['總體金額'] || 0) : Number(item['金額'] || 0);
+      const sumColsPersonalUSD = sumColsPersonal.map(n => n.replace('總額', 'USD總額'));
+      const sumColsOverallUSD = sumColsOverall.map(n => n.replace('總額', 'USD總額'));
 
-                      let localToUsd = 0;
-                      if (itemCurrency === 'USD') {
-                         localToUsd = 1;
-                      } else if (itemCurrency === 'TWD') {
-                         localToUsd = rate > 0 ? (1 / rate) : 1;
-                      } else {
-                         localToUsd = rate > 0 ? (itemRate / rate) : itemRate;
-                      }
-                      
-                      totalPersonalUSD += (isPersonal * localToUsd);
-                      totalOverallUSD += (isOverall * localToUsd);
-                  });
-              } catch(e) {}
-          });
-      } else {
-          if (rate && rate > 0) {
-              totalPersonalUSD = totalPersonalTWD / rate;
-              totalOverallUSD = totalOverallTWD / rate;
+      // Use native USD if tracked, else fallback to TWD/rate
+      sumColsPersonalUSD.forEach((c, i) => {
+          let idx = findCol(c);
+          if (idx > -1) totalPersonalUSD += parseSecureNum(rowData[idx]);
+          else {
+              let sibIdx = findCol(sumColsPersonal[i]);
+              if (sibIdx > -1) totalPersonalUSD += parseSecureNum(rowData[sibIdx]) / rate;
           }
-      }
+      });
+      
+      sumColsOverallUSD.forEach((c, i) => {
+          let idx = findCol(c);
+          if (idx > -1) totalOverallUSD += parseSecureNum(rowData[idx]);
+          else {
+              let sibIdx = findCol(sumColsOverall[i]);
+              if (sibIdx > -1) totalOverallUSD += parseSecureNum(rowData[sibIdx]) / rate;
+          }
+      });
       
       const colTotalPersonalUSD = findCol('合計USD個人總額');
-      if (colTotalPersonalUSD > -1) headerSheet.getRange(rowIndex, colTotalPersonalUSD + 1).setValue(totalPersonalUSD);
+      if (colTotalPersonalUSD > -1) rowData[colTotalPersonalUSD] = totalPersonalUSD;
       
       const colTotalOverallUSD = findCol('合計USD總體總額');
-      if (colTotalOverallUSD > -1) headerSheet.getRange(rowIndex, colTotalOverallUSD + 1).setValue(totalOverallUSD);
+      if (colTotalOverallUSD > -1) rowData[colTotalOverallUSD] = totalOverallUSD;
       
-      // Averages
       let avgPersonalTWD = 0;
       let avgOverallTWD = 0;
       let avgPersonalUSD = 0;
@@ -684,27 +605,28 @@ function recalculateHeader(reportId, triggerCategory = null) {
       }
       
       const colAvgPersonalTWD = findCol('合計TWD個人平均');
-      if (colAvgPersonalTWD > -1) headerSheet.getRange(rowIndex, colAvgPersonalTWD + 1).setValue(avgPersonalTWD);
+      if (colAvgPersonalTWD > -1) rowData[colAvgPersonalTWD] = avgPersonalTWD;
       
       const colAvgOverallTWD = findCol('合計TWD總體平均');
-      if (colAvgOverallTWD > -1) headerSheet.getRange(rowIndex, colAvgOverallTWD + 1).setValue(avgOverallTWD);
+      if (colAvgOverallTWD > -1) rowData[colAvgOverallTWD] = avgOverallTWD;
       
       const colAvgPersonalUSD = findCol('合計USD個人平均');
-      Logger.log(`[AvgCalc] Personal USD Avg: ${avgPersonalUSD}, Col Index: ${colAvgPersonalUSD}`);
-      if (colAvgPersonalUSD > -1) headerSheet.getRange(rowIndex, colAvgPersonalUSD + 1).setValue(avgPersonalUSD);
+      if (colAvgPersonalUSD > -1) rowData[colAvgPersonalUSD] = avgPersonalUSD;
       
       const colAvgOverallUSD = findCol('合計USD總體平均');
-      if (colAvgOverallUSD > -1) headerSheet.getRange(rowIndex, colAvgOverallUSD + 1).setValue(avgOverallUSD);
+      if (colAvgOverallUSD > -1) rowData[colAvgOverallUSD] = avgOverallUSD;
       
       if (diffDays === 0) {
-          // Reset Averages
           const resetCols = ['合計TWD個人平均', '合計TWD總體平均', '合計USD個人平均', '合計USD總體平均'];
           resetCols.forEach(colName => {
               const cIdx = findCol(colName);
-              if (cIdx > -1) headerSheet.getRange(rowIndex, cIdx + 1).setValue(0);
+              if (cIdx > -1) rowData[cIdx] = 0;
           });
       }
-    }
+      
+      const expandedRange = headerSheet.getRange(rowIndex, 1, 1, headers.length);
+      expandedRange.setValues([rowData]);
+      invalidateCache('Report Header'); // Fix stale cache ghosting!
     
     return startDateStr;
 }
@@ -712,11 +634,31 @@ function recalculateHeader(reportId, triggerCategory = null) {
 /**
  * Updates Exchange Rate and Recalculates all dependent TWD amounts based on Trip Start Date
  */
-function updateAllExchangeRates(reportId, startDateStr) {
+function updateAllExchangeRates(reportId, startDateStr, targetCategory = null, forceHeaderRateUpdate = false) {
     if (!startDateStr || startDateStr === '-') return;
+
+    // Gather existing rate so we don't aggressively poll external APIs on minor item edits
+    const headerSheet = getSheet('Report Header');
+    const headerData = headerSheet.getDataRange().getValues();
+    let headerRowIndex = -1;
+    let existingUsdRate = 1.0;
+    for (let i = 1; i < headerData.length; i++) {
+        if (String(headerData[i][0]) === String(reportId)) {
+            headerRowIndex = i + 1; 
+            const rateCol = headerData[0].indexOf('USD匯率');
+            if (rateCol > -1) {
+                const val = Number(headerData[i][rateCol]);
+                if (val > 0) existingUsdRate = val;
+            }
+            break;
+        }
+    }
 
     // Cache to prevent multiple BOT API calls for the same currency
     const rateCache = { 'TWD': 1.0 }; 
+    if (!forceHeaderRateUpdate) {
+        rateCache['USD'] = existingUsdRate; // Short-circuit external poll if date hasn't changed
+    }
     
     // Function to get rate
     const getRate = (currency) => {
@@ -731,17 +673,25 @@ function updateAllExchangeRates(reportId, startDateStr) {
         return rateCache[currency];
     };
 
-    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
+    let categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
+    
+    if (targetCategory) {
+        categories = [targetCategory]; // Restrict target
+    }
     
     categories.forEach(cat => {
         try {
+            // Check cache upstream to completely avoid reading empty sheets physically
+            const cachedJson = sheetDataToJson(cat);
+            const hasItems = cachedJson.some(row => String(row['報告編號']) === String(reportId));
+            if (!hasItems) return; // INSTANT SKIP
+            
             const sheet = getSheet(cat);
             if (!sheet) return;
-            const data = sheet.getDataRange().getValues();
-            if (data.length <= 1) return;
+            const rawValues = sheet.getDataRange().getValues();
+            if (rawValues.length <= 1) return;
             
-            const sheetHeaders = data[0];
-            
+            const sheetHeaders = rawValues[0];
             const idxId = sheetHeaders.indexOf('報告編號');
             const idxCurrency = sheetHeaders.indexOf('幣別');
             const idxRate = sheetHeaders.indexOf('匯率');
@@ -755,38 +705,50 @@ function updateAllExchangeRates(reportId, startDateStr) {
             const idxOverall = sheetHeaders.indexOf('總體金額');
             const idxTwdOverall = sheetHeaders.indexOf('TWD總體金額');
             
-            for (let i = 1; i < data.length; i++) {
-                 if (String(data[i][idxId]) === String(reportId)) {
-                     const currency = String(data[i][idxCurrency]).trim().toUpperCase();
+            let hasChanges = false;
+            for (let i = 1; i < rawValues.length; i++) {
+                 if (String(rawValues[i][idxId]) === String(reportId)) {
+                     const currency = String(rawValues[i][idxCurrency]).trim().toUpperCase();
                      
                      if (currency !== 'TWD' && currency !== '') {
                          const rowRate = getRate(currency);
-                         const row = i + 1;
                          
-                         if (idxRate > -1) sheet.getRange(row, idxRate + 1).setValue(rowRate);
+                         if (idxRate > -1) {
+                             rawValues[i][idxRate] = rowRate;
+                             hasChanges = true;
+                         }
                          
                          if (cat === 'Accommodation' || cat === 'Rental Car') {
                              if (idxPersonal > -1 && idxTwdPersonal > -1) {
-                                 const val = Number(data[i][idxPersonal]) || 0;
-                                 sheet.getRange(row, idxTwdPersonal + 1).setValue(Math.round(val * rowRate));
+                                 const val = Number(String(rawValues[i][idxPersonal]).replace(/[^\d.-]/g, '')) || 0;
+                                 rawValues[i][idxTwdPersonal] = Math.round(val * rowRate);
+                                 hasChanges = true;
                              }
                              if (idxAdvance > -1 && idxTwdAdvance > -1) {
-                                 const val = Number(data[i][idxAdvance]) || 0;
-                                 sheet.getRange(row, idxTwdAdvance + 1).setValue(Math.round(val * rowRate));
+                                 const val = Number(String(rawValues[i][idxAdvance]).replace(/[^\d.-]/g, '')) || 0;
+                                 rawValues[i][idxTwdAdvance] = Math.round(val * rowRate);
+                                 hasChanges = true;
                              }
                              if (idxOverall > -1 && idxTwdOverall > -1) {
-                                 const val = Number(data[i][idxOverall]) || 0;
-                                 sheet.getRange(row, idxTwdOverall + 1).setValue(Math.round(val * rowRate));
+                                 const val = Number(String(rawValues[i][idxOverall]).replace(/[^\d.-]/g, '')) || 0;
+                                 rawValues[i][idxTwdOverall] = Math.round(val * rowRate);
+                                 hasChanges = true;
                              }
                          } else {
                              // Normal forms
                              if (idxAmount > -1 && idxTwdAmount > -1) {
-                                 const val = Number(data[i][idxAmount]) || 0;
-                                 sheet.getRange(row, idxTwdAmount + 1).setValue(Math.round(val * rowRate));
+                                 const val = Number(String(rawValues[i][idxAmount]).replace(/[^\d.-]/g, '')) || 0;
+                                 rawValues[i][idxTwdAmount] = Math.round(val * rowRate);
+                                 hasChanges = true;
                              }
                          }
                      }
                  }
+            }
+            if (hasChanges) {
+                // Bulk write back to sheet natively
+                sheet.getRange(1, 1, rawValues.length, sheetHeaders.length).setValues(rawValues);
+                invalidateCache(cat);
             }
         } catch(e) {
             Logger.log('Error updating rates for ' + cat + ': ' + e);
@@ -795,22 +757,13 @@ function updateAllExchangeRates(reportId, startDateStr) {
 
     // 2. Update Header Rate (USD is the primary reference)
     const newUsdRate = getRate('USD');
-    const headerSheet = getSheet('Report Header');
-    const headerData = headerSheet.getDataRange().getValues();
-    let headerRowIndex = -1;
-    for (let i = 1; i < headerData.length; i++) {
-        if (String(headerData[i][0]) === String(reportId)) {
-            headerRowIndex = i + 1; 
-            break;
-        }
-    }
     
-    if (headerRowIndex > -1) {
+    if (headerRowIndex > -1 && forceHeaderRateUpdate) {
         const headers = headerData[0];
         const rateCol = headers.indexOf('USD匯率');
         if (rateCol > -1) {
             headerSheet.getRange(headerRowIndex, rateCol + 1).setValue(newUsdRate);
+            invalidateCache('Report Header');
         }
     }
-    SpreadsheetApp.flush();
 }

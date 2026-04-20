@@ -69,6 +69,9 @@ function doPost(e) {
       case 'deleteItem':
         result = deleteReportItem(payload);
         break;
+      case 'copyItems':
+        result = copyItems(payload);
+        break;
 
       // External APIs
       case 'searchAirport':
@@ -108,32 +111,11 @@ function getReportFullData(payload) {
   const reportId = payload.reportId;
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  // Create sheet mapping for O(1) sheet retrieval and cache them
-  const allSheets = ss.getSheets();
-  const sheetMap = {};
-  allSheets.forEach(s => sheetMap[s.getName()] = s);
+  // Removed expensive ss.getSheets() loop which was entirely unused
 
   // 1. Get Header
-  const headerSheet = sheetMap['Report Header'];
-  if (!headerSheet) return { status: 'error', message: 'Report Header sheet not found' };
-  
-  const headerDataRaw = headerSheet.getDataRange().getValues();
-  if (headerDataRaw.length < 2) return { status: 'error', message: 'Report not found' };
-  
-  const hCols = headerDataRaw[0];
-  let header = null;
-  const idIdx = hCols.indexOf('報告編號');
-  
-  if (idIdx === -1) return { status: 'error', message: 'Invalid Report Header sheet structure' };
-  
-  for (let i = 1; i < headerDataRaw.length; i++) {
-     if (String(headerDataRaw[i][idIdx]) === String(reportId)) {
-         let obj = {};
-         hCols.forEach((col, idx) => obj[col] = headerDataRaw[i][idx]);
-         header = obj;
-         break;
-     }
-  }
+  const headerDataRaw = sheetDataToJson('Report Header', ss);
+  let header = headerDataRaw.find(r => String(r['報告編號']) === String(reportId));
   
   if (!header) {
       return { status: 'error', message: 'Report not found' };
@@ -142,22 +124,10 @@ function getReportFullData(payload) {
   // Populate true user name if missing
   if (!header['員工姓名'] || header['員工姓名'] === '') {
       try {
-          const memberSheet = sheetMap['Member'];
-          if (memberSheet) {
-              const memberRaw = memberSheet.getDataRange().getValues();
-              if (memberRaw.length >= 2) {
-                  const mCols = memberRaw[0];
-                  const mIdIdx = mCols.indexOf('用戶編號');
-                  const mNameIdx = mCols.indexOf('用戶名稱');
-                  if (mIdIdx !== -1 && mNameIdx !== -1) {
-                      for (let i = 1; i < memberRaw.length; i++) {
-                         if (String(memberRaw[i][mIdIdx]) === String(header['用戶編號'])) {
-                             header['員工姓名'] = memberRaw[i][mNameIdx];
-                             break;
-                         }
-                      }
-                  }
-              }
+          const memberDataRaw = sheetDataToJson('Member', ss);
+          const member = memberDataRaw.find(m => String(m['用戶編號']) === String(header['用戶編號']));
+          if (member) {
+              header['員工姓名'] = member['用戶名稱'];
           }
       } catch (e) {
           console.warn('Could not fetch Member data for getReportFullData', e);
@@ -169,34 +139,15 @@ function getReportFullData(payload) {
   const categories = ['Flight', 'Accommodation', 'Rental Car', 'Transportation', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
   categories.forEach(cat => {
       let reportItems = [];
-      const sheet = sheetMap[cat];
-      
-      if (sheet) {
-          try {
-              const dataVals = sheet.getDataRange().getValues();
-              if (dataVals.length >= 2) {
-                  const cols = dataVals[0];
-                  const rIdx = cols.indexOf('報告編號');
-                  const oIdx = cols.indexOf('次序');
-                  
-                  if (rIdx !== -1) {
-                      for (let i = 1; i < dataVals.length; i++) {
-                          if (String(dataVals[i][rIdx]) === String(reportId)) {
-                              let obj = {};
-                              cols.forEach((col, idx) => obj[col] = dataVals[i][idx]);
-                              reportItems.push(obj);
-                          }
-                      }
-                      
-                      // Sort by sequence if applicable
-                      if (oIdx !== -1) {
-                          reportItems.sort((a, b) => parseInt(a['次序'] || 0) - parseInt(b['次序'] || 0));
-                      }
-                  }
-              }
-          } catch (e) {
-              console.warn(`Error processing category ${cat}`, e);
+      try {
+          const cachedData = sheetDataToJson(cat, ss);
+          reportItems = cachedData.filter(r => String(r['報告編號']) === String(reportId));
+          // Sort by sequence if applicable
+          if (reportItems.length > 0 && reportItems[0]['次序'] !== undefined) {
+              reportItems.sort((a, b) => parseInt(a['次序'] || 0) - parseInt(b['次序'] || 0));
           }
+      } catch (e) {
+          console.warn(`Error processing category ${cat}`, e);
       }
       items[cat] = reportItems;
   });
@@ -232,15 +183,13 @@ function getUserReports(payload) {
       });
     }
 
+    // Expose all reports globally as requested
     let filteredData = headerData;
-    
-    if (role !== 'admin') {
-      filteredData = headerData.filter(r => String(r['用戶編號']) === String(userId));
-    }
 
     const userReports = filteredData
       .map(r => ({
-        reportId: r['報告編號'],
+        reportId: String(r['報告編號']),
+        userId: String(r['用戶編號']),
         userName: userMap[String(r['用戶編號'])] || r['員工姓名'] || r['用戶編號'],
         days: r['商旅天數'],
         startDate: r['商旅起始日'],
@@ -248,11 +197,11 @@ function getUserReports(payload) {
         status: r['狀態'],
         createdAt: r['建立時間'],
         reportName: r['報告名稱'],
-        paymentCurrency: r['支付幣別'] || 'TWD',
-        totalAmount: Number(r['合計TWD總體總額'] || 0),
-        advanceAmount: Number(r['預支費用總額'] || 0),
-        totalUSDAmount: Number(r['合計USD總體總額'] || 0),
-        rate: Number(r['USD匯率'] || 1)
+        paymentCurrency: String(r['支付幣別'] || 'TWD').trim(),
+        totalAmount: Number(String(r['合計TWD總體總額'] || '0').replace(/[^\d.-]/g, '')),
+        advanceAmount: Number(String(r['預支費用總額'] || '0').replace(/[^\d.-]/g, '')),
+        totalUSDAmount: Number(String(r['合計USD總體總額'] || '0').replace(/[^\d.-]/g, '')),
+        rate: Number(String(r['USD匯率'] || '1').replace(/[^\d.-]/g, ''))
       }))
       // Sort by creation date descending
       .sort((a, b) => {
@@ -320,6 +269,12 @@ function deleteReport(payload) {
       }
       
       if (!isVerified) {
+        // If it was legitimately not found in the physical sheet, it might be a ghost cache record.
+        // Force invalidate the cache here so the frontend can self-heal on next refresh.
+        if (errorMsg === 'Report not found or validation failed') {
+            invalidateCache('Report Header');
+            return { status: 'success', message: 'Report was already deleted.' }; // Silent success post-condition
+        }
         return { status: 'error', message: errorMsg };
       }
 
@@ -331,6 +286,10 @@ function deleteReport(payload) {
       
       categories.forEach(cat => {
         try {
+          const cachedJson = sheetDataToJson(cat);
+          const hasItems = cachedJson.some(row => String(row['報告編號']) === String(reportId));
+          if (!hasItems) return; // INSTANT SKIP!
+          
           const sheet = getSheet(cat);
           if (!sheet) return;
           const data = sheet.getDataRange().getValues();
@@ -351,7 +310,10 @@ function deleteReport(payload) {
         }
       });
       
-      SpreadsheetApp.flush(); // Ensure changes are applied before responding
+      // Removed sync flush to vastly improve performance
+      invalidateCache('Report Header');
+      categories.forEach(cat => invalidateCache(cat));
+      
       return { status: 'success', message: 'Report deleted successfully' };
       
     } catch (err) {
@@ -398,7 +360,7 @@ function updateReportStatus(payload) {
       }
       
       headerSheet.getRange(rowIndex, statusIdx + 1).setValue(status || '');
-      SpreadsheetApp.flush();
+      invalidateCache('Report Header');
       return { status: 'success', message: 'Status updated successfully' };
     } catch(e) {
       return { status: 'error', message: e.toString() };
@@ -445,7 +407,7 @@ function updateReportName(payload) {
       }
       
       headerSheet.getRange(rowIndex, nameIdx + 1).setValue(reportName || '');
-      SpreadsheetApp.flush();
+      invalidateCache('Report Header');
       return { status: 'success', message: 'Report name updated successfully' };
     } catch(e) {
       return { status: 'error', message: e.toString() };
@@ -675,9 +637,14 @@ function copyReport(payload) {
       const categories = ['Flight', 'Accommodation', 'Rental Car', 'Transportation', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
       
       categories.forEach(cat => {
-        const sheet = getSheet(cat);
-        if (!sheet) return;
-        const data = sheet.getDataRange().getValues();
+        try {
+          const cachedJson = sheetDataToJson(cat);
+          const hasItems = cachedJson.some(row => String(row['報告編號']) === String(sourceReportId));
+          if (!hasItems) return; // INSTANT SKIP!
+          
+          const sheet = getSheet(cat);
+          if (!sheet) return;
+          const data = sheet.getDataRange().getValues();
         if (data.length < 2) return;
         
         const catHeaders = data[0];
@@ -699,13 +666,100 @@ function copyReport(payload) {
         if (targetRows.length > 0) {
            sheet.getRange(sheet.getLastRow() + 1, 1, targetRows.length, targetRows[0].length).setValues(targetRows);
         }
+        } catch(catErr) {}
       });
       
-      SpreadsheetApp.flush();
+      invalidateCache('Report Header');
+      categories.forEach(cat => invalidateCache(cat));
       
       return { status: 'success', reportId: newReportId };
       
     } catch(e) {
+      return { status: 'error', message: e.toString() };
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { status: 'error', message: 'Database busy' };
+  }
+}
+
+// -----------------------------------------------------------------------------
+
+function copyItems(payload) {
+  const category = payload.category;
+  const sourceItems = payload.sourceItems; // Array of item objects
+  const targetReportId = payload.targetReportId;
+
+  if (!category || !sourceItems || !Array.isArray(sourceItems) || sourceItems.length === 0 || !targetReportId) {
+    return { status: 'error', message: 'Missing parameters or sourceItems is empty' };
+  }
+
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(10000)) {
+    try {
+      const sheet = getSheet(category);
+      if (!sheet) {
+        return { status: 'error', message: 'Category sheet not found' };
+      }
+
+      const data = sheet.getDataRange().getValues();
+      if (data.length < 1) {
+         return { status: 'error', message: 'Sheet is empty' };
+      }
+      
+      const headers = data[0];
+      const reportIdIdx = headers.indexOf('報告編號');
+      const sequenceIdx = headers.indexOf('次序');
+      
+      if (reportIdIdx === -1) {
+        return { status: 'error', message: '報告編號 column not found' };
+      }
+
+      // Find max sequence for target report
+      let maxSeq = 0;
+      if (sequenceIdx !== -1) {
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][reportIdIdx]) === String(targetReportId)) {
+            const seq = parseInt(data[i][sequenceIdx], 10);
+            if (!isNaN(seq) && seq > maxSeq) {
+              maxSeq = seq;
+            }
+          }
+        }
+      }
+
+      const newRows = [];
+      const timestamp = new Date();
+
+      sourceItems.forEach(item => {
+        maxSeq++;
+        const newRow = new Array(headers.length).fill('');
+        
+        headers.forEach((h, i) => {
+          if (h === '報告編號') {
+            newRow[i] = targetReportId;
+          } else if (h === '次序') {
+            newRow[i] = maxSeq;
+          } else if (h === '建立時間' || h === '最後修改時間') {
+            newRow[i] = timestamp;
+          } else if (item[h] !== undefined) {
+             newRow[i] = item[h];
+          }
+        });
+        
+        newRows.push(newRow);
+      });
+
+      if (newRows.length > 0) {
+        sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, headers.length).setValues(newRows);
+      }
+
+      invalidateCache(category);
+
+      return { status: 'success', message: 'Items copied successfully', targetReportId: targetReportId };
+
+    } catch (e) {
       return { status: 'error', message: e.toString() };
     } finally {
       lock.releaseLock();

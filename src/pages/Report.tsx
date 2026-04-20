@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Copy } from 'lucide-react';
 import { transformReportData } from '../utils/reportTransformer';
 import { formatTimeHHmm } from '../utils/formatters';
 
@@ -27,6 +27,7 @@ import OthersForm from '../components/Report/forms/OthersForm';
 import LunchLearnForm from '../components/Report/forms/LunchLearnForm';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import CopyItemsModal from '../components/Report/forms/CopyItemsModal';
 
 
 // Define types for state
@@ -51,6 +52,51 @@ export default function Report() {
     const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
     const [localReportName, setLocalReportName] = useState('');
     const [editingItems, setEditingItems] = useState<{ [category: string]: any }>({});
+
+    const [selectedItemsMap, setSelectedItemsMap] = useState<{ [category: string]: any[] }>({});
+    const [copyModalOpen, setCopyModalOpen] = useState(false);
+    const [copyCategory, setCopyCategory] = useState('');
+    const [sourceItemsToCopy, setSourceItemsToCopy] = useState<any[]>([]);
+
+    const handleSelectionChange = useCallback((category: string, items: any[]) => {
+        setSelectedItemsMap(prev => ({ ...prev, [category]: items }));
+    }, []);
+
+    const handleCopyClick = useCallback((category: string, item?: any) => {
+        if (item) {
+            setSourceItemsToCopy([item]);
+        } else {
+            const items = selectedItemsMap[category] || [];
+            if (items.length === 0) return;
+            setSourceItemsToCopy(items);
+        }
+        setCopyCategory(category);
+        setCopyModalOpen(true);
+    }, [selectedItemsMap]);
+
+    const handleCopySuccess = useCallback(() => {
+        setSelectedItemsMap(prev => {
+            const newMap = { ...prev };
+            delete newMap[copyCategory];
+            return newMap;
+        });
+        handleItemChanged(); // refresh the items
+        alert(t('copy_success', '複製成功'));
+    }, [copyCategory, t]);
+
+    const renderBatchCopyButton = (category: string) => {
+        const selected = selectedItemsMap[category] || [];
+        if (selected.length === 0) return null;
+        return (
+            <button
+                onClick={() => handleCopyClick(category)}
+                className="mb-2 px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-100 flex items-center gap-1 transition shadow-sm font-medium"
+            >
+                <Copy className="w-4 h-4" />
+                {t('batch_copy', '批次複製')} ({selected.length})
+            </button>
+        );
+    };
 
     const handleEditItem = useCallback((category: string, item: any) => {
         setEditingItems(prev => ({ ...prev, [category]: item }));
@@ -177,6 +223,13 @@ export default function Report() {
     return (
         <div className="min-h-screen bg-gray-100 p-4 md:p-8 pb-32">
             <ChangePasswordModal isOpen={isChangePasswordModalOpen} onClose={() => setIsChangePasswordModalOpen(false)} />
+            <CopyItemsModal
+                isOpen={copyModalOpen}
+                onClose={() => setCopyModalOpen(false)}
+                category={copyCategory}
+                sourceItems={sourceItemsToCopy}
+                onSuccess={handleCopySuccess}
+            />
             <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div className="flex-1 w-full md:w-auto">
@@ -263,9 +316,14 @@ export default function Report() {
                         {/* List */}
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Flight')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Flight'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Flight', items)}
+                                onCopy={(item) => handleCopyClick('Flight', item)}
                                 keyField="次序"
-                                data={reportData?.items?.Flight || []}
+                                data={reportData?.items?.['Flight'] || []}
                                 onEdit={(item) => handleEditItem('Flight', item)}
                                 onDelete={(item) => {
                                     // Implement delete
@@ -416,9 +474,14 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Accommodation')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Accommodation'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Accommodation', items)}
+                                onCopy={(item) => handleCopyClick('Accommodation', item)}
                                 keyField="次序"
-                                data={reportData?.items?.Accommodation || []}
+                                data={reportData?.items?.['Accommodation'] || []}
                                 onEdit={(item) => handleEditItem('Accommodation', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
@@ -490,7 +553,12 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Rental Car')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Rental Car'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Rental Car', items)}
+                                onCopy={(item) => handleCopyClick('Rental Car', item)}
                                 keyField="次序"
                                 data={reportData?.items?.['Rental Car'] || []}
                                 onEdit={(item) => handleEditItem('Rental Car', item)}
@@ -564,9 +632,14 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Gas')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Gas'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Gas', items)}
+                                onCopy={(item) => handleCopyClick('Gas', item)}
                                 keyField="次序"
-                                data={reportData?.items?.Gas || []}
+                                data={reportData?.items?.['Gas'] || []}
                                 onEdit={(item) => handleEditItem('Gas', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
@@ -621,9 +694,14 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Parking')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Parking'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Parking', items)}
+                                onCopy={(item) => handleCopyClick('Parking', item)}
                                 keyField="次序"
-                                data={reportData?.items?.Parking || []}
+                                data={reportData?.items?.['Parking'] || []}
                                 onEdit={(item) => handleEditItem('Parking', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
@@ -688,9 +766,14 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Transportation')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Transportation'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Transportation', items)}
+                                onCopy={(item) => handleCopyClick('Transportation', item)}
                                 keyField="次序"
-                                data={reportData?.items?.Transportation || []}
+                                data={reportData?.items?.['Transportation'] || []}
                                 onEdit={(item) => handleEditItem('Transportation', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
@@ -746,9 +829,14 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Internet')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Internet'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Internet', items)}
+                                onCopy={(item) => handleCopyClick('Internet', item)}
                                 keyField="次序"
-                                data={reportData?.items?.Internet || []}
+                                data={reportData?.items?.['Internet'] || []}
                                 onEdit={(item) => handleEditItem('Internet', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
@@ -803,9 +891,14 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Social')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Social'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Social', items)}
+                                onCopy={(item) => handleCopyClick('Social', item)}
                                 keyField="次序"
-                                data={reportData?.items?.Social || []}
+                                data={reportData?.items?.['Social'] || []}
                                 onEdit={(item) => handleEditItem('Social', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
@@ -860,9 +953,14 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Gift')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Gift'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Gift', items)}
+                                onCopy={(item) => handleCopyClick('Gift', item)}
                                 keyField="次序"
-                                data={reportData?.items?.Gift || []}
+                                data={reportData?.items?.['Gift'] || []}
                                 onEdit={(item) => handleEditItem('Gift', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
@@ -917,7 +1015,12 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Luggage Fee')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Luggage Fee'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Luggage Fee', items)}
+                                onCopy={(item) => handleCopyClick('Luggage Fee', item)}
                                 keyField="次序"
                                 data={reportData?.items?.['Luggage Fee'] || []}
                                 onEdit={(item) => handleEditItem('Luggage Fee', item)}
@@ -974,7 +1077,12 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Handing Fee')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Handing Fee'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Handing Fee', items)}
+                                onCopy={(item) => handleCopyClick('Handing Fee', item)}
                                 keyField="次序"
                                 data={reportData?.items?.['Handing Fee'] || []}
                                 onEdit={(item) => handleEditItem('Handing Fee', item)}
@@ -1033,7 +1141,12 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Per Diem')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Per Diem'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Per Diem', items)}
+                                onCopy={(item) => handleCopyClick('Per Diem', item)}
                                 keyField="次序"
                                 data={reportData?.items?.['Per Diem'] || []}
                                 onEdit={(item) => handleEditItem('Per Diem', item)}
@@ -1100,7 +1213,12 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Advance Payment')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Advance Payment'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Advance Payment', items)}
+                                onCopy={(item) => handleCopyClick('Advance Payment', item)}
                                 keyField="次序"
                                 data={reportData?.items?.['Advance Payment'] || []}
                                 onEdit={(item) => handleEditItem('Advance Payment', item)}
@@ -1157,9 +1275,14 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Others')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Others'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Others', items)}
+                                onCopy={(item) => handleCopyClick('Others', item)}
                                 keyField="次序"
-                                data={reportData?.items?.Others || []}
+                                data={reportData?.items?.['Others'] || []}
                                 onEdit={(item) => handleEditItem('Others', item)}
                                 onDelete={(item) => {
                                     return sendRequest('deleteItem', {
@@ -1215,7 +1338,12 @@ export default function Report() {
 
                         <div className="mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
+                            {renderBatchCopyButton('Lunch & Learn')}
                             <DataGrid
+                                selectable={true}
+                                selectedItems={selectedItemsMap['Lunch & Learn'] || []}
+                                onSelectionChange={(items) => handleSelectionChange('Lunch & Learn', items)}
+                                onCopy={(item) => handleCopyClick('Lunch & Learn', item)}
                                 keyField="次序"
                                 data={reportData?.items?.['Lunch & Learn'] || []}
                                 onEdit={(item) => handleEditItem('Lunch & Learn', item)}

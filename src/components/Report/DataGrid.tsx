@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, Edit, Hourglass } from 'lucide-react';
+import { Trash2, Edit, Hourglass, Copy } from 'lucide-react';
 
 interface Column<T> {
     key: keyof T | 'actions';
@@ -13,19 +13,32 @@ interface DataGridProps<T> {
     data: T[];
     onDelete?: (item: T) => Promise<void> | void;
     onEdit?: (item: T) => void;
+    onCopy?: (item: T) => void;
     keyField: keyof T;
     onLoadingChange?: (loading: boolean) => void;
     disabled?: boolean;
+    selectable?: boolean;
+    selectedItems?: T[];
+    onSelectionChange?: (items: T[]) => void;
 }
 
-export default function DataGrid<T>({ columns, data, onDelete, onEdit, keyField, onLoadingChange, disabled = false }: DataGridProps<T>) {
+export default function DataGrid<T>({ 
+    columns, 
+    data, 
+    onDelete, 
+    onEdit, 
+    onCopy,
+    keyField, 
+    onLoadingChange, 
+    disabled = false,
+    selectable = false,
+    selectedItems = [],
+    onSelectionChange
+}: DataGridProps<T>) {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleDelete = async (item: T) => {
         if (!onDelete) return;
-
-        // Remove confirm dialog to show loading state immediately as requested
-        // if (!window.confirm('確定刪除此項目？')) return;
 
         setIsDeleting(true);
         onLoadingChange?.(true);
@@ -39,6 +52,27 @@ export default function DataGrid<T>({ columns, data, onDelete, onEdit, keyField,
             onLoadingChange?.(false);
         }
     };
+
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!onSelectionChange) return;
+        if (e.target.checked) {
+            onSelectionChange(data);
+        } else {
+            onSelectionChange([]);
+        }
+    };
+
+    const handleSelectRow = (item: T, checked: boolean) => {
+        if (!onSelectionChange) return;
+        const key = item[keyField];
+        if (checked) {
+            onSelectionChange([...selectedItems, item]);
+        } else {
+            onSelectionChange(selectedItems.filter(i => i[keyField] !== key));
+        }
+    };
+
+    const isAllSelected = data.length > 0 && selectedItems.length === data.length;
 
     if (data.length === 0) {
         return (
@@ -67,6 +101,17 @@ export default function DataGrid<T>({ columns, data, onDelete, onEdit, keyField,
                 <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                     <tr>
+                        {selectable && (
+                            <th scope="col" className="px-4 py-3 text-left w-12">
+                                <input 
+                                    type="checkbox" 
+                                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                    checked={isAllSelected}
+                                    onChange={handleSelectAll}
+                                    disabled={disabled}
+                                />
+                            </th>
+                        )}
                         {columns.map((col, idx) => (
                             <th
                                 key={idx}
@@ -77,7 +122,7 @@ export default function DataGrid<T>({ columns, data, onDelete, onEdit, keyField,
                                 {col.header}
                             </th>
                         ))}
-                        {(onDelete || onEdit) && (
+                        {(onDelete || onEdit || onCopy) && (
                             <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 操作
                             </th>
@@ -85,41 +130,65 @@ export default function DataGrid<T>({ columns, data, onDelete, onEdit, keyField,
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                    {data.map((item) => (
-                        <tr key={String(item[keyField])} className="hover:bg-gray-50 transition-colors">
-                            {columns.map((col, colIdx) => (
-                                <td key={colIdx} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {col.render ? col.render(item) : String(item[col.key as keyof T])}
-                                </td>
-                            ))}
-                            {(onDelete || onEdit) && (
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <div className="flex justify-end gap-2">
-                                        {onEdit && (
-                                            <button
-                                                onClick={() => onEdit(item)}
-                                                className="text-indigo-600 hover:text-indigo-900 transition-colors disabled:opacity-50"
-                                                title="編輯"
-                                                disabled={isDeleting || disabled}
-                                            >
-                                                <Edit size={18} />
-                                            </button>
-                                        )}
-                                        {onDelete && (
-                                            <button
-                                                onClick={() => handleDelete(item)}
-                                                className="text-red-600 hover:text-red-900 transition-colors disabled:opacity-50"
-                                                title="刪除"
-                                                disabled={isDeleting || disabled}
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        )}
-                                    </div>
-                                </td>
-                            )}
-                        </tr>
-                    ))}
+                    {data.map((item) => {
+                        const isSelected = selectedItems.some(i => i[keyField] === item[keyField]);
+                        return (
+                            <tr key={String(item[keyField])} className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-indigo-50' : ''}`}>
+                                {selectable && (
+                                    <td className="px-4 py-4 whitespace-nowrap">
+                                        <input 
+                                            type="checkbox" 
+                                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                            checked={isSelected}
+                                            onChange={(e) => handleSelectRow(item, e.target.checked)}
+                                            disabled={disabled}
+                                        />
+                                    </td>
+                                )}
+                                {columns.map((col, colIdx) => (
+                                    <td key={colIdx} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        {col.render ? col.render(item) : String(item[col.key as keyof T])}
+                                    </td>
+                                ))}
+                                {(onDelete || onEdit || onCopy) && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <div className="flex justify-end gap-2">
+                                            {onCopy && (
+                                                <button
+                                                    onClick={() => onCopy(item)}
+                                                    className="text-blue-600 hover:text-blue-900 transition-colors disabled:opacity-50"
+                                                    title="複製"
+                                                    disabled={isDeleting || disabled}
+                                                >
+                                                    <Copy size={18} />
+                                                </button>
+                                            )}
+                                            {onEdit && (
+                                                <button
+                                                    onClick={() => onEdit(item)}
+                                                    className="text-indigo-600 hover:text-indigo-900 transition-colors disabled:opacity-50"
+                                                    title="編輯"
+                                                    disabled={isDeleting || disabled}
+                                                >
+                                                    <Edit size={18} />
+                                                </button>
+                                            )}
+                                            {onDelete && (
+                                                <button
+                                                    onClick={() => handleDelete(item)}
+                                                    className="text-red-600 hover:text-red-900 transition-colors disabled:opacity-50"
+                                                    title="刪除"
+                                                    disabled={isDeleting || disabled}
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </td>
+                                )}
+                            </tr>
+                        );
+                    })}
                 </tbody>
                 </table>
             </div>

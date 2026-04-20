@@ -66,6 +66,10 @@ export const copyReport = async (sourceReportId: string, userId: string) => {
     return sendRequest('copyReport', { sourceReportId, userId });
 };
 
+export const copyItems = async (category: string, sourceItems: any[], targetReportId: string) => {
+    return sendRequest('copyItems', { category, sourceItems, targetReportId });
+};
+
 export const updateReportTripInfo = async (reportId: string, days: number | string, startDate: string, endDate: string, destination?: string, paymentCurrency?: string) => {
     return sendRequest('updateReportTripInfo', { reportId, days, startDate, endDate, destination, paymentCurrency });
 };

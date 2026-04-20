@@ -83,11 +83,18 @@ function getExchangeRate(payload) {
 
   if (currency === 'TWD') return { status: 'success', rate: 1.0 };
 
-  // If no date, use today? Or return error? 
-  // For now default to today if missing, but usually provided.
   if (!dateStr) {
       const today = new Date();
       dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
+  }
+
+  // GLOBAL CACHE FOR EXTERNAL API
+  // This completely stops the system from attacking Bank of Taiwan aggressively on every request
+  const scriptCache = CacheService.getScriptCache();
+  const cacheKey = `BOT_RATE_${currency}_${dateStr.replace(/[^0-9]/g, '')}`;
+  const cachedResponse = scriptCache.get(cacheKey);
+  if (cachedResponse) {
+      return JSON.parse(cachedResponse);
   }
 
   // Target: Previous Day (T-1)
@@ -175,24 +182,31 @@ function getExchangeRate(payload) {
   }
 
   if (rate !== null) {
-      return { 
+      const response = { 
           status: 'success', 
           rate: rate, 
           date: usedDate, 
           message: `Rate for ${currency} on ${usedDate}` 
       };
+      // Cache valid rates for 6 hours (21600 seconds)
+      scriptCache.put(cacheKey, JSON.stringify(response), 21600);
+      return response;
   } else {
       // Fallback to mock/default if all fail
       console.warn(`Could not find rate for ${currency} around ${dateStr}, using fallback.`);
       const fallbackRates = {
           'USD': 30.0, 'JPY': 0.21, 'EUR': 32.5, 'CNY': 4.2, 'TWD': 1.0, 'THB': 0.9
       };
-      return { 
+      
+      const fallbackResponse = { 
           status: 'success', 
           rate: fallbackRates[currency] || 1.0, 
           isFallback: true,
           message: `Fallback used. Debug: ${debugLog.join('; ')}` 
       };
+      // Cache fallbacks for a shorter time (1 hour = 3600 seconds) so it retries later
+      scriptCache.put(cacheKey, JSON.stringify(fallbackResponse), 3600);
+      return fallbackResponse;
   }
 }
 
