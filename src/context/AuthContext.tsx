@@ -6,6 +6,8 @@ interface User {
     name: string;
     email: string;
     role?: string;
+    canViewOthers?: boolean;
+    canCopyOthers?: boolean;
 }
 
 interface AuthContextType {

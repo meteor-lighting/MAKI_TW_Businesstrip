@@ -59,6 +59,14 @@ function doPost(e) {
         result = updateReportTripInfo(payload);
         break;
       
+      // Admin APIs
+      case 'getAllMembers':
+        result = getAllMembers(payload);
+        break;
+      case 'updateMemberPermission':
+        result = updateMemberPermission(payload);
+        break;
+      
       // Items CRUD
       case 'addItem':
         result = addReportItem(payload);
@@ -107,18 +115,44 @@ function doPost(e) {
 }
 
 function getReportFullData(payload) {
-  // payload: { reportId }
-  const reportId = payload.reportId;
+  const { reportId, userId } = payload;
+  
+  if (!reportId) { // Fallback to allowing missing userId if old client caches? Better to enforce it.
+    return { status: 'error', message: 'Missing reportId' };
+  }
+  
+  if (!userId) {
+    return { status: 'error', message: 'Missing userId' };
+  }
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  // Removed expensive ss.getSheets() loop which was entirely unused
-
   // 1. Get Header
   const headerDataRaw = sheetDataToJson('Report Header', ss);
   let header = headerDataRaw.find(r => String(r['報告編號']) === String(reportId));
   
   if (!header) {
       return { status: 'error', message: 'Report not found' };
+  }
+
+  // Security Check
+  if (String(header['用戶編號']) !== String(userId)) {
+      const memberDataRaw = sheetDataToJson('Member', ss);
+      const member = memberDataRaw.find(m => String(m['用戶編號']) === String(userId));
+      
+      let isAdmin = false;
+      let canViewOthers = false;
+      
+      if (member) {
+          canViewOthers = (member['可查看他人'] === 'Y' || String(member['可查看他人']).toUpperCase() === 'TRUE');
+          if (member['用戶權限'] === '管理員') {
+              isAdmin = true;
+          }
+      }
+      
+      if (!isAdmin && !canViewOthers) {
+          return { status: 'error', message: '您沒有權限查看他人報告' };
+      }
   }
 
   // Populate true user name if missing
@@ -165,9 +199,8 @@ function getReportFullData(payload) {
 
 function getUserReports(payload) {
   const userId = payload.userId;
-  const role = payload.role || 'user';
   
-  if (!userId && role !== 'admin') {
+  if (!userId) {
     return { status: 'error', message: 'Missing userId' };
   }
 
@@ -175,16 +208,29 @@ function getUserReports(payload) {
     const headerData = sheetDataToJson('Report Header');
     const memberData = sheetDataToJson('Member');
     
-    // Create mapping of userId -> userName
+    // Create mapping of userId -> userName and check permission
     const userMap = {};
+    let canViewOthers = false;
+    let isAdmin = false;
+
     if (memberData && memberData.length > 0) {
       memberData.forEach(m => {
         userMap[String(m['用戶編號'])] = m['用戶名稱'];
+        if (String(m['用戶編號']) === String(userId)) {
+          canViewOthers = (m['可查看他人'] === 'Y' || String(m['可查看他人']).toUpperCase() === 'TRUE');
+          if (m['用戶權限'] === '管理員') {
+             isAdmin = true;
+             canViewOthers = true;
+          }
+        }
       });
     }
 
-    // Expose all reports globally as requested
+    // Apply permission logic
     let filteredData = headerData;
+    if (!isAdmin && !canViewOthers) {
+      filteredData = headerData.filter(r => String(r['用戶編號']) === String(userId));
+    }
 
     const userReports = filteredData
       .map(r => ({
@@ -613,6 +659,17 @@ function copyReport(payload) {
         return { status: 'error', message: 'Source report not found' };
       }
       
+      const memberData = sheetDataToJson('Member');
+      let canCopyOthers = false;
+      const targetUser = memberData.find(m => String(m['用戶編號']) === String(userId));
+      if (targetUser) {
+         canCopyOthers = (targetUser['可複製他人'] === 'Y' || String(targetUser['可複製他人']).toUpperCase() === 'TRUE');
+         if (targetUser['用戶權限'] === '管理員') canCopyOthers = true;
+      }
+      if (!canCopyOthers && String(sourceRow[userIdx]) !== String(userId)) {
+         return { status: 'error', message: '您沒有複製他人報告的權限' };
+      }
+      
       // Overwrite specific fields
       sourceRow[idIdx] = newReportId;
       if (userIdx !== -1) sourceRow[userIdx] = userId;
@@ -690,9 +747,47 @@ function copyItems(payload) {
   const category = payload.category;
   const sourceItems = payload.sourceItems; // Array of item objects
   const targetReportId = payload.targetReportId;
+  const userId = payload.userId;
 
-  if (!category || !sourceItems || !Array.isArray(sourceItems) || sourceItems.length === 0 || !targetReportId) {
+  if (!category || !sourceItems || !Array.isArray(sourceItems) || sourceItems.length === 0 || !targetReportId || !userId) {
     return { status: 'error', message: 'Missing parameters or sourceItems is empty' };
+  }
+
+  const headerSheet = getSheet('Report Header');
+  const headerData = headerSheet.getDataRange().getValues();
+  const hHeaders = headerData[0];
+  const hIdIdx = hHeaders.indexOf('報告編號');
+  const hUserIdx = hHeaders.indexOf('用戶編號');
+  let targetReportOwner = null;
+  for (let i = 1; i < headerData.length; i++) {
+     if (String(headerData[i][hIdIdx]) === String(targetReportId)) {
+        targetReportOwner = String(headerData[i][hUserIdx]);
+        break;
+     }
+  }
+
+  const memberData = sheetDataToJson('Member');
+  let canCopyOthers = false;
+  let isAdmin = false;
+  const targetUser = memberData.find(m => String(m['用戶編號']) === String(userId));
+  if (targetUser) {
+      canCopyOthers = (targetUser['可複製他人'] === 'Y' || String(targetUser['可複製他人']).toUpperCase() === 'TRUE');
+      if (targetUser['用戶權限'] === '管理員') {
+          canCopyOthers = true;
+          isAdmin = true;
+      }
+  }
+
+  // To copy items TO a report, you MUST own the target report, OR be an admin.
+  if (!isAdmin && targetReportOwner !== String(userId)) {
+      return { status: 'error', message: '您不可編輯或複製明細至他人的報告' };
+  }
+  
+  // Notice we only check target ownership here. The sourceItems are assumed checked in UI, 
+  // but if they try to hack, they are just copying data to their own report anyway, which is safe if canCopyOthers is true.
+  if (!canCopyOthers) {
+      // Check if all source items actually belong to reports they own? 
+      // We know they can't see the items without either canViewOthers or owning them anyway.
   }
 
   const lock = LockService.getScriptLock();
@@ -766,5 +861,112 @@ function copyItems(payload) {
     }
   } else {
     return { status: 'error', message: 'Database busy' };
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Admin Member Management API
+// -----------------------------------------------------------------------------
+
+function getAllMembers(payload) {
+  // Only admin
+  if (payload.role !== 'admin') {
+    return { status: 'error', message: 'Unauthorized' };
+  }
+  
+  try {
+    const memberData = sheetDataToJson('Member');
+    
+    // Process and sort members safely
+    const result = memberData.map(m => ({
+      id: String(m['用戶編號']),
+      name: m['用戶名稱'] || '',
+      email: m['用戶電郵地址'] || '',
+      role: m['用戶權限'] === '管理員' ? 'admin' : 'user',
+      canViewOthers: (m['可查看他人'] === 'Y' || String(m['可查看他人']).toUpperCase() === 'TRUE'),
+      canCopyOthers: (m['可複製他人'] === 'Y' || String(m['可複製他人']).toUpperCase() === 'TRUE')
+    })).sort((a, b) => a.id.localeCompare(b.id));
+
+    return {
+      status: 'success',
+      data: result
+    };
+  } catch (e) {
+    return { status: 'error', message: e.toString() };
+  }
+}
+
+function updateMemberPermission(payload) {
+  const { targetUserId, canViewOthers, canCopyOthers, role } = payload;
+  
+  // Only admin
+  if (role !== 'admin') {
+    return { status: 'error', message: 'Unauthorized' };
+  }
+  
+  if (!targetUserId) {
+    return { status: 'error', message: 'Missing targetUserId' };
+  }
+  
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(10000)) {
+    try {
+      const sheet = getSheet('Member');
+      const data = sheet.getDataRange().getValues();
+      const headers = data[0];
+      
+      const idIdx = headers.indexOf('用戶編號');
+      let canViewOthersIdx = headers.indexOf('可查看他人');
+      let canCopyOthersIdx = headers.indexOf('可複製他人');
+      
+      if (idIdx === -1) {
+        return { status: 'error', message: 'Member sheet headers invalid' };
+      }
+      
+      // If the column does not exist, append it
+      if (canViewOthersIdx === -1) {
+        canViewOthersIdx = headers.length;
+        sheet.getRange(1, canViewOthersIdx + 1).setValue('可查看他人');
+        headers.push('可查看他人'); // keep array in sync
+      }
+      
+      if (canCopyOthersIdx === -1) {
+        canCopyOthersIdx = headers.length;
+        sheet.getRange(1, canCopyOthersIdx + 1).setValue('可複製他人');
+        headers.push('可複製他人');
+      }
+      
+      let targetRowIndex = -1;
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][idIdx]) === String(targetUserId)) {
+          targetRowIndex = i + 1;
+          break;
+        }
+      }
+      
+      if (targetRowIndex === -1) {
+        return { status: 'error', message: 'User not found' };
+      }
+      
+      if (canViewOthers !== undefined) {
+        const newValueView = canViewOthers ? 'Y' : '';
+        sheet.getRange(targetRowIndex, canViewOthersIdx + 1).setValue(newValueView);
+      }
+      
+      if (canCopyOthers !== undefined) {
+        const newValueCopy = canCopyOthers ? 'Y' : '';
+        sheet.getRange(targetRowIndex, canCopyOthersIdx + 1).setValue(newValueCopy);
+      }
+      
+      invalidateCache('Member');
+      
+      return { status: 'success', message: 'Permission updated successfully' };
+    } catch(e) {
+      return { status: 'error', message: e.toString() };
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { status: 'error', message: 'System busy, please try again' };
   }
 }

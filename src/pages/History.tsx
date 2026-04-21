@@ -93,7 +93,7 @@ const History: React.FC = () => {
     const handleOpenReport = async (reportId: string, userNameStr: string) => {
         try {
             setLoading(true);
-            const res = await getReport(reportId);
+            const res = await getReport(reportId, user?.id);
             if (res.status === 'success' && res.data) {
                 const formattedData = transformReportData(res.data, reportId, userNameStr, t);
                 navigate('/report/summary', { state: { reportData: formattedData } });

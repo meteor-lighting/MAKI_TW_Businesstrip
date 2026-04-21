@@ -50,8 +50,8 @@ export const getUserReports = async (userId: string, role?: string) => {
     return sendRequest('getUserReports', { userId, role });
 };
 
-export const getReport = async (reportId: string) => {
-    return sendRequest('getReport', { reportId });
+export const getReport = async (reportId: string, userId?: string) => {
+    return sendRequest('getReport', { reportId, userId });
 };
 
 export const deleteReport = async (reportId: string, userId: string, role?: string) => {
@@ -66,8 +66,8 @@ export const copyReport = async (sourceReportId: string, userId: string) => {
     return sendRequest('copyReport', { sourceReportId, userId });
 };
 
-export const copyItems = async (category: string, sourceItems: any[], targetReportId: string) => {
-    return sendRequest('copyItems', { category, sourceItems, targetReportId });
+export const copyItems = async (category: string, sourceItems: any[], targetReportId: string, userId: string) => {
+    return sendRequest('copyItems', { category, sourceItems, targetReportId, userId });
 };
 
 export const updateReportTripInfo = async (reportId: string, days: number | string, startDate: string, endDate: string, destination?: string, paymentCurrency?: string) => {
@@ -89,4 +89,12 @@ export const preloadFlights = () => {
     if (!cachedFlights) {
         getAllFlights().catch(console.error);
     }
+};
+
+export const getAllMembers = async (role: string) => {
+    return sendRequest('getAllMembers', { role });
+};
+
+export const updateMemberPermission = async (targetUserId: string, canViewOthers: boolean, canCopyOthers: boolean, role: string) => {
+    return sendRequest('updateMemberPermission', { targetUserId, canViewOthers, canCopyOthers, role });
 };

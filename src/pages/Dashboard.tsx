@@ -2,10 +2,11 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getUserReports, getReport, deleteReport, updateReportStatus, copyReport } from '../services/api';
-import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut, ArrowLeft, Copy, Search } from 'lucide-react';
+import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut, ArrowLeft, Copy, Search, ShieldAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { transformReportData } from '../utils/reportTransformer';
+import MemberPermissionModal from '../components/Admin/MemberPermissionModal';
 
 interface ReportSummary {
     reportId: string;
@@ -34,6 +35,7 @@ const Dashboard: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [reportToDelete, setReportToDelete] = useState<ReportSummary | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showPermissionModal, setShowPermissionModal] = useState(false);
 
     const fetchReports = useCallback(async () => {
         if (!user?.id) return;
@@ -73,7 +75,7 @@ const Dashboard: React.FC = () => {
             // Read-only mode - fetch full report and go to summary
             try {
                 setLoading(true);
-                const res = await getReport(report.reportId);
+                const res = await getReport(report.reportId, user?.id);
                 if (res.status === 'success' && res.data) {
                     const formattedData = transformReportData(res.data, report.reportId, user?.name || '', t);
                     navigate('/report/summary', { state: { reportData: formattedData } });
@@ -202,6 +204,15 @@ const Dashboard: React.FC = () => {
                     <h1 className="text-2xl font-bold text-gray-800">{t('my_reports')}</h1>
                 </div>
                 <div className="flex items-center gap-3">
+                    {user?.role === 'admin' && (
+                        <button
+                            onClick={() => setShowPermissionModal(true)}
+                            className="flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded shadow-sm hover:bg-purple-200 transition font-medium"
+                        >
+                            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+                            <span className="hidden sm:inline">人員權限</span>
+                        </button>
+                    )}
                     <button
                         onClick={handleLogout}
                         className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded shadow-sm transition"
@@ -303,14 +314,16 @@ const Dashboard: React.FC = () => {
                                                 {report.status ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
                                             </button>
                                         )}
-                                        <button
-                                            type="button"
-                                            onClick={(e) => handleCopyReport(e, report)}
-                                            className="text-gray-400 hover:text-blue-500 hover:bg-blue-50 p-1.5 rounded-full transition ml-1"
-                                            title={t('copy_report', '複製')}
-                                        >
-                                            <Copy className="w-4 h-4" />
-                                        </button>
+                                        {(user?.role === 'admin' || user?.canCopyOthers || String(report.userId) === String(user?.id)) && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => handleCopyReport(e, report)}
+                                                className="text-gray-400 hover:text-blue-500 hover:bg-blue-50 p-1.5 rounded-full transition ml-1"
+                                                title={t('copy_report', '複製')}
+                                            >
+                                                <Copy className="w-4 h-4" />
+                                            </button>
+                                        )}
                                         {!report.status && (user?.role === 'admin' || String(report.userId) === String(user?.id)) && (
                                             <button
                                                 type="button"
@@ -402,6 +415,11 @@ const Dashboard: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Member Permission Modal */}
+            {showPermissionModal && (
+                <MemberPermissionModal onClose={() => setShowPermissionModal(false)} />
             )}
         </div>
     );

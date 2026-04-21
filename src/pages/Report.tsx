@@ -166,7 +166,7 @@ export default function Report() {
 
     const fetchReportData = async (id: string) => {
         try {
-            const res = await sendRequest('getReport', { reportId: id });
+            const res = await sendRequest('getReport', { reportId: id, userId: user?.id });
             if (res.status === 'success') {
                 setReportData(res.data);
                 setLocalReportName(res.data.header['報告名稱'] || '');
