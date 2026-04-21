@@ -77,18 +77,18 @@ function handleSignIn(payload) {
   }
 
   // Login successful
-  return { 
-    status: 'success', 
-    token: 'mock-token-' + new Date().getTime(), // In real app, use proper session
-    user: {
-      id: user['用戶編號'],
-      name: user['用戶名稱'],
-      email: user['用戶電郵地址'],
-      role: user['用戶權限'] === '管理員' ? 'admin' : 'user',
-      canViewOthers: (user['可查看他人'] === 'Y' || String(user['可查看他人']).toUpperCase() === 'TRUE'),
-      canCopyOthers: (user['可複製他人'] === 'Y' || String(user['可複製他人']).toUpperCase() === 'TRUE')
-    }
-  };
+    return { 
+      status: 'success', 
+      token: 'mock-token-' + new Date().getTime(), // In real app, use proper session
+      user: {
+        id: user['用戶編號'],
+        name: user['用戶名稱'],
+        email: user['用戶電郵地址'],
+        role: user['用戶權限'] === '管理員' ? 'admin' : 'user',
+        canViewOthers: (user['可查看他人'] === 'Y' || String(user['可查看他人']).toUpperCase() === 'TRUE'),
+        canCopyOthers: (user['可查看他人'] === 'Y' || String(user['可查看他人']).toUpperCase() === 'TRUE')
+      }
+    };
 }
 
 function handleForgotPassword(payload) {

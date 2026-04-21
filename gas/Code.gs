@@ -145,6 +145,7 @@ function getReportFullData(payload) {
       
       if (member) {
           canViewOthers = (member['可查看他人'] === 'Y' || String(member['可查看他人']).toUpperCase() === 'TRUE');
+
           if (member['用戶權限'] === '管理員') {
               isAdmin = true;
           }
@@ -218,6 +219,7 @@ function getUserReports(payload) {
         userMap[String(m['用戶編號'])] = m['用戶名稱'];
         if (String(m['用戶編號']) === String(userId)) {
           canViewOthers = (m['可查看他人'] === 'Y' || String(m['可查看他人']).toUpperCase() === 'TRUE');
+
           if (m['用戶權限'] === '管理員') {
              isAdmin = true;
              canViewOthers = true;
@@ -663,7 +665,7 @@ function copyReport(payload) {
       let canCopyOthers = false;
       const targetUser = memberData.find(m => String(m['用戶編號']) === String(userId));
       if (targetUser) {
-         canCopyOthers = (targetUser['可複製他人'] === 'Y' || String(targetUser['可複製他人']).toUpperCase() === 'TRUE');
+         canCopyOthers = (targetUser['可查看他人'] === 'Y' || String(targetUser['可查看他人']).toUpperCase() === 'TRUE');
          if (targetUser['用戶權限'] === '管理員') canCopyOthers = true;
       }
       if (!canCopyOthers && String(sourceRow[userIdx]) !== String(userId)) {
@@ -771,7 +773,7 @@ function copyItems(payload) {
   let isAdmin = false;
   const targetUser = memberData.find(m => String(m['用戶編號']) === String(userId));
   if (targetUser) {
-      canCopyOthers = (targetUser['可複製他人'] === 'Y' || String(targetUser['可複製他人']).toUpperCase() === 'TRUE');
+      canCopyOthers = (targetUser['可查看他人'] === 'Y' || String(targetUser['可查看他人']).toUpperCase() === 'TRUE');
       if (targetUser['用戶權限'] === '管理員') {
           canCopyOthers = true;
           isAdmin = true;
@@ -884,7 +886,7 @@ function getAllMembers(payload) {
       email: m['用戶電郵地址'] || '',
       role: m['用戶權限'] === '管理員' ? 'admin' : 'user',
       canViewOthers: (m['可查看他人'] === 'Y' || String(m['可查看他人']).toUpperCase() === 'TRUE'),
-      canCopyOthers: (m['可複製他人'] === 'Y' || String(m['可複製他人']).toUpperCase() === 'TRUE')
+      canCopyOthers: (m['可查看他人'] === 'Y' || String(m['可查看他人']).toUpperCase() === 'TRUE')
     })).sort((a, b) => a.id.localeCompare(b.id));
 
     return {
@@ -917,7 +919,6 @@ function updateMemberPermission(payload) {
       
       const idIdx = headers.indexOf('用戶編號');
       let canViewOthersIdx = headers.indexOf('可查看他人');
-      let canCopyOthersIdx = headers.indexOf('可複製他人');
       
       if (idIdx === -1) {
         return { status: 'error', message: 'Member sheet headers invalid' };
@@ -928,12 +929,6 @@ function updateMemberPermission(payload) {
         canViewOthersIdx = headers.length;
         sheet.getRange(1, canViewOthersIdx + 1).setValue('可查看他人');
         headers.push('可查看他人'); // keep array in sync
-      }
-      
-      if (canCopyOthersIdx === -1) {
-        canCopyOthersIdx = headers.length;
-        sheet.getRange(1, canCopyOthersIdx + 1).setValue('可複製他人');
-        headers.push('可複製他人');
       }
       
       let targetRowIndex = -1;
@@ -951,11 +946,6 @@ function updateMemberPermission(payload) {
       if (canViewOthers !== undefined) {
         const newValueView = canViewOthers ? 'Y' : '';
         sheet.getRange(targetRowIndex, canViewOthersIdx + 1).setValue(newValueView);
-      }
-      
-      if (canCopyOthers !== undefined) {
-        const newValueCopy = canCopyOthers ? 'Y' : '';
-        sheet.getRange(targetRowIndex, canCopyOthersIdx + 1).setValue(newValueCopy);
       }
       
       invalidateCache('Member');

@@ -89,7 +89,7 @@ const MemberPermissionModal: React.FC<Props> = ({ onClose }) => {
 
                 <div className="p-6 overflow-y-auto flex-1">
                     <p className="text-sm text-gray-500 mb-6">
-                        在此設定各使用者是否可查看與複製他人的差旅報告。即便開啟此權限，使用者對於他人的報告依然只有「無編輯、無刪除」的唯讀權限。
+                        在此設定各使用者是否可查看與複製他人的差旅報告。即便開啟此權限，使用者對於他人的報告依然只有「無編輯、無刪除」的唯讀與複製權限。
                     </p>
 
                     {error && (
@@ -110,8 +110,7 @@ const MemberPermissionModal: React.FC<Props> = ({ onClose }) => {
                                         <th className="py-3 px-4 font-semibold">用戶編號</th>
                                         <th className="py-3 px-4 font-semibold">用戶名稱</th>
                                         <th className="py-3 px-4 font-semibold">角色</th>
-                                        <th className="py-3 px-4 font-semibold text-center">可查看他人</th>
-                                        <th className="py-3 px-4 font-semibold text-center">可複製他人</th>
+                                        <th className="py-3 px-4 font-semibold text-center">可查看與複製他人</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
@@ -151,36 +150,11 @@ const MemberPermissionModal: React.FC<Props> = ({ onClose }) => {
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className="py-3 px-4 text-center">
-                                                {member.role === 'admin' ? (
-                                                    <span className="text-gray-400 text-xs">-</span>
-                                                ) : (
-                                                    <div className="relative inline-flex items-center">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleToggle(member.id, 'canCopyOthers', member.canCopyOthers)}
-                                                            disabled={actionLoading !== null}
-                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                                                                ${member.canCopyOthers ? 'bg-indigo-600' : 'bg-gray-200'}
-                                                            `}
-                                                        >
-                                                            <span
-                                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                                                                    ${member.canCopyOthers ? 'translate-x-6' : 'translate-x-1'}
-                                                                `}
-                                                            />
-                                                        </button>
-                                                        {actionLoading === member.id + '-canCopyOthers' && (
-                                                            <Loader2 className="w-4 h-4 animate-spin text-indigo-600 absolute -right-6" />
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </td>
                                         </tr>
                                     ))}
                                     {members.length === 0 && (
                                         <tr>
-                                            <td colSpan={5} className="py-8 text-center text-gray-500">
+                                            <td colSpan={4} className="py-8 text-center text-gray-500">
                                                 無成員資料
                                             </td>
                                         </tr>
