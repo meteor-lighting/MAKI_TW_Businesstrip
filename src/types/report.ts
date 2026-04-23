@@ -42,6 +42,12 @@ export interface ReportSection {
         amount: number;
         currency: string;
         displayString: string; // e.g., "12,592 (個人) / 18,888 (總計)"
+        twdTotalAmount?: number;
+        usdTotalAmount?: number;
+        avgAmountTwd?: number;
+        avgAmountUsd?: number;
+        count?: number;
+        avgType?: 'general' | 'per_person_per_day';
     };
     columns: ReportColumn[];
     data: Record<string, any>[];

@@ -8,6 +8,12 @@ interface DetailTableProps {
     title: string;
     total: {
         displayString: string;
+        twdTotalAmount?: number;
+        usdTotalAmount?: number;
+        avgAmountTwd?: number;
+        avgAmountUsd?: number;
+        count?: number;
+        avgType?: 'general' | 'per_person_per_day';
     };
     columns: ReportColumn[];
     data: Record<string, any>[];
@@ -75,9 +81,38 @@ const DetailTable: React.FC<DetailTableProps> = ({ id, title, total, columns, da
             </div>
 
             {/* Footer Total */}
-            <div className="flex justify-between items-center bg-white px-4 py-2 border-b border-x border-slate-200">
-                <div className="font-bold text-gray-700">Total</div>
-                <div className={clsx("font-bold text-xl", totalColorClass || "text-gray-800")}>{total.displayString}</div>
+            <div className="flex flex-wrap justify-between items-center bg-white px-4 py-3 border-b border-x border-slate-200">
+                <div className="font-bold text-slate-700 text-lg min-w-max">Total</div>
+                <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
+                    {/* Average Info */}
+                    {total.count !== undefined && total.count > 0 && (
+                        <div className="flex items-baseline gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                            <span className="text-slate-500 text-sm font-medium">
+                                {total.avgType === 'per_person_per_day' ? t('average_per_person_per_day', '每人每天平均') : t('average_amount', '平均金額')}:
+                            </span>
+                            <span className="font-bold text-slate-700 text-base">
+                                TWD {Math.round(total.avgAmountTwd || 0).toLocaleString()}
+                            </span>
+                            <span className="text-xs font-medium text-slate-400">
+                                USD {(total.avgAmountUsd || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Total Info */}
+                    {total.twdTotalAmount !== undefined ? (
+                         <div className="flex items-baseline gap-2">
+                             <span className={clsx("font-bold text-2xl", totalColorClass || "text-slate-800")}>
+                                 TWD {Math.round(total.twdTotalAmount).toLocaleString()}
+                             </span>
+                             <span className="text-base font-medium text-slate-500">
+                                 USD {total.usdTotalAmount?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                             </span>
+                         </div>
+                    ) : (
+                         <div className={clsx("font-bold text-2xl", totalColorClass || "text-slate-800")}>{total.displayString}</div>
+                    )}
+                </div>
             </div>
         </div>
     );

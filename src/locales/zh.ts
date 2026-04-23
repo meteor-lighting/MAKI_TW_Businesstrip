@@ -57,6 +57,8 @@ export const zh = {
         "date": "日期",
         "start_date": "開始日期",
         "end_date": "結束日期",
+        "average_amount": "平均金額",
+        "average_per_person_per_day": "每人每天平均金額",
         "check_in_date": "入住日期",
         "check_out_date": "退房日期",
         "region": "地區",

@@ -26,6 +26,13 @@ export interface RawReportData {
 }
 
 export function transformReportData(raw: RawReportData, reportId: string, userName: string, t: TFunction): ReportData {
+    // Helper to safely parse localized currency strings like "$ 1,234.56"
+    const safeNum = (val: any) => {
+        const str = String(val || 0).replace(/[^\d.-]/g, '');
+        const n = Number(str);
+        return isNaN(n) ? 0 : n;
+    };
+
     const header = raw.header || {};
 
     // 1. Calculate Summary Totals
@@ -59,16 +66,64 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     const sections: ReportSection[] = [];
 
     // Helper to create section
-    const createSection = (key: string, title: string, columns: any[], id: string, totalOverride?: number) => {
+    const createSection = (key: string, title: string, columns: any[], id: string, totalOverride?: number, avgType: 'general' | 'per_person_per_day' = 'general') => {
         const items = raw.items[key];
         if (items && items.length > 0) {
+            let twdTotalAmount = totalOverride !== undefined ? totalOverride : (catTotals[key] || 0);
+            
+            // Calculate usdTotalAmount and average amounts
+            const rateUSD = safeNum(header['USD匯率'] || 1);
+            let usdTotalAmount = 0;
+            let avgAmountTwd = 0;
+            let avgAmountUsd = 0;
+            const count = items.length;
+
+            if (avgType === 'per_person_per_day') {
+                // For Accommodation and Rental Car, sum up '每人每天金額'
+                let sumPerPersonPerDayTwd = 0;
+                let sumPerPersonPerDayUsd = 0;
+                items.forEach((item: any) => {
+                    const rowRate = safeNum(item['匯率'] || 1);
+                    const ppDay = safeNum(item['每人每天金額']);
+                    const currency = item['幣別'];
+                    
+                    if (currency === 'USD') {
+                        sumPerPersonPerDayUsd += ppDay;
+                        sumPerPersonPerDayTwd += ppDay * rowRate;
+                    } else if (currency === 'TWD') {
+                        sumPerPersonPerDayTwd += ppDay;
+                        sumPerPersonPerDayUsd += ppDay / (rowRate > 0 ? rowRate : rateUSD > 0 ? rateUSD : 1);
+                    } else {
+                         // Default to converting via TWD to USD if other currencies
+                         const twdVal = ppDay * rowRate;
+                         sumPerPersonPerDayTwd += twdVal;
+                         sumPerPersonPerDayUsd += rateUSD > 0 ? twdVal / rateUSD : twdVal;
+                    }
+                });
+                avgAmountTwd = count > 0 ? sumPerPersonPerDayTwd / count : 0;
+                avgAmountUsd = count > 0 ? sumPerPersonPerDayUsd / count : 0;
+                
+                usdTotalAmount = rateUSD > 0 ? twdTotalAmount / rateUSD : twdTotalAmount;
+            } else {
+                // General Average = total / count
+                avgAmountTwd = count > 0 ? twdTotalAmount / count : 0;
+                usdTotalAmount = rateUSD > 0 ? twdTotalAmount / rateUSD : twdTotalAmount;
+                avgAmountUsd = count > 0 ? usdTotalAmount / count : 0;
+            }
+
             sections.push({
                 id,
                 title,
                 total: {
-                    amount: totalOverride !== undefined ? totalOverride : (catTotals[key] || 0),
+                    amount: twdTotalAmount,
                     currency: 'TWD',
-                    displayString: (totalOverride !== undefined ? totalOverride : (catTotals[key] || 0)).toLocaleString()
+                    displayString: twdTotalAmount.toLocaleString(),
+                    twdTotalAmount,
+                    usdTotalAmount,
+                    avgAmountTwd,
+                    avgAmountUsd,
+                    count,
+                    avgType
                 },
                 columns,
                 data: items
@@ -158,7 +213,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: t('twd_personal'), headerKey: 'twd_personal', accessorKey: 'TWD個人金額', width: 12, type: 'currency' },
         { header: t('twd_overall'), headerKey: 'twd_overall', accessorKey: 'TWD總體金額', width: 12, type: 'currency' },
         { header: t('remark'), headerKey: 'remark', accessorKey: '備註', width: 20 }
-    ], 'accommodation', accommodationTotalTWD);
+    ], 'accommodation', accommodationTotalTWD, 'per_person_per_day');
 
     // Rental Car 
     const rentalCarItems = raw.items['Rental Car'] || [];
@@ -178,7 +233,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         { header: t('twd_personal'), headerKey: 'twd_personal', accessorKey: 'TWD個人金額', width: 12, type: 'currency' },
         { header: t('twd_overall'), headerKey: 'twd_overall', accessorKey: 'TWD總體金額', width: 12, type: 'currency' },
         { header: t('remark'), headerKey: 'remark', accessorKey: '備註', width: 20 }
-    ], 'rentalCar', rentalCarTotalTWD);
+    ], 'rentalCar', rentalCarTotalTWD, 'per_person_per_day');
 
     // Transportation Sheet Headers: ..., 交通工具, 幣別, 金額, TWD金額, 匯率, 備註
     const transportationItems = raw.items['Transportation'] || [];
@@ -297,12 +352,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
 
     // Build Chart Data
     
-    // Helper to safely parse localized currency strings like "$ 1,234.56"
-    const safeNum = (val: any) => {
-        const str = String(val || 0).replace(/[^\d.-]/g, '');
-        const n = Number(str);
-        return isNaN(n) ? 0 : n;
-    };
+    // Build Chart Data
 
     return {
         reportId,

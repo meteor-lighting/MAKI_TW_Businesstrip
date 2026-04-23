@@ -52,6 +52,8 @@ export const en = {
         "start_date": "Start Date",
         "end_date": "End Date",
         "region": "Region",
+        "average_amount": "Average Amount",
+        "average_per_person_per_day": "Avg. Per Person",
         "currency": "Currency",
         "amount": "Amount",
         "check_in_date": "Check-In Date",
