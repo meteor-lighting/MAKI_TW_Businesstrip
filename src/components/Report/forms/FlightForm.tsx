@@ -224,9 +224,9 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
         try {
             const payloadData = {
                 '日期': data.date.replace(/-/g, '/'),
-                '航班代號': data.flightCode,
-                '出發地': data.departure,
-                '抵達地': data.arrival,
+                '航班代號': data.flightCode ? data.flightCode.toUpperCase() : '',
+                '出發地': data.departure ? data.departure.toUpperCase() : '',
+                '抵達地': data.arrival ? data.arrival.toUpperCase() : '',
                 '出發時間': data.depTime,
                 '抵達時間': data.arrTime,
                 '幣別': data.currency,
@@ -237,9 +237,9 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                 '備註': data.note,
                 '行程類型': data.tripType,
                 '回程日期': data.tripType === 'round-trip' ? data.returnDate.replace(/-/g, '/') : '',
-                '回程航班代號': data.tripType === 'round-trip' ? data.returnFlightCode : '',
-                '回程出發地': data.tripType === 'round-trip' ? data.returnDeparture : '',
-                '回程抵達地': data.tripType === 'round-trip' ? data.returnArrival : '',
+                '回程航班代號': data.tripType === 'round-trip' ? (data.returnFlightCode ? data.returnFlightCode.toUpperCase() : '') : '',
+                '回程出發地': data.tripType === 'round-trip' ? (data.returnDeparture ? data.returnDeparture.toUpperCase() : '') : '',
+                '回程抵達地': data.tripType === 'round-trip' ? (data.returnArrival ? data.returnArrival.toUpperCase() : '') : '',
                 '回程出發時間': data.tripType === 'round-trip' ? data.returnDepTime : '',
                 '回程抵達時間': data.tripType === 'round-trip' ? data.returnArrTime : '',
                 '回程跨日': data.tripType === 'round-trip' ? (data.returnCrossDay ? (data.returnCrossDay.startsWith('+') ? `'${data.returnCrossDay}` : data.returnCrossDay) : '') : ''
