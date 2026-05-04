@@ -62,11 +62,18 @@ function handleSignUp(payload) {
 
 function handleSignIn(payload) {
   // payload: { username, password }
-  const sheetData = sheetDataToJson('Member');
-  const user = sheetData.find(u => u['用戶名稱'] === payload.username);
+  // Force refresh from Sheet to ensure manual edits are picked up immediately
+  const sheetData = sheetDataToJson('Member', null, true); 
+  
+  // Search in both "用戶名稱" (Name) and "用戶編號" (ID)
+  const inputUsername = String(payload.username || '').trim();
+  const user = sheetData.find(u => 
+    (u['用戶名稱'] && String(u['用戶名稱']).trim() === inputUsername) || 
+    (u['用戶編號'] && String(u['用戶編號']).trim() === inputUsername)
+  );
   
   if (!user) {
-    return { status: 'error', message: '找不到此員工編號！' };
+    return { status: 'error', message: '找不到此員工編號或用戶名稱！' };
   }
 
   const inputHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, payload.password)
