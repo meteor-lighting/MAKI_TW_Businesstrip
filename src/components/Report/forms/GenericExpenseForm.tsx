@@ -3,10 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
 import { Loader2 } from 'lucide-react';
 
-interface TransportationFormProps {
+interface GenericFormProps {
     reportId: string;
-    headerRate: number;
-    tripStartDate?: string;
+    category: string;
     onSubmitSuccess: () => void;
     onLoadingChange: (loading: boolean) => void;
     disabled?: boolean;
@@ -14,9 +13,9 @@ interface TransportationFormProps {
     onCancelEdit?: () => void;
 }
 
-const TransportationForm: React.FC<TransportationFormProps> = ({
+const GenericExpenseForm: React.FC<GenericFormProps> = ({
     reportId,
-    headerRate,
+    category,
     onSubmitSuccess,
     onLoadingChange,
     disabled,
@@ -28,7 +27,6 @@ const TransportationForm: React.FC<TransportationFormProps> = ({
 
     const [formData, setFormData] = useState({
         日期: '',
-        交通工具: '',
         地區: '',
         幣別: 'TWD',
         金額: '',
@@ -52,13 +50,13 @@ const TransportationForm: React.FC<TransportationFormProps> = ({
         try {
             const res = await sendRequest(editingItem ? 'updateItem' : 'addItem', {
                 reportId,
-                category: 'Transportation',
+                category,
                 sequence: editingItem?.次序,
                 itemData: { ...formData }
             });
             if (res.status === 'success') {
                 if (!editingItem) {
-                    setFormData({ 日期: '', 交通工具: '', 地區: '', 幣別: 'TWD', 金額: '', 備註: '' });
+                    setFormData({ 日期: '', 地區: '', 幣別: 'TWD', 金額: '', 備註: '' });
                 }
                 onSubmitSuccess();
                 if (onCancelEdit) onCancelEdit();
@@ -73,14 +71,10 @@ const TransportationForm: React.FC<TransportationFormProps> = ({
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('date')}</label>
                     <input type="date" value={formData.日期} onChange={e => setFormData({ ...formData, 日期: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg" required />
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('transportation_type')}</label>
-                    <input type="text" value={formData.交通工具} onChange={e => setFormData({ ...formData, 交通工具: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg" placeholder="Taxi, Train, etc." required />
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('region')}</label>
@@ -122,4 +116,4 @@ const TransportationForm: React.FC<TransportationFormProps> = ({
     );
 };
 
-export default TransportationForm;
+export default GenericExpenseForm;
