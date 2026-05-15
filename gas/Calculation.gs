@@ -656,9 +656,6 @@ function updateAllExchangeRates(reportId, startDateStr, targetCategory = null, f
 
     // Cache to prevent multiple BOT API calls for the same currency
     const rateCache = { 'TWD': 1.0 }; 
-    if (!forceHeaderRateUpdate) {
-        rateCache['USD'] = existingUsdRate; // Short-circuit external poll if date hasn't changed
-    }
     
     // Function to get rate
     const getRate = (currency) => {
@@ -758,7 +755,7 @@ function updateAllExchangeRates(reportId, startDateStr, targetCategory = null, f
     // 2. Update Header Rate (USD is the primary reference)
     const newUsdRate = getRate('USD');
     
-    if (headerRowIndex > -1 && forceHeaderRateUpdate) {
+    if (headerRowIndex > -1 && (forceHeaderRateUpdate || existingUsdRate <= 1.0)) {
         const headers = headerData[0];
         const rateCol = headers.indexOf('USD匯率');
         if (rateCol > -1) {
