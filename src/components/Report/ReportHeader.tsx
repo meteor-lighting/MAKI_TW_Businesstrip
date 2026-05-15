@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { updateReportTripInfo } from '../../services/api';
 import { Pencil, Check, X, Loader2 } from 'lucide-react';
+import CountryMultiSelect from './CountryMultiSelect';
 
 interface ReportHeaderProps {
     reportId: string;
@@ -100,7 +101,11 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
                     </div>
                     <div className="space-y-1">
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('destination', '目的地')}</label>
-                        <input type="text" value={editDestination} onChange={(e) => setEditDestination(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                        <CountryMultiSelect
+                            value={editDestination ? editDestination.split(',').map(s => s.trim()).filter(Boolean) : []}
+                            onChange={(val) => setEditDestination(val.join(', '))}
+                            placeholder={t('search_country', '搜尋國家...')}
+                        />
                     </div>
                     <div className="space-y-1">
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('payment_currency', '支付幣別')}</label>
@@ -152,7 +157,17 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
                     </div>
                     <div className="flex flex-col">
                         <span className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('destination', '目的地')}</span>
-                        <span className="font-medium text-gray-800">{destination || '-'}</span>
+                        {destination ? (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                                {destination.split(',').map(d => d.trim()).filter(Boolean).map((d, i) => (
+                                    <span key={i} className="bg-gray-100 text-gray-700 text-sm px-2 py-0.5 rounded-md border border-gray-200">
+                                        {d}
+                                    </span>
+                                ))}
+                            </div>
+                        ) : (
+                            <span className="font-medium text-gray-800">-</span>
+                        )}
                     </div>
                     <div className="flex flex-col">
                         <span className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('payment_currency', '支付幣別')}</span>
