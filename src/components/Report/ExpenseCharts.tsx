@@ -40,9 +40,9 @@ const renderCustomizedLabelLine = ({ cx, cy, midAngle, innerRadius, outerRadius,
 };
 
 const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name, index }: any) => {
-    // 利用 index 的奇偶數，讓相鄰的標籤距離圓心有一點遠近落差 (例如 1.4 倍與 1.9 倍)
+    // 利用 index 的奇偶數，讓相鄰的標籤距離圓心有一點遠近落差 (例如 1.2 倍與 1.6 倍)
     // 藉此避開彼此擠在一起擋住的問題
-    const distanceMultiplier = index % 2 === 0 ? 1.4 : 1.9;
+    const distanceMultiplier = index % 2 === 0 ? 1.2 : 1.6;
     const radius = innerRadius + (outerRadius - innerRadius) * distanceMultiplier;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
@@ -51,10 +51,11 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
         <text 
             x={x} 
             y={y} 
-            fill="black" 
+            fill="#374151" 
             textAnchor={x > cx ? 'start' : 'end'} 
             dominantBaseline="central"
-            fontSize={11}
+            fontSize={12}
+            fontWeight={500}
         >
             {`${name} ${(percent * 100).toFixed(0)}%`}
         </text>
@@ -77,8 +78,8 @@ const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
                                 data={pieData}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={25}
-                                outerRadius={55}
+                                innerRadius={22}
+                                outerRadius={48}
                                 fill="#8884d8"
                                 paddingAngle={2}
                                 dataKey="value"
@@ -103,14 +104,14 @@ const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
                         <BarChart
                             layout="vertical"
                             data={sortedBarData}
-                            margin={{ top: 5, right: 60, left: 40, bottom: 5 }}
+                            margin={{ top: 5, right: 100, left: 40, bottom: 5 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                             <XAxis type="number" />
                             <YAxis dataKey="name" type="category" width={100} interval={0} />
                             <Tooltip content={<CustomTooltip />} />
                             <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20}>
-                                <LabelList dataKey="value" position="right" fontSize={12} fill="#6b7280" />
+                                <LabelList dataKey="value" position="right" fontSize={16} fontWeight="bold" fill="#374151" />
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
