@@ -72,9 +72,34 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 };
 
 const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
-    // 依使用者要求顯示所有項目，不再合併 Others
-    const sortedPieData = React.useMemo(() => {
-        return [...pieData].sort((a, b) => b.value - a.value);
+    // 恢復自動合併：將比例低於 5% 的項目併入 Others
+    const processedPieData = React.useMemo(() => {
+        const total = pieData.reduce((sum, item) => sum + item.value, 0);
+        if (total === 0) return [];
+
+        const threshold = total * 0.05; // 5% 門檻
+        const mainItems: ChartData[] = [];
+        let othersValue = 0;
+
+        pieData.forEach(item => {
+            if (item.value < threshold && item.name !== 'Others') {
+                othersValue += item.value;
+            } else {
+                // 如果是本來就叫 Others 的項目，先記錄其數值，稍後統一處理
+                if (item.name === 'Others') {
+                    othersValue += item.value;
+                } else {
+                    mainItems.push({ ...item });
+                }
+            }
+        });
+
+        if (othersValue > 0) {
+            mainItems.push({ name: 'Others', value: othersValue });
+        }
+
+        // 大到小排序
+        return mainItems.sort((a, b) => b.value - a.value);
     }, [pieData]);
 
     // Sort bar data from largest to smallest value
@@ -89,18 +114,18 @@ const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart margin={{ top: 40, right: 40, bottom: 40, left: 40 }}>
                             <Pie
-                                data={sortedPieData}
+                                data={processedPieData}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={30}
-                                outerRadius={60}
+                                innerRadius={35}
+                                outerRadius={65}
                                 fill="#8884d8"
                                 paddingAngle={2}
                                 dataKey="value"
                                 label={renderCustomizedLabel}
                                 labelLine={renderCustomizedLabelLine}
                             >
-                                {sortedPieData.map((_entry, index) => (
+                                {processedPieData.map((_entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
