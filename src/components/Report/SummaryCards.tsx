@@ -28,7 +28,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
             {/* Total Card */}
             <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm h-full">
                 <div>
-                    <h3 className="text-gray-600 font-bold mb-1">{t('total_amount_text', `總計`)} ({curSym})</h3>
+                    <h3 className="text-gray-600 font-extrabold text-xl mb-2">{t('total_amount_text', `總計`)} ({curSym})</h3>
 
                     <div className="text-5xl font-bold text-gray-800">{formatCurrency(totalDisp, isUSD)}</div>
                 </div>
@@ -40,7 +40,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
             {/* Personal Card */}
             <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm h-full">
                 <div>
-                    <h3 className="text-gray-600 font-bold mb-1">{t('personal_total', `個人總計`)} ({curSym})</h3>
+                    <h3 className="text-gray-600 font-extrabold text-xl mb-2">{t('personal_total', `個人總計`)} ({curSym})</h3>
 
                     <div className="text-5xl font-bold text-gray-800">{formatCurrency(personalDisp, isUSD)}</div>
                 </div>
@@ -52,7 +52,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ summary }) => {
             {/* Avg/Day Card */}
             <div className="bg-white border-2 border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm h-full">
                 <div>
-                    <h3 className="text-gray-600 font-bold mb-1">{t('avg_day', `平均每天`)} ({curSym})</h3>
+                    <h3 className="text-gray-600 font-extrabold text-xl mb-2">{t('avg_day', `平均每天`)} ({curSym})</h3>
 
                     <div className="text-5xl font-bold text-gray-800">{formatCurrency(avgDisp, isUSD)}</div>
                 </div>
