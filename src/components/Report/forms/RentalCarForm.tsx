@@ -302,6 +302,7 @@ export default function RentalCarForm({ reportId, headerRate, tripStartDate, onS
                         <option value="EUR">EUR</option>
                         <option value="CNY">CNY</option>
                         <option value="THB">THB</option>
+                        <option value="CAD">CAD</option>
                     </select>
                 </div>
                 <div className="hidden md:block"></div> {/* Spacer for 4-column layout if needed */}

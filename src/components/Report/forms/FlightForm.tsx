@@ -326,6 +326,7 @@ export default function FlightForm({ reportId, headerRate, tripStartDate, onSubm
                         <option value="EUR">EUR</option>
                         <option value="CNY">CNY</option>
                         <option value="THB">THB</option>
+                        <option value="CAD">CAD</option>
                     </select>
                 </div>
                 <div>

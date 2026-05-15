@@ -156,6 +156,7 @@ export default function ReportHeader({ reportId, days, rate, startDate, endDate,
                         >
                             <option value="TWD">TWD</option>
                             <option value="USD">USD</option>
+                            <option value="CAD">CAD</option>
                         </select>
                         <div className="flex gap-1 shrink-0 ml-1">
                             <button onClick={handleSave} className="p-1 text-green-600 hover:bg-green-50 rounded shrink-0" title="Save">

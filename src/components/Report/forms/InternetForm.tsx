@@ -197,6 +197,7 @@ export default function InternetForm({ reportId, headerRate, tripStartDate, onSu
                         <option value="EUR">EUR</option>
                         <option value="CNY">CNY</option>
                         <option value="THB">THB</option>
+                        <option value="CAD">CAD</option>
                     </select>
                 </div>
                 <div>

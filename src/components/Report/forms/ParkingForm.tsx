@@ -215,6 +215,7 @@ export default function ParkingForm({ reportId, headerRate, tripStartDate, onSub
                         <option value="EUR">EUR</option>
                         <option value="CNY">CNY</option>
                         <option value="THB">THB</option>
+                        <option value="CAD">CAD</option>
                     </select>
                 </div>
                 <div>

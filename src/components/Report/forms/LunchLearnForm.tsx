@@ -203,6 +203,7 @@ export default function LunchLearnForm({ reportId, headerRate, tripStartDate, on
                         <option value="EUR">EUR</option>
                         <option value="CNY">CNY</option>
                         <option value="THB">THB</option>
+                        <option value="CAD">CAD</option>
                     </select>
                 </div>
                 <div>
