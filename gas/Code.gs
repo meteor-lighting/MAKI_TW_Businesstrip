@@ -97,6 +97,9 @@ function doPost(e) {
       case 'getAllFlights':
         result = getAllFlights();
         break;
+      case 'getAllCities':
+        result = getAllCities();
+        break;
 
       default:
         throw new Error(`Unknown action: ${action}`);

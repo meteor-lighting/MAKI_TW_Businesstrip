@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { sendRequest } from '../../../services/api';
+import { sendRequest, getAllFlights } from '../../../services/api';
+import { searchFlightLocal } from '../../../utils/flightLogic';
 import { Loader2 } from 'lucide-react';
 
 interface FlightFormProps {
@@ -58,6 +59,65 @@ const FlightForm: React.FC<FlightFormProps> = ({
             setTripType(editingItem['行程類型'] === 'round-trip' ? 'round-trip' : 'one-way');
         }
     }, [editingItem]);
+
+    const [allFlights, setAllFlights] = useState<any[]>([]);
+
+    useEffect(() => {
+        getAllFlights().then(res => {
+            if (res.status === 'success' && Array.isArray(res.data)) {
+                setAllFlights(res.data);
+            }
+        }).catch(console.error);
+    }, []);
+
+    useEffect(() => {
+        if (formData.日期 && formData.航班代號 && allFlights.length > 0) {
+            const match = searchFlightLocal(formData.航班代號, formData.日期, allFlights);
+            if (match) {
+                setFormData(prev => {
+                    // Calculate cross day if not provided by sheet
+                    let crossDay = match.crossDay || '';
+                    if (!crossDay && match.depTime && match.arrTime) {
+                        const dep = parseInt(match.depTime.replace(':', ''), 10);
+                        const arr = parseInt(match.arrTime.replace(':', ''), 10);
+                        if (arr < dep) crossDay = '+1';
+                    }
+                    return {
+                        ...prev,
+                        出發地: prev.出發地 || match.departure,
+                        抵達地: prev.抵達地 || match.arrival,
+                        出發時間: prev.出發時間 || match.depTime,
+                        抵達時間: prev.抵達時間 || match.arrTime,
+                        跨日: prev.跨日 || crossDay
+                    };
+                });
+            }
+        }
+    }, [formData.日期, formData.航班代號, allFlights]);
+
+    useEffect(() => {
+        if (tripType === 'round-trip' && formData.回程日期 && formData.回程航班代號 && allFlights.length > 0) {
+            const match = searchFlightLocal(formData.回程航班代號, formData.回程日期, allFlights);
+            if (match) {
+                setFormData(prev => {
+                    let crossDay = match.crossDay || '';
+                    if (!crossDay && match.depTime && match.arrTime) {
+                        const dep = parseInt(match.depTime.replace(':', ''), 10);
+                        const arr = parseInt(match.arrTime.replace(':', ''), 10);
+                        if (arr < dep) crossDay = '+1';
+                    }
+                    return {
+                        ...prev,
+                        回程出發地: prev.回程出發地 || match.departure,
+                        回程抵達地: prev.回程抵達地 || match.arrival,
+                        回程出發時間: prev.回程出發時間 || match.depTime,
+                        回程抵達時間: prev.回程抵達時間 || match.arrTime,
+                        回程跨日: prev.回程跨日 || crossDay
+                    };
+                });
+            }
+        }
+    }, [formData.回程日期, formData.回程航班代號, allFlights, tripType]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -119,42 +179,66 @@ const FlightForm: React.FC<FlightFormProps> = ({
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="space-y-1">
+            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                <div className="space-y-1 lg:col-span-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('date')}</label>
                     <input type="date" value={formData.日期} onChange={e => setFormData({ ...formData, 日期: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition" required />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 lg:col-span-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('flight_code')}</label>
                     <input type="text" value={formData.航班代號} onChange={e => setFormData({ ...formData, 航班代號: e.target.value.toUpperCase() })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none uppercase" placeholder="e.g. CI123" required />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 lg:col-span-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('departure')}</label>
                     <input type="text" value={formData.出發地} onChange={e => setFormData({ ...formData, 出發地: e.target.value.toUpperCase() })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none uppercase" placeholder="TPE" required />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-1 lg:col-span-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('arrival')}</label>
                     <input type="text" value={formData.抵達地} onChange={e => setFormData({ ...formData, 抵達地: e.target.value.toUpperCase() })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none uppercase" placeholder="SFO" required />
+                </div>
+                <div className="space-y-1 lg:col-span-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('dep_time', '出發時間')}</label>
+                    <input type="time" value={formData.出發時間} onChange={e => setFormData({ ...formData, 出發時間: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none" />
+                </div>
+                <div className="space-y-1 lg:col-span-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('arr_time', '抵達時間')}</label>
+                    <input type="time" value={formData.抵達時間} onChange={e => setFormData({ ...formData, 抵達時間: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none" />
+                </div>
+                <div className="space-y-1 lg:col-span-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('cross_day', '跨日')}</label>
+                    <input type="text" value={formData.跨日} onChange={e => setFormData({ ...formData, 跨日: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none" placeholder="+1" />
                 </div>
             </div>
 
             {tripType === 'round-trip' && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-dashed border-gray-200">
-                    <div className="space-y-1">
+                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 pt-4 border-t border-dashed border-gray-200">
+                    <div className="space-y-1 lg:col-span-1">
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('return_date')}</label>
                         <input type="date" value={formData.回程日期} onChange={e => setFormData({ ...formData, 回程日期: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg" required />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 lg:col-span-1">
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('return_flight_code')}</label>
                         <input type="text" value={formData.回程航班代號} onChange={e => setFormData({ ...formData, 回程航班代號: e.target.value.toUpperCase() })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none uppercase" required />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 lg:col-span-1">
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('return_departure')}</label>
                         <input type="text" value={formData.回程出發地} onChange={e => setFormData({ ...formData, 回程出發地: e.target.value.toUpperCase() })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none uppercase" required />
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-1 lg:col-span-1">
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('return_arrival')}</label>
                         <input type="text" value={formData.回程抵達地} onChange={e => setFormData({ ...formData, 回程抵達地: e.target.value.toUpperCase() })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none uppercase" required />
+                    </div>
+                    <div className="space-y-1 lg:col-span-1">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('dep_time', '出發時間')}</label>
+                        <input type="time" value={formData.回程出發時間} onChange={e => setFormData({ ...formData, 回程出發時間: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none" />
+                    </div>
+                    <div className="space-y-1 lg:col-span-1">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('arr_time', '抵達時間')}</label>
+                        <input type="time" value={formData.回程抵達時間} onChange={e => setFormData({ ...formData, 回程抵達時間: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none" />
+                    </div>
+                    <div className="space-y-1 lg:col-span-1">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('cross_day', '跨日')}</label>
+                        <input type="text" value={formData.回程跨日} onChange={e => setFormData({ ...formData, 回程跨日: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none" placeholder="+1" />
                     </div>
                 </div>
             )}

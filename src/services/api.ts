@@ -91,6 +91,10 @@ export const preloadFlights = () => {
     }
 };
 
+export const getAllCities = async () => {
+    return sendRequest('getAllCities');
+};
+
 export const getAllMembers = async (role: string) => {
     return sendRequest('getAllMembers', { role });
 };

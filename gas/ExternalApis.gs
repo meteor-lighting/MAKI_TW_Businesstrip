@@ -361,3 +361,18 @@ function getAllFlights() {
         return { status: 'error', message: 'Failed to fetch flights: ' + e.toString() };
     }
 }
+
+function getAllCities() {
+    try {
+        const sheet = getSheet('Cities');
+        const lastRow = sheet.getLastRow();
+        if (lastRow < 1) return { status: 'success', data: [] };
+        
+        const values = sheet.getRange(1, 1, lastRow, 1).getValues().flat().filter(Boolean).map(String);
+        return { status: 'success', data: values };
+    } catch (e) {
+        console.warn('Cities sheet not found or error: ' + e);
+        return { status: 'success', data: [] };
+    }
+}
+

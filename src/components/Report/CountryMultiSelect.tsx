@@ -11,11 +11,13 @@ interface CountryMultiSelectProps {
     className?: string;
 }
 
+import { getAllCities } from '../../services/api';
+
 // Global cache to avoid refetching during the session
 let cachedCountries: { name: string; isTop?: boolean }[] | null = null;
 
 const TOP_COUNTRIES = [
-    'Taiwan', 'United States', 'China', 'Japan', 'South Korea', 'Vietnam', 'Thailand', 'Germany', 'United Kingdom'
+    'Taiwan', 'United States', 'China', 'Japan', 'South Korea', 'Vietnam', 'Thailand', 'Germany', 'United Kingdom', 'Taipei', 'Hsinchu'
 ];
 
 export default function CountryMultiSelect({
@@ -41,14 +43,12 @@ export default function CountryMultiSelect({
         let isMounted = true;
         setLoading(true);
 
-        fetch('https://restcountries.com/v3.1/all?fields=name,cca2')
-            .then(res => res.json())
-            .then((data: any[]) => {
+        getAllCities()
+            .then(res => {
                 if (!isMounted) return;
                 
-                if (Array.isArray(data)) {
-                    // Extract common name
-                    const rawNames = data.map(c => c.name?.common).filter(Boolean);
+                if (res.status === 'success' && Array.isArray(res.data)) {
+                    const rawNames = res.data;
                     
                     // Deduplicate, assign top status
                     const topItems = TOP_COUNTRIES.filter(tc => rawNames.includes(tc)).map(name => ({ name, isTop: true }));
@@ -63,7 +63,7 @@ export default function CountryMultiSelect({
                 }
             })
             .catch(err => {
-                console.error('Failed to fetch REST Countries:', err);
+                console.error('Failed to fetch cities:', err);
                 // Fallback to top countries
                 const fallback = TOP_COUNTRIES.map(name => ({ name, isTop: true }));
                 cachedCountries = fallback;

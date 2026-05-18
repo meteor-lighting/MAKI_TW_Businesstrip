@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
 import { Loader2 } from 'lucide-react';
+import CountryMultiSelect from '../CountryMultiSelect';
 
 interface GenericFormProps {
     reportId: string;
@@ -81,7 +82,7 @@ const LunchLearnForm: React.FC<GenericFormProps> = ({
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('region')}</label>
-                    <input type="text" value={formData.地區} onChange={e => setFormData({ ...formData, 地區: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg" required />
+                    <CountryMultiSelect value={formData.地區 ? formData.地區.split(', ') : []} onChange={val => setFormData({ ...formData, 地區: val.join(', ') })} />
                 </div>
             </div>
 
