@@ -856,6 +856,8 @@ function copyItems(payload) {
 
       if (newRows.length > 0) {
         sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, headers.length).setValues(newRows);
+        SpreadsheetApp.flush();
+        recalculateHeader(targetReportId, category);
       }
 
       invalidateCache(category);

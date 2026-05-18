@@ -85,20 +85,10 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
                 items.forEach((item: any) => {
                     const rowRate = safeNum(item['匯率'] || 1);
                     const ppDay = safeNum(item['每人每天金額']);
-                    const currency = item['幣別'];
                     
-                    if (currency === 'USD') {
-                        sumPerPersonPerDayUsd += ppDay;
-                        sumPerPersonPerDayTwd += ppDay * rowRate;
-                    } else if (currency === 'TWD') {
-                        sumPerPersonPerDayTwd += ppDay;
-                        sumPerPersonPerDayUsd += ppDay / (rowRate > 0 ? rowRate : rateUSD > 0 ? rateUSD : 1);
-                    } else {
-                         // Default to converting via TWD to USD if other currencies
-                         const twdVal = ppDay * rowRate;
-                         sumPerPersonPerDayTwd += twdVal;
-                         sumPerPersonPerDayUsd += rateUSD > 0 ? twdVal / rateUSD : twdVal;
-                    }
+                    const twdVal = ppDay * rowRate;
+                    sumPerPersonPerDayTwd += twdVal;
+                    sumPerPersonPerDayUsd += rateUSD > 0 ? twdVal / rateUSD : twdVal;
                 });
                 avgAmountTwd = count > 0 ? sumPerPersonPerDayTwd / count : 0;
                 avgAmountUsd = count > 0 ? sumPerPersonPerDayUsd / count : 0;
