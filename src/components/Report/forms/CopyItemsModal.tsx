@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
+import { useAuth } from '../../../context/AuthContext';
 
 interface CopyItemsModalProps {
     isOpen: boolean;
@@ -13,6 +14,7 @@ interface CopyItemsModalProps {
 
 export default function CopyItemsModal({ isOpen, onClose, category, sourceItems, onSuccess }: CopyItemsModalProps) {
     const { t } = useTranslation();
+    const { user } = useAuth();
     const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
     const [reports, setReports] = useState<any[]>([]);
     
@@ -32,9 +34,10 @@ export default function CopyItemsModal({ isOpen, onClose, category, sourceItems,
     }, [isOpen]);
 
     const fetchUsersAndReports = async () => {
+        if (!user) return;
         setLoading(true);
         try {
-            const res = await sendRequest('getUserReports', { role: 'admin' });
+            const res = await sendRequest('getUserReports', { userId: user.id, role: user.role });
             if (res.status === 'success' && res.data) {
                 const fetchedReports = res.data;
                 setReports(fetchedReports);
@@ -57,14 +60,15 @@ export default function CopyItemsModal({ isOpen, onClose, category, sourceItems,
     };
 
     const handleConfirm = async () => {
-        if (!selectedReport || sourceItems.length === 0) return;
+        if (!selectedReport || sourceItems.length === 0 || !user) return;
         
         setSubmitting(true);
         try {
             const res = await sendRequest('copyItems', {
                 category,
                 sourceItems,
-                targetReportId: selectedReport
+                targetReportId: selectedReport,
+                userId: user.id
             });
             if (res.status === 'success') {
                 onSuccess();

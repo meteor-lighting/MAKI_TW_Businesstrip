@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Search, Loader2, History as HistoryIcon, FileText } from 'lucide-react';
+import { ArrowLeft, Search, Loader2, History as HistoryIcon, FileText, Copy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { sendRequest, getReport } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +8,7 @@ import DataGrid from '../components/Report/DataGrid';
 import { formatTimeHHmm } from '../utils/formatters';
 import { transformReportData } from '../utils/reportTransformer';
 import CountryMultiSelect from '../components/Report/CountryMultiSelect';
+import CopyItemsModal from '../components/Report/forms/CopyItemsModal';
 
 // Known categories from Setup.gs
 const CATEGORIES = [
@@ -54,12 +55,46 @@ const History: React.FC = () => {
     const [results, setResults] = useState<any[]>([]);
     const [error, setError] = useState('');
 
+    const [selectedItems, setSelectedItems] = useState<any[]>([]);
+    const [copyModalOpen, setCopyModalOpen] = useState(false);
+    const [sourceItemsToCopy, setSourceItemsToCopy] = useState<any[]>([]);
+
+    const handleCopyClick = (item?: any) => {
+        if (item) {
+            setSourceItemsToCopy([item]);
+        } else {
+            if (selectedItems.length === 0) return;
+            setSourceItemsToCopy(selectedItems);
+        }
+        setCopyModalOpen(true);
+    };
+
+    const handleCopySuccess = () => {
+        setSelectedItems([]);
+        alert(t('copy_success', '複製成功'));
+    };
+
+    const renderBatchCopyButton = () => {
+        if (resultType !== 'items' || selectedItems.length === 0) return null;
+        return (
+            <button
+                type="button"
+                onClick={() => handleCopyClick()}
+                className="mb-2 px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-100 flex items-center gap-1 transition shadow-sm font-medium"
+            >
+                <Copy className="w-4 h-4" />
+                {t('batch_copy', '批次複製')} ({selectedItems.length})
+            </button>
+        );
+    };
+
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setLoading(true);
         setResults([]);
         setResultType(null);
+        setSelectedItems([]);
 
         try {
             const res = await sendRequest('queryHistory', {
@@ -378,13 +413,18 @@ const History: React.FC = () => {
                     )}
 
                     {results.length > 0 && (
-                         <div className="p-4">
-                            <DataGrid 
-                                keyField={resultType === 'reports' ? '報告編號' : (resultType === 'items' && results[0]?.['次序'] ? '次序' : '日期')}
-                                columns={getColumns()} 
-                                data={results} 
-                            />
-                         </div>
+                          <div className="p-4">
+                             {renderBatchCopyButton()}
+                             <DataGrid 
+                                 keyField={resultType === 'reports' ? '報告編號' : (resultType === 'items' && results[0]?.['次序'] ? '次序' : '日期')}
+                                 columns={getColumns()} 
+                                 data={results}
+                                 selectable={resultType === 'items'}
+                                 selectedItems={selectedItems}
+                                 onSelectionChange={setSelectedItems}
+                                 onCopy={resultType === 'items' ? (item) => handleCopyClick(item) : undefined}
+                             />
+                          </div>
                     )}
 
                     {!resultType && !loading && (
@@ -396,6 +436,14 @@ const History: React.FC = () => {
                 </div>
 
             </div>
+
+            <CopyItemsModal
+                isOpen={copyModalOpen}
+                onClose={() => setCopyModalOpen(false)}
+                category={category}
+                sourceItems={sourceItemsToCopy}
+                onSuccess={handleCopySuccess}
+            />
         </div>
     );
 };
