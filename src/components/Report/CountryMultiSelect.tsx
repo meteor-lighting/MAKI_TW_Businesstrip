@@ -4,16 +4,18 @@ import { Loader2, Globe, X, MapPin } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 interface CountryMultiSelectProps {
-    value?: string[]; // Array of country names
+    value?: string[]; // Array of names
     onChange: (value: string[]) => void;
     placeholder?: string;
     disabled?: boolean;
     className?: string;
+    type?: 'city' | 'country'; // Optional prop to switch API
 }
 
-import { getAllCities } from '../../services/api';
+import { getAllCities, getAllCountries } from '../../services/api';
 
 // Global cache to avoid refetching during the session
+let cachedCities: { name: string; isTop?: boolean }[] | null = null;
 let cachedCountries: { name: string; isTop?: boolean }[] | null = null;
 
 const TOP_COUNTRIES = [
@@ -26,24 +28,32 @@ export default function CountryMultiSelect({
     placeholder,
     disabled = false,
     className,
+    type = 'city'
 }: CountryMultiSelectProps) {
     const { t } = useTranslation();
     const [inputValue, setInputValue] = useState('');
-    const [allCountries, setAllCountries] = useState<{ name: string; isTop?: boolean }[]>(cachedCountries || []);
+    const initialCache = type === 'country' ? cachedCountries : cachedCities;
+    const [allItems, setAllItems] = useState<{ name: string; isTop?: boolean }[]>(initialCache || []);
     const [suggestions, setSuggestions] = useState<{ name: string; isTop?: boolean }[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Fetch countries on mount if not cached
+    // Fetch items on mount if not cached
     useEffect(() => {
-        if (cachedCountries && cachedCountries.length > 0) return;
+        const cache = type === 'country' ? cachedCountries : cachedCities;
+        if (cache && cache.length > 0) {
+            setAllItems(cache);
+            return;
+        }
 
         let isMounted = true;
         setLoading(true);
 
-        getAllCities()
+        const fetcher = type === 'country' ? getAllCountries : getAllCities;
+
+        fetcher()
             .then(res => {
                 if (!isMounted) return;
                 
@@ -58,16 +68,18 @@ export default function CountryMultiSelect({
                         .map(name => ({ name, isTop: false }));
                     
                     const combined = [...topItems, ...otherItems];
-                    cachedCountries = combined;
-                    setAllCountries(combined);
+                    if (type === 'country') cachedCountries = combined;
+                    else cachedCities = combined;
+                    setAllItems(combined);
                 }
             })
             .catch(err => {
-                console.error('Failed to fetch cities:', err);
+                console.error('Failed to fetch items:', err);
                 // Fallback to top countries
                 const fallback = TOP_COUNTRIES.map(name => ({ name, isTop: true }));
-                cachedCountries = fallback;
-                if (isMounted) setAllCountries(fallback);
+                if (type === 'country') cachedCountries = fallback;
+                else cachedCities = fallback;
+                if (isMounted) setAllItems(fallback);
             })
             .finally(() => {
                 if (isMounted) setLoading(false);
@@ -80,7 +92,7 @@ export default function CountryMultiSelect({
     useEffect(() => {
         if (!isOpen) return;
         
-        let available = allCountries.filter(c => !value.includes(c.name));
+        let available = allItems.filter(c => !value.includes(c.name));
 
         if (inputValue.trim()) {
             const query = inputValue.toLowerCase();
@@ -88,7 +100,7 @@ export default function CountryMultiSelect({
         }
 
         setSuggestions(available.slice(0, 50)); // cap at 50 to prevent DOM lag
-    }, [inputValue, isOpen, allCountries, value]);
+    }, [inputValue, isOpen, allItems, value]);
 
     // Close on click outside
     useEffect(() => {

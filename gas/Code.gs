@@ -100,6 +100,9 @@ function doPost(e) {
       case 'getAllCities':
         result = getAllCities();
         break;
+      case 'getAllCountries':
+        result = getAllCountries();
+        break;
 
       default:
         throw new Error(`Unknown action: ${action}`);

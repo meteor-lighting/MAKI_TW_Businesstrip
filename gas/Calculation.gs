@@ -707,8 +707,8 @@ function updateAllExchangeRates(reportId, startDateStr, targetCategory = null, f
                  if (String(rawValues[i][idxId]) === String(reportId)) {
                      const currency = String(rawValues[i][idxCurrency]).trim().toUpperCase();
                      
-                     if (currency !== 'TWD' && currency !== '') {
-                         const rowRate = getRate(currency);
+                     if (currency !== '') {
+                         const rowRate = currency === 'TWD' ? 1.0 : getRate(currency);
                          
                          if (idxRate > -1) {
                              rawValues[i][idxRate] = rowRate;

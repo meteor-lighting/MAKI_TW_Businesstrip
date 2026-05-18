@@ -100,8 +100,9 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
                         <input type="date" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('destination', '目的地')}</label>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('destination', '國家')}</label>
                         <CountryMultiSelect
+                            type="country"
                             value={editDestination ? editDestination.split(',').map(s => s.trim()).filter(Boolean) : []}
                             onChange={(val) => setEditDestination(val.join(', '))}
                             placeholder={t('search_country', '搜尋國家...')}
@@ -156,7 +157,7 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
                         <span className="font-medium text-gray-800">{endDate || '-'}</span>
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('destination', '目的地')}</span>
+                        <span className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('destination', '國家')}</span>
                         {destination ? (
                             <div className="flex flex-wrap gap-1 mt-0.5">
                                 {destination.split(',').map(d => d.trim()).filter(Boolean).map((d, i) => (

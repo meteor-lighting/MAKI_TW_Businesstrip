@@ -95,6 +95,10 @@ export const getAllCities = async () => {
     return sendRequest('getAllCities');
 };
 
+export const getAllCountries = async () => {
+    return sendRequest('getAllCountries');
+};
+
 export const getAllMembers = async (role: string) => {
     return sendRequest('getAllMembers', { role });
 };

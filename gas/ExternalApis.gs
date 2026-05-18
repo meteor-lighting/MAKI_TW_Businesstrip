@@ -376,3 +376,30 @@ function getAllCities() {
     }
 }
 
+function getAllCountries() {
+    try {
+        let sheet;
+        try {
+            sheet = getSheet('Countries');
+        } catch(e) {
+            // Automatically initialize the Countries sheet via setupDatabase
+            try {
+                setupDatabase();
+                sheet = getSheet('Countries');
+            } catch(setupErr) {
+                console.warn('Failed to auto-create Countries sheet: ' + setupErr);
+                // Fallback hardcoded if setup fails
+                return { status: 'success', data: ['Taiwan', 'United States', 'China', 'Japan', 'South Korea', 'Vietnam', 'Thailand', 'Germany', 'United Kingdom', 'Canada', 'Singapore', 'Australia', 'New Zealand', 'France', 'Italy'] };
+            }
+        }
+        const lastRow = sheet.getLastRow();
+        if (lastRow < 2) return { status: 'success', data: [] };
+        
+        const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat().filter(Boolean).map(String);
+        return { status: 'success', data: values };
+    } catch (e) {
+        console.warn('Countries sheet error: ' + e);
+        return { status: 'success', data: [] };
+    }
+}
+
