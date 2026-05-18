@@ -45,7 +45,7 @@ const ExpenseReportPage: React.FC = () => {
     const dispTotalOverall = isUSD ? reportData.summary.totalUSD : reportData.summary.totalTWD;
     const dispTotalPersonal = isUSD ? reportData.summary.personalUSD : reportData.summary.personalTWD;
     const dispAdvance = isUSD ? (reportData.summary.advancePaymentTWD / (reportData.summary.rateUSD || 1)) : reportData.summary.advancePaymentTWD;
-    const dispPayable = dispTotalPersonal - dispAdvance;
+    const dispPayable = dispTotalOverall - dispAdvance;
     const dispAvgDay = isUSD ? reportData.summary.avgDayUSD : reportData.summary.avgDayTWD;
 
     // Alt Totals (for the bottom 2 rows)
