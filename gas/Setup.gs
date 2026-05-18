@@ -21,8 +21,8 @@ function setupDatabase() {
     { name: 'Per Diem', headers: ['報告編號', '次序', '開始日期', '結束日期', '地區', '幣別', '每日金額', '金額', 'TWD金額', '匯率', '備註'] },
     { name: 'Advance Payment', headers: ['報告編號', '次序', '日期', '地區', '幣別', '金額', 'TWD金額', '匯率', '備註'] },
     { name: 'Lunch & Learn', headers: ['報告編號', '次序', '日期', '地區', '幣別', '金額', 'TWD金額', '匯率', '經銷商', '人數'] },
-    { name: 'Others', headers: ['報告編號', '分類', '次序', '日期', '地區', '幣別', '金額', 'TWD金額', '匯率', '備註'] },
-    { name: 'Countries', headers: ['國家名稱'] }
+    { name: 'Countries', headers: ['國家名稱'] },
+    { name: 'Cities', headers: ['城市名稱'] }
   ];
 
   sheets.forEach(conf => {
@@ -42,6 +42,21 @@ function setupDatabase() {
           ['Canada'], ['Australia'], ['New Zealand'], ['France'], ['Italy']
         ];
         sheet.getRange(2, 1, defaultCountries.length, 1).setValues(defaultCountries);
+      }
+
+      // Seed default cities if it's the Cities sheet
+      if (conf.name === 'Cities') {
+        const defaultCities = [
+          ['Taipei'], ['New Taipei City'], ['Taoyuan'], ['Taichung'], ['Tainan'],
+          ['Kaohsiung'], ['Hsinchu'], ['Hong Kong'], ['Macau'], ['Tokyo'],
+          ['Osaka'], ['Kyoto'], ['Seoul'], ['Busan'], ['Shanghai'],
+          ['Beijing'], ['Shenzhen'], ['Guangzhou'], ['Singapore'], ['Bangkok'],
+          ['Ho Chi Minh City'], ['Hanoi'], ['Manila'], ['Jakarta'], ['Kuala Lumpur'],
+          ['New York'], ['Los Angeles'], ['San Francisco'], ['Seattle'], ['Chicago'],
+          ['London'], ['Paris'], ['Berlin'], ['Munich'], ['Frankfurt'],
+          ['Amsterdam'], ['Sydney'], ['Melbourne']
+        ];
+        sheet.getRange(2, 1, defaultCities.length, 1).setValues(defaultCities);
       }
     }
   });

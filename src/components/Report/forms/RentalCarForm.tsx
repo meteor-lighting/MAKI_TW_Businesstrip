@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
 import { Loader2 } from 'lucide-react';
-import CountryMultiSelect from '../CountryMultiSelect';
+import CityAutocomplete from '../CityAutocomplete';
 
 interface GenericFormProps {
     reportId: string;
@@ -82,7 +82,7 @@ const RentalCarForm: React.FC<GenericFormProps> = ({
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('region')}</label>
-                    <CountryMultiSelect value={formData.地區 ? formData.地區.split(', ') : []} onChange={val => setFormData({ ...formData, 地區: val.join(', ') })} />
+                    <CityAutocomplete value={formData.地區} onChange={val => setFormData({ ...formData, 地區: val })} placeholder={t('select_city', '選擇或輸入城市...')} />
                 </div>
             </div>
 

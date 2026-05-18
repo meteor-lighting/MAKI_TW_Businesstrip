@@ -2,10 +2,23 @@
  * Database Helpers
  */
 
+function getResolvedSheetName(name) {
+  const categoryMap = {
+    'RentalCar': 'Rental Car',
+    'LuggageFee': 'Luggage Fee',
+    'HandingFee': 'Handing Fee',
+    'AdvancePayment': 'Advance Payment',
+    'LunchLearn': 'Lunch & Learn',
+    'PerDiem': 'Per Diem'
+  };
+  return categoryMap[name] || name;
+}
+
 function getSheet(name) {
+  const resolvedName = getResolvedSheetName(name);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(name);
-  if (!sheet) throw new Error(`Sheet "${name}" not found.`);
+  const sheet = ss.getSheetByName(resolvedName);
+  if (!sheet) throw new Error(`Sheet "${resolvedName}" not found (requested as "${name}").`);
   return sheet;
 }
 
@@ -19,8 +32,9 @@ function getDataRows(sheetName) {
 const EXECUTION_MEMO = {};
 
 function invalidateCache(sheetName) {
+    const resolvedName = getResolvedSheetName(sheetName);
     const cache = CacheService.getScriptCache();
-    const key = 'DB_v3_' + sheetName;
+    const key = 'DB_v3_' + resolvedName;
     const chunksStr = cache.get(key + '_chunks');
     if (chunksStr) {
         const chunks = parseInt(chunksStr, 10);
@@ -29,8 +43,8 @@ function invalidateCache(sheetName) {
         cache.remove(key + '_chunks');
     }
     
-    if (EXECUTION_MEMO[sheetName]) {
-        delete EXECUTION_MEMO[sheetName];
+    if (EXECUTION_MEMO[resolvedName]) {
+        delete EXECUTION_MEMO[resolvedName];
     }
 }
 
@@ -72,22 +86,23 @@ function appendRow(sheetName, rowData) {
 
 // Convert sheet data (2D array) to Array of Objects based on headers
 function sheetDataToJson(sheetName, ssPassed = null, forceRefresh = false) {
-  if (!forceRefresh && EXECUTION_MEMO[sheetName]) {
-      return EXECUTION_MEMO[sheetName];
+  const resolvedName = getResolvedSheetName(sheetName);
+  if (!forceRefresh && EXECUTION_MEMO[resolvedName]) {
+      return EXECUTION_MEMO[resolvedName];
   }
 
-  const cacheKey = 'DB_v3_' + sheetName;
+  const cacheKey = 'DB_v3_' + resolvedName;
   if (!forceRefresh) {
       const cached = getCache(cacheKey);
       if (cached) {
           const parsed = JSON.parse(cached);
-          EXECUTION_MEMO[sheetName] = parsed;
+          EXECUTION_MEMO[resolvedName] = parsed;
           return parsed;
       }
   }
 
   const ss = ssPassed || SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(sheetName);
+  const sheet = ss.getSheetByName(resolvedName);
   if (!sheet) return [];
   
   const data = sheet.getDataRange().getValues();
@@ -124,7 +139,7 @@ function sheetDataToJson(sheetName, ssPassed = null, forceRefresh = false) {
   
   // Save to Cache & Memo
   putCache(cacheKey, JSON.stringify(finalArray));
-  EXECUTION_MEMO[sheetName] = finalArray;
+  EXECUTION_MEMO[resolvedName] = finalArray;
   
   return finalArray;
 }

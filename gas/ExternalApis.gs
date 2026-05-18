@@ -28,7 +28,7 @@ function searchCity(payload) {
     // Assuming data starts at A1 and goes down. 
     // Use getRange to get all data in Column A.
     const lastRow = sheet.getLastRow();
-    if (lastRow < 1) return { data: [] };
+    if (lastRow < 2) return { data: [] };
     
     // Read all cities. Caching this in ScriptProperties or CacheService might be good optimization 
     // but for now direct read is safer for consistency.
@@ -36,7 +36,7 @@ function searchCity(payload) {
     // Optimization: filtering in sheet? No, sheet filter is for UI. 
     // We fetch all values and filter in memory. JS is fast enough for ~10k items.
     // If >100k, we might need a better approach.
-    const values = sheet.getRange(1, 1, lastRow, 1).getValues().flat(); 
+    const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat(); 
     
     // Filter
     // "Most similar": 
@@ -366,9 +366,9 @@ function getAllCities() {
     try {
         const sheet = getSheet('Cities');
         const lastRow = sheet.getLastRow();
-        if (lastRow < 1) return { status: 'success', data: [] };
+        if (lastRow < 2) return { status: 'success', data: [] };
         
-        const values = sheet.getRange(1, 1, lastRow, 1).getValues().flat().filter(Boolean).map(String);
+        const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat().filter(Boolean).map(String);
         return { status: 'success', data: values };
     } catch (e) {
         console.warn('Cities sheet not found or error: ' + e);
