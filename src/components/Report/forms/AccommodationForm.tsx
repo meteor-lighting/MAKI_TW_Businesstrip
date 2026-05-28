@@ -54,6 +54,19 @@ const AccommodationForm: React.FC<AccommodationFormProps> = ({
         }
     }, [editingItem]);
 
+    useEffect(() => {
+        const p = parseFloat(formData.個人金額) || 0;
+        const d = parseFloat(formData.代墊金額) || 0;
+        const sum = p + d;
+        setFormData(prev => {
+            const currentOverall = parseFloat(prev.總體金額) || 0;
+            if (currentOverall !== sum || prev.總體金額 === '') {
+                return { ...prev, 總體金額: sum > 0 ? String(sum) : '' };
+            }
+            return prev;
+        });
+    }, [formData.個人金額, formData.代墊金額]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
