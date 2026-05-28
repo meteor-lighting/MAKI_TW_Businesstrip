@@ -112,8 +112,12 @@ const AccommodationForm: React.FC<AccommodationFormProps> = ({
                     <select value={formData.幣別} onChange={e => setFormData({ ...formData, 幣別: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg outline-none">
                         <option value="TWD">TWD</option>
                         <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
                         <option value="CAD">CAD</option>
                         <option value="JPY">JPY</option>
+                        <option value="CNY">CNY</option>
+                        <option value="HKD">HKD</option>
+                        <option value="THB">THB</option>
                     </select>
                 </div>
                 <div className="space-y-1">

@@ -89,10 +89,15 @@ const HandingFeeForm: React.FC<GenericFormProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-100">
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('currency')}</label>
-                    <select value={formData.幣別} onChange={e => setFormData({ ...formData, 幣別: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg">
+                    <select value={formData.幣別} onChange={e => setFormData({ ...formData, 幣別: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg outline-none">
                         <option value="TWD">TWD</option>
                         <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
                         <option value="CAD">CAD</option>
+                        <option value="JPY">JPY</option>
+                        <option value="CNY">CNY</option>
+                        <option value="HKD">HKD</option>
+                        <option value="THB">THB</option>
                     </select>
                 </div>
                 <div className="space-y-1">

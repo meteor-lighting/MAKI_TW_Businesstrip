@@ -139,7 +139,15 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
             if (!tStr) return '';
             return formatTimeHHmm(tStr);
         };
-        const formatCD = (val: any) => val ? String(val).replace(/^'/, '') : '';
+        const formatCD = (val: any) => {
+            if (!val) return '';
+            const clean = String(val).replace(/^'/, '').trim();
+            if (!clean) return '';
+            if (clean === '+1' || clean === '1') return '(+1天)';
+            if (clean === '+2' || clean === '2') return '(+2天)';
+            if (clean.includes('天')) return `(${clean})`;
+            return `(${clean}天)`;
+        };
 
         if (item['行程類型'] === 'round-trip') {
             const c1 = formatCD(item['跨日']) ? ` ${formatCD(item['跨日'])}` : '';

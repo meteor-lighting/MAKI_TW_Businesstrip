@@ -5,7 +5,7 @@ import { sendRequest } from '../../../services/api';
 import { Loader2 } from 'lucide-react';
 import CityAutocomplete from '../CityAutocomplete';
 
-interface GenericFormProps {
+interface RentalCarFormProps {
     reportId: string;
     headerRate: number;
     tripStartDate?: string;
@@ -16,10 +16,9 @@ interface GenericFormProps {
     onCancelEdit?: () => void;
 }
 
-const RentalCarForm: React.FC<GenericFormProps> = ({
+const RentalCarForm: React.FC<RentalCarFormProps> = ({
     reportId,
     headerRate,
-    tripStartDate,
     onSubmitSuccess,
     onLoadingChange,
     disabled,
@@ -30,10 +29,15 @@ const RentalCarForm: React.FC<GenericFormProps> = ({
     const [loading, setLoading] = useState(false);
 
     const [formData, setFormData] = useState({
-        日期: '',
+        借車日期: '',
+        還車日期: '',
         地區: '',
+        租車公司: '',
         幣別: 'TWD',
-        金額: '',
+        個人金額: '',
+        代墊金額: '0',
+        代墊人數: '1',
+        總體金額: '',
         備註: ''
     });
 
@@ -42,7 +46,10 @@ const RentalCarForm: React.FC<GenericFormProps> = ({
             setFormData({
                 ...formData,
                 ...editingItem,
-                金額: String(editingItem['金額'] || '')
+                個人金額: String(editingItem['個人金額'] || ''),
+                代墊金額: String(editingItem['代墊金額'] || '0'),
+                代墊人數: String(editingItem['代墊人數'] || '1'),
+                總體金額: String(editingItem['總體金額'] || '')
             });
         }
     }, [editingItem]);
@@ -52,15 +59,20 @@ const RentalCarForm: React.FC<GenericFormProps> = ({
         setLoading(true);
         onLoadingChange(true);
         try {
-            const res = await sendRequest(editingItem ? 'updateItem' : 'addItem', {
+            const payload = {
                 reportId,
                 category: 'RentalCar',
                 sequence: editingItem?.次序,
                 itemData: { ...formData }
-            });
+            };
+
+            const res = await sendRequest(editingItem ? 'updateItem' : 'addItem', payload);
             if (res.status === 'success') {
                 if (!editingItem) {
-                    setFormData({ 日期: '', 地區: '', 幣別: 'TWD', 金額: '', 備註: '' });
+                    setFormData({
+                        借車日期: '', 還車日期: '', 地區: '', 租車公司: '', 幣別: 'TWD',
+                        個人金額: '', 代墊金額: '0', 代墊人數: '1', 總體金額: '', 備註: ''
+                    });
                 }
                 onSubmitSuccess();
                 if (onCancelEdit) onCancelEdit();
@@ -75,33 +87,61 @@ const RentalCarForm: React.FC<GenericFormProps> = ({
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('date')}</label>
-                    <input type="date" value={formData.日期} onChange={e => setFormData({ ...formData, 日期: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg" required />
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('rental_start_date', '借車日期')}</label>
+                    <input type="date" value={formData.借車日期} onChange={e => setFormData({ ...formData, 借車日期: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none" required />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('rental_end_date', '還車日期')}</label>
+                    <input type="date" value={formData.還車日期} onChange={e => setFormData({ ...formData, 還車日期: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none" required />
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('region')}</label>
                     <CityAutocomplete value={formData.地區} onChange={val => setFormData({ ...formData, 地區: val })} placeholder={t('select_city', '選擇或輸入城市...')} />
                 </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('rental_company', '租車公司')}</label>
+                    <input type="text" value={formData.租車公司} onChange={e => setFormData({ ...formData, 租車公司: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none" placeholder="Rental Company" required />
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-100">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-gray-100">
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('currency')}</label>
-                    <select value={formData.幣別} onChange={e => setFormData({ ...formData, 幣別: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg">
+                    <select value={formData.幣別} onChange={e => setFormData({ ...formData, 幣別: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg outline-none">
                         <option value="TWD">TWD</option>
                         <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
                         <option value="CAD">CAD</option>
+                        <option value="JPY">JPY</option>
+                        <option value="CNY">CNY</option>
+                        <option value="HKD">HKD</option>
+                        <option value="THB">THB</option>
                     </select>
                 </div>
                 <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('amount')}</label>
-                    <input type="number" value={formData.金額} onChange={e => setFormData({ ...formData, 金額: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg" required />
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('personal_amount')}</label>
+                    <input type="number" value={formData.個人金額} onChange={e => setFormData({ ...formData, 個人金額: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg outline-none" required />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('advance_payment')}</label>
+                    <input type="number" value={formData.代墊金額} onChange={e => setFormData({ ...formData, 代墊金額: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg outline-none" />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('advance_people')}</label>
+                    <input type="number" value={formData.代墊人數} onChange={e => setFormData({ ...formData, 代墊人數: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg outline-none" min="1" />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('overall_amount')}</label>
+                    <input type="number" value={formData.總體金額} onChange={e => setFormData({ ...formData, 總體金額: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg outline-none" placeholder={t('overall_placeholder')} />
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('remark')}</label>
-                    <input type="text" value={formData.備註} onChange={e => setFormData({ ...formData, 備註: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg" />
+                    <input type="text" value={formData.備註} onChange={e => setFormData({ ...formData, 備註: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg outline-none" />
                 </div>
             </div>
 
