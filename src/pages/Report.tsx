@@ -289,8 +289,14 @@ export default function Report() {
                         endDate={reportData.header['商旅結束日']}
                         destination={reportData.header['出差國家']}
                         paymentCurrency={reportData.header['支付幣別'] || 'TWD'}
-                        userName={user?.role === 'admin' ? (reportData.header['員工姓名'] || reportData.header['用戶編號']) : undefined}
+                        userName={reportData.header['員工姓名'] || reportData.header['用戶編號'] || user?.name || user?.id}
                         onUpdateSuccess={handleItemChanged}
+                        extraRates={Object.keys(reportData.header)
+                            .filter(key => key.endsWith('匯率') && key !== 'USD匯率' && Number(reportData.header[key]) > 0)
+                            .reduce((obj, key) => {
+                                obj[key] = Number(reportData.header[key]);
+                                return obj;
+                            }, {} as Record<string, number>)}
                     />
                 )}
 

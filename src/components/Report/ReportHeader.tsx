@@ -14,6 +14,7 @@ interface ReportHeaderProps {
     paymentCurrency: string;
     userName?: string;
     onUpdateSuccess: () => void;
+    extraRates?: Record<string, number>;
 }
 
 const ReportHeader: React.FC<ReportHeaderProps> = ({
@@ -25,7 +26,8 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
     destination,
     paymentCurrency,
     userName,
-    onUpdateSuccess
+    onUpdateSuccess,
+    extraRates
 }) => {
     const { t } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
@@ -148,6 +150,12 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
                         <span className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('rate_usd', 'USD匯率')}</span>
                         <span className="font-medium text-gray-800">{rate}</span>
                     </div>
+                    {extraRates && Object.keys(extraRates).map(colName => (
+                        <div className="flex flex-col" key={colName}>
+                            <span className="text-xs text-gray-500 uppercase tracking-wider mb-1">{colName}</span>
+                            <span className="font-medium text-gray-800">{extraRates[colName]}</span>
+                        </div>
+                    ))}
                     <div className="flex flex-col">
                         <span className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('trip_start_date', '商旅起始日')}</span>
                         <span className="font-medium text-gray-800">{startDate || '-'}</span>
