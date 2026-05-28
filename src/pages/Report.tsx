@@ -137,6 +137,9 @@ export default function Report() {
 
             // Optimization: Use session storage to persist ID across reloads if same session?
             let activeReportId = sessionStorage.getItem('activeReportId');
+            if (activeReportId === 'null' || activeReportId === 'undefined' || activeReportId === '') {
+                activeReportId = null;
+            }
 
             if (!activeReportId) {
                 const res = await sendRequest('createReport', {
@@ -148,6 +151,8 @@ export default function Report() {
                     if (activeReportId) {
                         sessionStorage.setItem('activeReportId', activeReportId);
                     }
+                } else {
+                    alert('初始化報告編號失敗：' + (res.message || '未知錯誤'));
                 }
             }
 
