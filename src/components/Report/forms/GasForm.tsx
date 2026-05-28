@@ -64,9 +64,12 @@ const GasForm: React.FC<GenericFormProps> = ({
                 }
                 onSubmitSuccess();
                 if (onCancelEdit) onCancelEdit();
+            } else {
+                alert(res.message || '儲存失敗，請重試');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
+            alert(error.message || '儲存失敗，請聯絡管理員');
         } finally {
             setLoading(false);
             onLoadingChange(false);
