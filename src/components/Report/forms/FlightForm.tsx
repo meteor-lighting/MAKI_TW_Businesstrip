@@ -131,12 +131,12 @@ const FlightForm: React.FC<FlightFormProps> = ({
                 itemData: {
                     ...formData,
                     '行程類型': tripType,
-                    航班代號: formData.航班代號.toUpperCase(),
-                    回程航班代號: formData.回程航班代號.toUpperCase(),
-                    出發地: formData.出發地.toUpperCase(),
-                    抵達地: formData.抵達地.toUpperCase(),
-                    回程出發地: formData.回程出發地.toUpperCase(),
-                    回程抵達地: formData.回程抵達地.toUpperCase()
+                    航班代號: (formData.航班代號 || '').toUpperCase(),
+                    回程航班代號: (formData.回程航班代號 || '').toUpperCase(),
+                    出發地: (formData.出發地 || '').toUpperCase(),
+                    抵達地: (formData.抵達地 || '').toUpperCase(),
+                    回程出發地: (formData.回程出發地 || '').toUpperCase(),
+                    回程抵達地: (formData.回程抵達地 || '').toUpperCase()
                 }
             };
 
