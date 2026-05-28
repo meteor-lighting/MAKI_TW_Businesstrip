@@ -35,13 +35,82 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
 
     const header = raw.header || {};
 
+    // Standardize and normalize columns for Accommodation and Rental Car items to handle dual-header structures seamlessly.
+    const normalizeItems = (items: any[] | undefined) => {
+        if (!items) return [];
+        return items.map((item: any) => {
+            const copy = { ...item };
+            
+            // 1. TWD 個人金額 / TWD個人 互為備份對齊
+            const tPers = copy['TWD個人金額'] !== undefined ? copy['TWD個人金額'] : copy['TWD個人'];
+            if (tPers !== undefined) {
+                copy['TWD個人金額'] = tPers;
+                copy['TWD個人'] = tPers;
+            }
+            
+            // 2. TWD 總體金額 / TWD總額 互為備份對齊
+            const tOver = copy['TWD總體金額'] !== undefined ? copy['TWD總體金額'] : copy['TWD總額'];
+            if (tOver !== undefined) {
+                copy['TWD總體金額'] = tOver;
+                copy['TWD總額'] = tOver;
+            }
+
+            // 3. 原幣個人金額 / 個人金額 互為備份對齊
+            const pers = copy['個人金額'] !== undefined ? copy['個人金額'] : copy['金額'];
+            if (pers !== undefined) {
+                copy['個人金額'] = pers;
+                copy['金額'] = pers;
+            }
+
+            // 4. 原幣總體金額 / 總體金額 / 總金額 互為備份對齊
+            const over = copy['總體金額'] !== undefined ? copy['總體金額'] : (copy['總金額'] !== undefined ? copy['總金額'] : copy['總體金額']);
+            if (over !== undefined) {
+                copy['總體金額'] = over;
+                copy['總金額'] = over;
+            }
+
+            // 5. 每人每天金額自癒計算 (以防後端無寫入或有 0 值)
+            let ppd = safeNum(copy['每人每天金額']);
+            if (ppd === 0) {
+                const checkIn = copy['入住日期'] || copy['借車日期'];
+                const checkOut = copy['退房日期'] || copy['還車日期'];
+                const people = safeNum(copy['代墊人數'] || 1) || 1;
+                const totalAmount = safeNum(copy['總體金額'] || copy['個人金額'] || 0);
+                
+                let days = 1;
+                if (checkIn && checkOut) {
+                    try {
+                        const dIn = new Date(checkIn);
+                        const dOut = new Date(checkOut);
+                        if (!isNaN(dIn.getTime()) && !isNaN(dOut.getTime())) {
+                            const diffTime = Math.abs(dOut.getTime() - dIn.getTime());
+                            days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+                        }
+                    } catch (e) {
+                        days = 1;
+                    }
+                }
+                
+                ppd = totalAmount / people / days;
+                copy['每人每天金額'] = ppd;
+            }
+
+            return copy;
+        });
+    };
+
+    if (raw.items['Accommodation']) {
+        raw.items['Accommodation'] = normalizeItems(raw.items['Accommodation']);
+    }
+    if (raw.items['Rental Car']) {
+        raw.items['Rental Car'] = normalizeItems(raw.items['Rental Car']);
+    }
+
     // 1. Calculate Summary Totals
     const days = Number(header['商旅天數'] || 0);
     const period = `${formatDateYYYYMMDD(header['商旅起始日']).replace(/-/g, '/') || ''} - ${formatDateYYYYMMDD(header['商旅結束日']).replace(/-/g, '/') || ''}`;
 
     // Aggregating Totals from Categories (for Charts)
-    // Aggregating Totals from Categories (for Charts)
-    // Initialize with 0 or header values, but we will overwrite them with calculated totals from items
     const catTotals: Record<string, number> = {
         Flight: 0,
         Accommodation: 0,
@@ -53,8 +122,8 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         Social: 0,
         Gift: 0,
         'Luggage Fee': 0,
-        'Handing Fee': 0, // Key matches backend
-        'Per Diem': 0,    // Key matches backend
+        'Handing Fee': 0,
+        'Per Diem': 0,
         'Advance Payment': 0,
         'Lunch & Learn': 0,
         Others: 0,
@@ -122,11 +191,10 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     };
 
     // Define columns mapping matching Google Sheet Headers
-    // Flight Sheet Headers: 報告編號, 次序, 日期, 航班代號, 出發地, 抵達地, 出發時間, 抵達時間, 幣別, 金額, TWD金額, 匯率, 備註
-    // Flight Sheet Headers
     const flightItems = raw.items['Flight'] || [];
     const flightTotalTWD = flightItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
     catTotals['Flight'] = flightTotalTWD;
+
 
     // Mutate and pre-format Flight items so DetailTable renders multiline correctly for round-trips
     const formattedFlightItems = flightItems.map((item: any) => {
@@ -352,30 +420,59 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     
     // Build Chart Data
 
+    // 4. Calculate Final Summary Totals with self-healing fallback
+    let calcTotalTWD = 0;
+    let calcPersonalTWD = 0;
+    
+    sections.forEach(sec => {
+        // Advance Payment is pre-paid advance, not an actual travel expense.
+        if (sec.id !== 'advancePayment') {
+            calcTotalTWD += sec.total.twdTotalAmount || 0;
+            
+            if (sec.id === 'accommodation' || sec.id === 'rentalCar') {
+                sec.data.forEach((item: any) => {
+                    calcPersonalTWD += safeNum(item['TWD個人金額'] || item['TWD個人'] || 0);
+                });
+            } else {
+                calcPersonalTWD += sec.total.twdTotalAmount || 0;
+            }
+        }
+    });
+
+    const rateUSD = safeNum(header['USD匯率'] || 1) || 1;
+    const finalTotalTWD = safeNum(header['合計TWD總體總額']) || calcTotalTWD;
+    const finalPersonalTWD = safeNum(header['合計TWD個人總額']) || calcPersonalTWD;
+    
+    const finalTotalUSD = safeNum(header['合計USD總體總額']) || (rateUSD > 0 ? finalTotalTWD / rateUSD : finalTotalTWD);
+    const finalPersonalUSD = safeNum(header['合計USD個人總額']) || (rateUSD > 0 ? finalPersonalTWD / rateUSD : finalPersonalTWD);
+
+    const finalAvgDayTWD = safeNum(header['合計TWD總體平均']) || (days > 0 ? finalTotalTWD / days : finalTotalTWD);
+    const finalAvgDayUSD = safeNum(header['合計USD總體平均']) || (days > 0 ? finalTotalUSD / days : finalTotalUSD);
+
     return {
         reportId,
         user: userName,
         summary: {
             reportName: header['報告名稱'] || '',
-            totalTWD: safeNum(header['合計TWD總體總額']),
-            personalTWD: safeNum(header['合計TWD個人總額']),
-            avgDayTWD: safeNum(header['合計TWD總體平均']),
-            totalUSD: safeNum(header['合計USD總體總額']),
-            personalUSD: safeNum(header['合計USD個人總額']),
-            avgDayUSD: safeNum(header['合計USD總體平均']),
+            totalTWD: finalTotalTWD,
+            personalTWD: finalPersonalTWD,
+            avgDayTWD: finalAvgDayTWD,
+            totalUSD: finalTotalUSD,
+            personalUSD: finalPersonalUSD,
+            avgDayUSD: finalAvgDayUSD,
             advancePaymentTWD: safeNum(header['預支費用總額']),
             paymentCurrency: header['支付幣別'] || 'TWD',
             period,
             days,
-            rateUSD: safeNum(header['USD匯率'] || 1),
+            rateUSD: rateUSD,
             headerDetails: {
-                currency: header['幣別'] || '', // Assuming '幣別' exists
+                currency: header['幣別'] || '', 
                 personalAmount: header['合計個人此幣別金額'] || header['個人金額'] || '0',
                 totalAmount: header['合計總體此幣別金額'] || header['總體金額'] || '0',
                 avgDailyAmount: header['平均此幣別金額'] || header['每人每天金額'] || '0',
                 rate: header['匯率'] || header['USD匯率'] || '0',
-                twdPersonalAmount: header['合計TWD個人總額'] || '0',
-                twdTotalAmount: header['合計TWD總體總額'] || '0'
+                twdPersonalAmount: String(finalPersonalTWD || 0),
+                twdTotalAmount: String(finalTotalTWD || 0)
             }
         },
         charts: {
