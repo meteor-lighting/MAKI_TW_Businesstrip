@@ -440,13 +440,13 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     });
 
     const rateUSD = safeNum(header['USD匯率'] || 1) || 1;
-    const finalTotalTWD = safeNum(header['合計TWD總體總額']) || calcTotalTWD;
-    const finalPersonalTWD = safeNum(header['合計TWD個人總額']) || calcPersonalTWD;
+    const finalTotalTWD = Math.round(safeNum(header['合計TWD總體總額']) || calcTotalTWD);
+    const finalPersonalTWD = Math.round(safeNum(header['合計TWD個人總額']) || calcPersonalTWD);
     
     const finalTotalUSD = safeNum(header['合計USD總體總額']) || (rateUSD > 0 ? finalTotalTWD / rateUSD : finalTotalTWD);
     const finalPersonalUSD = safeNum(header['合計USD個人總額']) || (rateUSD > 0 ? finalPersonalTWD / rateUSD : finalPersonalTWD);
 
-    const finalAvgDayTWD = safeNum(header['合計TWD總體平均']) || (days > 0 ? finalTotalTWD / days : finalTotalTWD);
+    const finalAvgDayTWD = Math.round(safeNum(header['合計TWD總體平均']) || (days > 0 ? finalTotalTWD / days : finalTotalTWD));
     const finalAvgDayUSD = safeNum(header['合計USD總體平均']) || (days > 0 ? finalTotalUSD / days : finalTotalUSD);
 
     return {
@@ -460,7 +460,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
             totalUSD: finalTotalUSD,
             personalUSD: finalPersonalUSD,
             avgDayUSD: finalAvgDayUSD,
-            advancePaymentTWD: safeNum(header['預支費用總額']),
+            advancePaymentTWD: Math.round(safeNum(header['預支費用總額'])),
             paymentCurrency: header['支付幣別'] || 'TWD',
             period,
             days,

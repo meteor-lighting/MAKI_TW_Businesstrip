@@ -52,8 +52,27 @@ const DetailTable: React.FC<DetailTableProps> = ({ id, title, total, columns, da
                                     let cellValue = row[col.accessorKey];
 
                                     if (col.type === 'currency' || col.type === 'number') {
-                                        // Simple formatting
-                                        cellValue = new Intl.NumberFormat('en-US').format(cellValue);
+                                        const isTwdField = String(col.accessorKey).toUpperCase().includes('TWD');
+                                        const isTwdRow = String(row['幣別']).toUpperCase() === 'TWD';
+                                        const valNum = Number(cellValue || 0);
+
+                                        if (isTwdField || 
+                                            (col.accessorKey === '金額' && isTwdRow) || 
+                                            (col.accessorKey === '個人金額' && isTwdRow) || 
+                                            (col.accessorKey === '總體金額' && isTwdRow) || 
+                                            (col.accessorKey === '每人每天金額' && isTwdRow)) {
+                                            // TWD 金額四捨五入至個位數，不顯示小數點，顯示千分位逗號
+                                            cellValue = new Intl.NumberFormat('en-US', {
+                                                minimumFractionDigits: 0,
+                                                maximumFractionDigits: 0
+                                            }).format(Math.round(valNum));
+                                        } else {
+                                            // 外幣金額保留小數點後 2 位
+                                            cellValue = new Intl.NumberFormat('en-US', {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2
+                                            }).format(valNum);
+                                        }
                                     } else if (col.type === 'date' && cellValue) {
                                         try {
                                             const date = new Date(cellValue);

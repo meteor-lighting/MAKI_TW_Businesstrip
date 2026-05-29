@@ -17,7 +17,7 @@ const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
         return (
             <div className="bg-white border border-gray-200 p-2 shadow-sm rounded">
-                <p className="text-sm">{`${payload[0].name} : ${payload[0].value}`}</p>
+                <p className="text-sm font-semibold">{`${payload[0].name} : TWD ${Math.round(Number(payload[0].value)).toLocaleString()}`}</p>
             </div>
         );
     }
@@ -74,14 +74,15 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
 const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
     // 恢復自動合併：將比例低於 5% 的項目併入 Others
     const processedPieData = React.useMemo(() => {
-        const total = pieData.reduce((sum, item) => sum + item.value, 0);
+        const roundedData = pieData.map(item => ({ ...item, value: Math.round(item.value) }));
+        const total = roundedData.reduce((sum, item) => sum + item.value, 0);
         if (total === 0) return [];
 
         const threshold = total * 0.05; // 5% 門檻
         const mainItems: ChartData[] = [];
         let othersValue = 0;
 
-        pieData.forEach(item => {
+        roundedData.forEach(item => {
             if (item.value < threshold && item.name !== 'Others') {
                 othersValue += item.value;
             } else {
@@ -102,8 +103,12 @@ const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
         return mainItems.sort((a, b) => b.value - a.value);
     }, [pieData]);
 
-    // Sort bar data from largest to smallest value
-    const sortedBarData = [...barData].sort((a, b) => b.value - a.value);
+    // Sort bar data from largest to smallest value and round values
+    const sortedBarData = React.useMemo(() => {
+        return [...barData]
+            .map(item => ({ ...item, value: Math.round(item.value) }))
+            .sort((a, b) => b.value - a.value);
+    }, [barData]);
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -149,7 +154,14 @@ const ExpenseCharts: React.FC<ExpenseChartsProps> = ({ pieData, barData }) => {
                             <YAxis dataKey="name" type="category" width={100} interval={0} />
                             <Tooltip content={<CustomTooltip />} />
                             <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20}>
-                                <LabelList dataKey="value" position="right" fontSize={16} fontWeight="bold" fill="#374151" />
+                                <LabelList 
+                                    dataKey="value" 
+                                    position="right" 
+                                    fontSize={16} 
+                                    fontWeight="bold" 
+                                    fill="#374151" 
+                                    formatter={(v: any) => Math.round(Number(v)).toLocaleString()}
+                                />
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>

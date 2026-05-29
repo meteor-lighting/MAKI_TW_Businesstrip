@@ -95,22 +95,22 @@ function addReportItem(payload) {
       
       if (amountIdx !== -1 && twdAmountIdx !== -1) {
         const amt = parseFloat(itemData['金額']) || 0;
-        row[twdAmountIdx] = Number((amt * rateVal).toFixed(2));
+        row[twdAmountIdx] = Math.round(amt * rateVal);
       }
       
       if (personalIdx !== -1 && twdPersonalIdx !== -1) {
         const amt = parseFloat(itemData['個人金額']) || 0;
-        row[twdPersonalIdx] = Number((amt * rateVal).toFixed(2));
+        row[twdPersonalIdx] = Math.round(amt * rateVal);
       }
       
       if (advanceIdx !== -1 && twdAdvanceIdx !== -1) {
         const amt = parseFloat(itemData['代墊金額']) || 0;
-        row[twdAdvanceIdx] = Number((amt * rateVal).toFixed(2));
+        row[twdAdvanceIdx] = Math.round(amt * rateVal);
       }
       
       if (overallIdx !== -1 && twdOverallIdx !== -1) {
         const amt = parseFloat(row[overallIdx]) || 0;
-        row[twdOverallIdx] = Number((amt * rateVal).toFixed(2));
+        row[twdOverallIdx] = Math.round(amt * rateVal);
       }
 
       // 住宿與租車的每人每日均分金額
@@ -250,22 +250,22 @@ function updateReportItem(payload) {
       
       if (amountIdx !== -1 && twdAmountIdx !== -1) {
         const amt = parseFloat(itemData['金額']) || 0;
-        updatedRow[twdAmountIdx] = Number((amt * rateVal).toFixed(2));
+        updatedRow[twdAmountIdx] = Math.round(amt * rateVal);
       }
       
       if (personalIdx !== -1 && twdPersonalIdx !== -1) {
         const amt = parseFloat(itemData['個人金額']) || 0;
-        updatedRow[twdPersonalIdx] = Number((amt * rateVal).toFixed(2));
+        updatedRow[twdPersonalIdx] = Math.round(amt * rateVal);
       }
       
       if (advanceIdx !== -1 && twdAdvanceIdx !== -1) {
         const amt = parseFloat(itemData['代墊金額']) || 0;
-        updatedRow[twdAdvanceIdx] = Number((amt * rateVal).toFixed(2));
+        updatedRow[twdAdvanceIdx] = Math.round(amt * rateVal);
       }
       
       if (overallIdx !== -1 && twdOverallIdx !== -1) {
         const amt = parseFloat(updatedRow[overallIdx]) || 0;
-        updatedRow[twdOverallIdx] = Number((amt * rateVal).toFixed(2));
+        updatedRow[twdOverallIdx] = Math.round(amt * rateVal);
       }
 
       // 住宿與租車的每人每日均分金額
@@ -658,15 +658,15 @@ function recalculateHeader(reportId, category) {
   }
   
   // 5. Apply Overall update to Report Header cells
-  if (overallTWDIdx !== -1) headerSheet.getRange(targetRowIndex, overallTWDIdx + 1).setValue(Number(grandTotalTWD.toFixed(2)));
-  if (personalTWDIdx !== -1) headerSheet.getRange(targetRowIndex, personalTWDIdx + 1).setValue(Number(personalTotalTWD.toFixed(2)));
-  if (avgTWDIdx !== -1) headerSheet.getRange(targetRowIndex, avgTWDIdx + 1).setValue(Number((days > 0 ? grandTotalTWD / days : grandTotalTWD).toFixed(2)));
+  if (overallTWDIdx !== -1) headerSheet.getRange(targetRowIndex, overallTWDIdx + 1).setValue(Math.round(grandTotalTWD));
+  if (personalTWDIdx !== -1) headerSheet.getRange(targetRowIndex, personalTWDIdx + 1).setValue(Math.round(personalTotalTWD));
+  if (avgTWDIdx !== -1) headerSheet.getRange(targetRowIndex, avgTWDIdx + 1).setValue(Math.round(days > 0 ? grandTotalTWD / days : grandTotalTWD));
   
   if (overallUSDIdx !== -1) headerSheet.getRange(targetRowIndex, overallUSDIdx + 1).setValue(Number((grandTotalTWD / rateUSD).toFixed(2)));
   if (personalUSDIdx !== -1) headerSheet.getRange(targetRowIndex, personalUSDIdx + 1).setValue(Number((personalTotalTWD / rateUSD).toFixed(2)));
   if (avgUSDIdx !== -1) headerSheet.getRange(targetRowIndex, avgUSDIdx + 1).setValue(Number(((days > 0 ? grandTotalTWD / days : grandTotalTWD) / rateUSD).toFixed(2)));
   
-  if (advanceTWDIdx !== -1) headerSheet.getRange(targetRowIndex, advanceTWDIdx + 1).setValue(Number(advanceTotalTWD.toFixed(2)));
+  if (advanceTWDIdx !== -1) headerSheet.getRange(targetRowIndex, advanceTWDIdx + 1).setValue(Math.round(advanceTotalTWD));
   
   invalidateCache('Report Header');
 }
@@ -726,7 +726,7 @@ function updateAllExchangeRates(reportId) {
             if (rateIdx !== -1) {
               sheet.getRange(i + 1, rateIdx + 1).setValue(rate);
             }
-            sheet.getRange(i + 1, twdIdx + 1).setValue(Number((amount * rate).toFixed(2)));
+            sheet.getRange(i + 1, twdIdx + 1).setValue(Math.round(amount * rate));
             
             // 特殊加總折算
             if (cat === 'Accommodation' || cat === 'Rental Car') {
@@ -739,15 +739,15 @@ function updateAllExchangeRates(reportId) {
               
               if (personalIdx !== -1 && twdPersonalIdx !== -1) {
                 const amt = parseFloat(data[i][personalIdx]) || 0;
-                sheet.getRange(i + 1, twdPersonalIdx + 1).setValue(Number((amt * rate).toFixed(2)));
+                sheet.getRange(i + 1, twdPersonalIdx + 1).setValue(Math.round(amt * rate));
               }
               if (overallIdx !== -1 && twdOverallIdx !== -1) {
                 const amt = parseFloat(data[i][overallIdx]) || 0;
-                sheet.getRange(i + 1, twdOverallIdx + 1).setValue(Number((amt * rate).toFixed(2)));
+                sheet.getRange(i + 1, twdOverallIdx + 1).setValue(Math.round(amt * rate));
               }
               if (advanceIdx !== -1 && twdAdvanceIdx !== -1) {
                 const amt = parseFloat(data[i][advanceIdx]) || 0;
-                sheet.getRange(i + 1, twdAdvanceIdx + 1).setValue(Number((amt * rate).toFixed(2)));
+                sheet.getRange(i + 1, twdAdvanceIdx + 1).setValue(Math.round(amt * rate));
               }
             }
           }
