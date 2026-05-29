@@ -106,16 +106,15 @@ function getExchangeRate(payload) {
   // Note: We need T-1 relative to the Input Date.
   // We will loop back starting from T-1.
   
-  // Start from T-1
+  // Start searching exactly from the provided Target Date (which is already T-1)
   let currentSearchDate = new Date(targetDate);
-  currentSearchDate.setDate(currentSearchDate.getDate() - 1);
   
   let attempts = 0;
   let rate = null;
   let usedDate = '';
   const debugLog = [];
-  // Loop up to 5 days back
-  while (rate === null && attempts < 5) {
+  // Loop up to 10 days back
+  while (rate === null && attempts < 10) {
       const yyyy = currentSearchDate.getFullYear();
       const mm = String(currentSearchDate.getMonth() + 1).padStart(2, '0');
       const dd = String(currentSearchDate.getDate()).padStart(2, '0');
@@ -195,7 +194,7 @@ function getExchangeRate(payload) {
       // Fallback to mock/default if all fail
       console.warn(`Could not find rate for ${currency} around ${dateStr}, using fallback.`);
       const fallbackRates = {
-          'USD': 30.0, 'JPY': 0.21, 'EUR': 32.5, 'CNY': 4.2, 'TWD': 1.0, 'THB': 0.9, 'CAD': 23.5
+          'USD': 30.0, 'JPY': 0.21, 'EUR': 32.5, 'CNY': 4.2, 'TWD': 1.0, 'THB': 0.9, 'CAD': 23.5, 'HKD': 3.9
       };
       
       const fallbackResponse = { 

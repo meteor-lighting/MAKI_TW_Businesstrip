@@ -1,766 +1,857 @@
 /**
- * Calculation Logic
+ * 終極重算與匯率自動同步引擎 Calculation.gs
+ * 每筆明細皆依據「該筆差旅日期前一天」的台灣銀行即期匯率「本本行賣出」進行換算。
  */
-function createNewReport(payload) {
-    // payload: { userId, exchangeRate }
-    const lock = LockService.getScriptLock();
-    if (lock.tryLock(10000)) {
-        try {
-             const sheet = getSheet('Report Header');
-             const data = sheet.getDataRange().getValues();
-             
-             // Generate Report ID: BR-XXXXXXXX
-             let lastNum = 0;
-             if (data.length > 1) { // Header is row 1
-                 const lastRow = data[data.length - 1];
-                 const lastIdStr = lastRow[0]; 
-                 const parts = lastIdStr.split('-');
-                 if (parts.length === 2) {
-                     lastNum = parseInt(parts[1], 10);
-                 }
-             }
-             const newNum = lastNum + 1;
-             const reportId = 'BR-' + String(newNum).padStart(8, '0');
-             
-             // Dynamic Row Construction based on Headers
-             const headers = data[0]; // Row 1 headers
-             
-             const newRow = headers.map(header => {
-                 switch(header) {
-                     case '報告編號': return reportId;
-                     case '用戶編號': return payload.userId;
-                     case '建立時間': return new Date();
-                     case 'USD匯率': return payload.exchangeRate || 0; // Default 0 if not provided
-                     case '支付幣別': return 'TWD';
-                     // Initialize Numeric Columns to 0
-                     case '商旅天數':
-                     case '機票費總額':
-                     case '個人住宿費總額':
-                     case '總體住宿費總額':
-                     case '計程車費總額':
-                     case '網路費總額':
-                     case '社交費總額':
-                     case '禮品費總額':
-                     case '手續費總額':
-                     case '日支費總額':
-                     case '預支費用總額':
-                     case '其他費用總額':
-                     case '合計TWD個人總額':
-                     case '合計TWD總體總額':
-                     case '合計USD個人總額':
-                     case '合計USD總體總額':
-                     case '合計TWD個人平均':
-                     case '合計TWD總體平均':
-                     case '合計USD個人平均':
-                     case '合計USD總體平均':
-                         return 0;
-                     default: return ''; // Empty for others (e.g. Start/End Date, Remarks)
-                 }
-             });
-             
-             sheet.appendRow(newRow);
-             invalidateCache('Report Header');
-             
-             return { status: 'success', reportId: reportId };
-        } finally {
-            lock.releaseLock();
-        }
-    } else {
-        return { status: 'error', message: 'Busy' };
-    }
-}
 
 function addReportItem(payload) {
-  // payload: { reportId, category, itemData: {} }
   const { reportId, category, itemData } = payload;
+  if (!reportId) return { status: 'error', message: 'Missing reportId' };
+  if (!category) return { status: 'error', message: 'Missing category' };
+  if (!itemData) return { status: 'error', message: 'Missing itemData' };
   
-  if (!reportId || !category) return { status: 'error', message: 'Missing params' };
   const lock = LockService.getScriptLock();
-  if (lock.tryLock(10000)) {
-      try {
-          // 1. Get current items in this category for this report to determine 'Sequence'
-          const sheet = getSheet(category);
-          const data = sheet.getDataRange().getValues();
-          const headers = data[0] || [];
-          const rIdx = headers.indexOf('報告編號');
-          const sIdx = headers.indexOf('次序');
-          let nextSeq = 1;
-          
-          if (rIdx !== -1 && sIdx !== -1 && data.length > 1) {
-              const reportRows = data.slice(1).filter(r => String(r[rIdx]) === String(reportId));
-              if (reportRows.length > 0) {
-                  const maxSeq = Math.max(...reportRows.map(r => Number(r[sIdx]) || 0));
-                  nextSeq = maxSeq + 1;
-              }
+  if (lock.tryLock(20000)) {
+    try {
+      const sheetName = getResolvedSheetName(category);
+      const sheet = getSheet(sheetName);
+      const data = sheet.getDataRange().getValues();
+      const headers = data[0];
+      
+      // 計算次序
+      const seqIdx = headers.indexOf('次序');
+      const repIdx = headers.indexOf('報告編號');
+      let maxSeq = 0;
+      if (seqIdx !== -1 && repIdx !== -1) {
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][repIdx]) === String(reportId)) {
+            const seq = parseInt(data[i][seqIdx], 10);
+            if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
           }
-          
-          // 2. Prepare Row Data based on Sheet Headers
-          
-          // Fetch existing start date dynamically
-          const headerDataStr = getSheet('Report Header').getDataRange().getValues();
-          let oldStart = '';
-          for (let i=1; i<headerDataStr.length; i++) {
-              if (String(headerDataStr[i][0]) === String(reportId)) {
-                  oldStart = String(headerDataStr[i][headerDataStr[0].indexOf('商旅起始日')] || '');
-                  break;
-              }
-          }
-          
-          const newRow = headers.map(header => {
-              if (header === '報告編號') return reportId;
-              if (header === '次序') return nextSeq;
-              return itemData[header] !== undefined ? itemData[header] : '';
-          });
-          
-          appendRow(category, newRow);
-          SpreadsheetApp.flush(); // Force sync so recalculate reads the new row immediately
-          
-          // 3. Recalculate Header Totals & Dates 
-            const newStart = recalculateHeader(reportId, category);
-
-            // 4. Update Exchange Rates based ONLY on what explicitly needs syncing
-            if (oldStart !== newStart) {
-                updateAllExchangeRates(reportId, newStart, null, true);
-                recalculateHeader(reportId, category);
-            } else {
-                updateAllExchangeRates(reportId, newStart, category, false);
-                recalculateHeader(reportId, category);
-            }
-          
-          return { status: 'success', sequence: nextSeq };
-      } finally {
-          lock.releaseLock();
+        }
       }
+      const newSeq = maxSeq + 1;
+      
+      // 財務規則：使用每筆明細「該筆差旅日期前一天」作為匯率查詢日期
+      const rateQueryDate = getItemDateMinusOneDay(category, itemData, reportId);
+      
+      // 自動獲取匯率 (支援所有外幣，調用台灣銀行即期賣出匯率)
+      let rate = 1.0;
+      if (itemData['幣別'] && itemData['幣別'] !== 'TWD') {
+        try {
+          const rateResult = getExchangeRate({ currency: itemData['幣別'], date: rateQueryDate });
+          if (rateResult && rateResult.status === 'success') {
+            rate = parseFloat(rateResult.rate) || 1.0;
+          }
+        } catch (e) {
+          console.warn('Failed to fetch bot rate, using fallback', e);
+        }
+      }
+      
+      // 寫入資料行準備
+      const row = new Array(headers.length).fill('');
+      headers.forEach((h, i) => {
+        if (h === '報告編號') row[i] = reportId;
+        else if (h === '次序') row[i] = newSeq;
+        else if (h === '建立時間' || h === '最後修改時間') {
+          row[i] = new Date();
+        } else if (h === '匯率') {
+          row[i] = rate;
+        } else if (h === '總體金額') {
+          const overall = parseFloat(itemData['總體金額']) || 0;
+          if (overall === 0) {
+            const p = parseFloat(itemData['個人金額']) || 0;
+            const d = parseFloat(itemData['代墊金額']) || 0;
+            row[i] = p + d;
+          } else {
+            row[i] = overall;
+          }
+        } else if (itemData[h] !== undefined) {
+          let val = itemData[h];
+          if (h === '日期' || h === '回程日期' || h === '入住日期' || h === '退房日期' || h === '借車日期' || h === '還車日期' || h === '開始日期' || h === '結束日期') {
+            if (val && String(val).trim() !== '') {
+              const d = new Date(val);
+              if (!isNaN(d.getTime())) {
+                val = d;
+              }
+            }
+          }
+          row[i] = val;
+        }
+      });
+      
+      // 後端先行完成 TWD 台幣折算
+      const personalIdx = headers.indexOf('個人金額');
+      const overallIdx = headers.indexOf('總體金額');
+      const advanceIdx = headers.indexOf('代墊金額');
+      const amountIdx = headers.indexOf('金額');
+      
+      const twdPersonalIdx = headers.indexOf('TWD個人金額');
+      const twdOverallIdx = headers.indexOf('TWD總體金額');
+      const twdAdvanceIdx = headers.indexOf('TWD代墊金額');
+      const twdAmountIdx = headers.indexOf('TWD金額');
+      const ppDayIdx = headers.indexOf('每人每天金額');
+      
+      const rateVal = rate;
+      
+      if (amountIdx !== -1 && twdAmountIdx !== -1) {
+        const amt = parseFloat(itemData['金額']) || 0;
+        row[twdAmountIdx] = Number((amt * rateVal).toFixed(2));
+      }
+      
+      if (personalIdx !== -1 && twdPersonalIdx !== -1) {
+        const amt = parseFloat(itemData['個人金額']) || 0;
+        row[twdPersonalIdx] = Number((amt * rateVal).toFixed(2));
+      }
+      
+      if (advanceIdx !== -1 && twdAdvanceIdx !== -1) {
+        const amt = parseFloat(itemData['代墊金額']) || 0;
+        row[twdAdvanceIdx] = Number((amt * rateVal).toFixed(2));
+      }
+      
+      if (overallIdx !== -1 && twdOverallIdx !== -1) {
+        const amt = parseFloat(row[overallIdx]) || 0;
+        row[twdOverallIdx] = Number((amt * rateVal).toFixed(2));
+      }
+
+      // 住宿與租車的每人每日均分金額
+      if (ppDayIdx !== -1) {
+        const people = parseInt(itemData['代墊人數']) || 1;
+        const overallAmount = overallIdx !== -1 ? (parseFloat(row[overallIdx]) || 0) : (parseFloat(itemData['個人金額']) || 0);
+        const checkInIdx = headers.indexOf('入住日期') !== -1 ? headers.indexOf('入住日期') : headers.indexOf('借車日期');
+        const checkOutIdx = headers.indexOf('退房日期') !== -1 ? headers.indexOf('退房日期') : headers.indexOf('還車日期');
+        
+        let days = 1;
+        if (checkInIdx !== -1 && checkOutIdx !== -1 && itemData[headers[checkInIdx]] && itemData[headers[checkOutIdx]]) {
+          try {
+            const dIn = new Date(itemData[headers[checkInIdx]]);
+            const dOut = new Date(itemData[headers[checkOutIdx]]);
+            if (!isNaN(dIn.getTime()) && !isNaN(dOut.getTime())) {
+              const diffTime = Math.abs(dOut.getTime() - dIn.getTime());
+              days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+            }
+          } catch(e) {}
+        }
+        
+        row[ppDayIdx] = Number((overallAmount / people / days).toFixed(2));
+      }
+      
+      sheet.appendRow(row);
+      SpreadsheetApp.flush();
+      
+      // 全局累加計算並寫入 Report Header
+      recalculateHeader(reportId, category);
+      invalidateCache(category);
+      
+      return { status: 'success', message: 'Item added successfully' };
+    } catch (e) {
+      return { status: 'error', message: e.toString() };
+    } finally {
+      lock.releaseLock();
+    }
   } else {
-      return { status: 'error', message: 'Busy' };
+    return { status: 'error', message: 'Database busy' };
   }
 }
 
 function updateReportItem(payload) {
-    // payload: { reportId, category, sequence, itemData }
-    const { reportId, category, sequence, itemData } = payload;
-    if (!reportId || !category || !sequence || !itemData) return { status: 'error', message: 'Missing params' };
-    
-    const lock = LockService.getScriptLock();
-    if (lock.tryLock(10000)) {
-        try {
-            const sheet = getSheet(category);
-            const data = sheet.getDataRange().getValues();
-            if (data.length < 2) return { status: 'error', message: 'Item not found' };
-            
-            const headers = data[0];
-            const rIdx = headers.indexOf('報告編號');
-            const sIdx = headers.indexOf('次序');
-            
-            if (rIdx === -1 || sIdx === -1) {
-                return { status: 'error', message: 'Invalid sheet structure' };
-            }
-            
-            let updateRowIndex = -1;
-            for (let i = 1; i < data.length; i++) {
-                if (String(data[i][rIdx]) === String(reportId) && String(data[i][sIdx]) === String(sequence)) {
-                    updateRowIndex = i + 1; // 1-based row index
-                    break;
-                }
-            }
-            
-            if (updateRowIndex === -1) {
-                return { status: 'error', message: 'Item not found' };
-            }
-            
-            const updatedRow = headers.map(header => {
-                if (header === '報告編號') return reportId;
-                if (header === '次序') return sequence;
-                return itemData[header] !== undefined ? itemData[header] : ''; 
-            });
-            
-            const headerDataStr = getSheet('Report Header').getDataRange().getValues();
-            let oldStart = '';
-            for (let i=1; i<headerDataStr.length; i++) {
-                if (String(headerDataStr[i][0]) === String(reportId)) {
-                    oldStart = String(headerDataStr[i][headerDataStr[0].indexOf('商旅起始日')] || '');
-                    break;
-                }
-            }
-            
-            sheet.getRange(updateRowIndex, 1, 1, headers.length).setValues([updatedRow]);
-            SpreadsheetApp.flush(); // Force sync so recalculate reads the updated numbers
-            
-            invalidateCache(category); // Crucial for recalculateHeader to see the update
-            
-            const newStart = recalculateHeader(reportId, category);
-            
-            if (oldStart !== newStart) {
-                updateAllExchangeRates(reportId, newStart);
-                recalculateHeader(reportId, category);
-            } else {
-                updateAllExchangeRates(reportId, newStart, category);
-                recalculateHeader(reportId, category);
-            }
-            
-            return { status: 'success' };
-        } finally {
-            lock.releaseLock();
-        }
-    } else {
-        return { status: 'error', message: 'Busy' };
-    }
-}
-
-function deleteReportItem(payload) {
-  // payload: { reportId, category, sequence }
-  const { reportId, category, sequence } = payload;
-  const lock = LockService.getScriptLock();
+  const { reportId, category, sequence, itemData } = payload;
+  if (!reportId) return { status: 'error', message: 'Missing reportId' };
+  if (!category) return { status: 'error', message: 'Missing category' };
+  if (sequence === undefined) return { status: 'error', message: 'Missing sequence' };
+  if (!itemData) return { status: 'error', message: 'Missing itemData' };
   
-  if (lock.tryLock(10000)) {
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(20000)) {
     try {
-        const sheet = getSheet(category);
-        const data = sheet.getDataRange().getValues(); // Get all data
-        if (data.length < 2) return { status: 'error', message: 'Item not found' };
-        
-        const headers = data[0];
-        const rIdx = headers.indexOf('報告編號');
-        const sIdx = headers.indexOf('次序');
-        
-        if (rIdx === -1 || sIdx === -1) {
-            return { status: 'error', message: 'Invalid sheet structure' };
+      const sheetName = getResolvedSheetName(category);
+      const sheet = getSheet(sheetName);
+      const data = sheet.getDataRange().getValues();
+      const headers = data[0];
+      
+      const repIdx = headers.indexOf('報告編號');
+      const seqIdx = headers.indexOf('次序');
+      
+      if (repIdx === -1 || seqIdx === -1) {
+        return { status: 'error', message: 'Headers invalid' };
+      }
+      
+      let targetRowIndex = -1;
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][repIdx]) === String(reportId) && String(data[i][seqIdx]) === String(sequence)) {
+          targetRowIndex = i + 1;
+          break;
         }
-        
-        // Find the specific row
-        let deleteRowIndex = -1;
-        
-        for (let i = 1; i < data.length; i++) { // Skip header
-            if (String(data[i][rIdx]) === String(reportId) && String(data[i][sIdx]) === String(sequence)) {
-                deleteRowIndex = i + 1; // logical row number
-                break;
+      }
+      
+      if (targetRowIndex === -1) {
+        return { status: 'error', message: 'Target item not found for update' };
+      }
+      
+      // 財務規則：使用每筆明細「該筆差旅日期前一天」作為匯率查詢日期
+      const rateQueryDate = getItemDateMinusOneDay(category, itemData, reportId);
+      
+      // 自動獲取匯率 (支援所有幣別)
+      let rate = 1.0;
+      if (itemData['幣別'] && itemData['幣別'] !== 'TWD') {
+        try {
+          const rateResult = getExchangeRate({ currency: itemData['幣別'], date: rateQueryDate });
+          if (rateResult && rateResult.status === 'success') {
+            rate = parseFloat(rateResult.rate) || 1.0;
+          }
+        } catch (e) {
+          console.warn('Failed to fetch bot rate, using fallback', e);
+        }
+      }
+      
+      const updatedRow = [...data[targetRowIndex - 1]];
+      headers.forEach((h, i) => {
+        if (h === '報告編號' || h === '次序' || h === '建立時間') {
+          // Keep intact
+        } else if (h === '最後修改時間') {
+          updatedRow[i] = new Date();
+        } else if (h === '匯率') {
+          updatedRow[i] = rate;
+        } else if (h === '總體金額') {
+          const overall = parseFloat(itemData['總體金額']) || 0;
+          if (overall === 0) {
+            const p = parseFloat(itemData['個人金額']) || 0;
+            const d = parseFloat(itemData['代墊金額']) || 0;
+            updatedRow[i] = p + d;
+          } else {
+            updatedRow[i] = overall;
+          }
+        } else if (itemData[h] !== undefined) {
+          let val = itemData[h];
+          if (h === '日期' || h === '回程日期' || h === '入住日期' || h === '退房日期' || h === '借車日期' || h === '還車日期' || h === '開始日期' || h === '結束日期') {
+            if (val && String(val).trim() !== '') {
+              const d = new Date(val);
+              if (!isNaN(d.getTime())) {
+                val = d;
+              }
             }
+          }
+          updatedRow[i] = val;
         }
-        
-        const headerDataStr = getSheet('Report Header').getDataRange().getValues();
-        let oldStart = '';
-        for (let i=1; i<headerDataStr.length; i++) {
-            if (String(headerDataStr[i][0]) === String(reportId)) {
-                oldStart = String(headerDataStr[i][headerDataStr[0].indexOf('商旅起始日')] || '');
-                break;
-            }
-        }
-        
-        if (deleteRowIndex > 0) {
-            sheet.deleteRow(deleteRowIndex);
-            SpreadsheetApp.flush(); // Force sync structural mutation so recalculate reads empty
-        }
-        
-        invalidateCache(category); // Force drop stale items
-        
-        const newStart = recalculateHeader(reportId, category);
-        
-        if (oldStart !== newStart) {
-            updateAllExchangeRates(reportId, newStart);
-            recalculateHeader(reportId, category);
-        } else {
-            updateAllExchangeRates(reportId, newStart, category);
-            recalculateHeader(reportId, category);
-        }
+      });
+      
+      // 後端重算 TWD 金額
+      const personalIdx = headers.indexOf('個人金額');
+      const overallIdx = headers.indexOf('總體金額');
+      const advanceIdx = headers.indexOf('代墊金額');
+      const amountIdx = headers.indexOf('金額');
+      
+      const twdPersonalIdx = headers.indexOf('TWD個人金額');
+      const twdOverallIdx = headers.indexOf('TWD總體金額');
+      const twdAdvanceIdx = headers.indexOf('TWD代墊金額');
+      const twdAmountIdx = headers.indexOf('TWD金額');
+      const ppDayIdx = headers.indexOf('每人每天金額');
+      
+      const rateVal = rate;
+      
+      if (amountIdx !== -1 && twdAmountIdx !== -1) {
+        const amt = parseFloat(itemData['金額']) || 0;
+        updatedRow[twdAmountIdx] = Number((amt * rateVal).toFixed(2));
+      }
+      
+      if (personalIdx !== -1 && twdPersonalIdx !== -1) {
+        const amt = parseFloat(itemData['個人金額']) || 0;
+        updatedRow[twdPersonalIdx] = Number((amt * rateVal).toFixed(2));
+      }
+      
+      if (advanceIdx !== -1 && twdAdvanceIdx !== -1) {
+        const amt = parseFloat(itemData['代墊金額']) || 0;
+        updatedRow[twdAdvanceIdx] = Number((amt * rateVal).toFixed(2));
+      }
+      
+      if (overallIdx !== -1 && twdOverallIdx !== -1) {
+        const amt = parseFloat(updatedRow[overallIdx]) || 0;
+        updatedRow[twdOverallIdx] = Number((amt * rateVal).toFixed(2));
+      }
 
-        return { status: 'success', message: 'Deleted and Synced' };
+      // 住宿與租車的每人每日均分金額
+      if (ppDayIdx !== -1) {
+        const people = parseInt(itemData['代墊人數']) || 1;
+        const overallAmount = overallIdx !== -1 ? (parseFloat(updatedRow[overallIdx]) || 0) : (parseFloat(itemData['個人金額']) || 0);
+        const checkInIdx = headers.indexOf('入住日期') !== -1 ? headers.indexOf('入住日期') : headers.indexOf('借車日期');
+        const checkOutIdx = headers.indexOf('退房日期') !== -1 ? headers.indexOf('退房日期') : headers.indexOf('還車日期');
         
+        let days = 1;
+        if (checkInIdx !== -1 && checkOutIdx !== -1 && itemData[headers[checkInIdx]] && itemData[headers[checkOutIdx]]) {
+          try {
+            const dIn = new Date(itemData[headers[checkInIdx]]);
+            const dOut = new Date(itemData[headers[checkOutIdx]]);
+            if (!isNaN(dIn.getTime()) && !isNaN(dOut.getTime())) {
+              const diffTime = Math.abs(dOut.getTime() - dIn.getTime());
+              days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+            }
+          } catch(e) {}
+        }
+        
+        updatedRow[ppDayIdx] = Number((overallAmount / people / days).toFixed(2));
+      }
+      
+      sheet.getRange(targetRowIndex, 1, 1, headers.length).setValues([updatedRow]);
+      SpreadsheetApp.flush();
+      
+      // 全局累加計算並寫入 Report Header
+      recalculateHeader(reportId, category);
+      invalidateCache(category);
+      
+      return { status: 'success', message: 'Item updated successfully' };
+    } catch (e) {
+      return { status: 'error', message: e.toString() };
     } finally {
-        lock.releaseLock();
+      lock.releaseLock();
     }
   } else {
-       return { status: 'error', message: 'Busy' };
+    return { status: 'error', message: 'Database busy' };
   }
 }
 
-function updateReportTripInfo(payload) {
-    const { reportId, days, startDate, endDate, destination, paymentCurrency } = payload;
-    if (!reportId) return { status: 'error', message: 'Missing reportId' };
-    
-    const lock = LockService.getScriptLock();
-    if (lock.tryLock(10000)) {
-        try {
-            const sheet = getSheet('Report Header');
-            const data = sheet.getDataRange().getValues();
-            let rowIndex = -1;
-            for (let i = 1; i < data.length; i++) {
-                if (String(data[i][0]) === String(reportId)) {
-                    rowIndex = i + 1;
-                    break;
-                }
-            }
-            if (rowIndex === -1) return { status: 'error', message: 'Report not found' };
-            
-            const headers = data[0];
-            const colDays = headers.indexOf('商旅天數');
-            const colStart = headers.indexOf('商旅起始日');
-            const colEnd = headers.indexOf('商旅結束日');
-            const colDest = headers.indexOf('出差國家');
-            const colCurrency = headers.indexOf('支付幣別');
-            
-            // Re-implementing with Array fetch to avoid single cell hit
-            const rowRange = sheet.getRange(rowIndex, 1, 1, headers.length);
-            const rowData = rowRange.getValues()[0];
-
-            if (colDays > -1 && days !== undefined && days !== '') rowData[colDays] = days;
-            if (colStart > -1 && startDate !== undefined && startDate !== '') rowData[colStart] = startDate.replace(/-/g, '/');
-            if (colEnd > -1 && endDate !== undefined && endDate !== '') rowData[colEnd] = endDate.replace(/-/g, '/');
-            if (colDest > -1 && destination !== undefined) rowData[colDest] = destination;
-            
-            if (colCurrency > -1 && paymentCurrency !== undefined) rowData[colCurrency] = paymentCurrency;
-            else if (colCurrency === -1 && paymentCurrency !== undefined) {
-                // Rare case where payment currency completely missed - direct write handled, but usually not hitting this on warm DB
-                const headCurRange = sheet.getRange(1, headers.length + 1);
-                headCurRange.setValue('支付幣別');
-                sheet.getRange(rowIndex, headers.length + 1).setValue(paymentCurrency);
-            }
-            
-            rowRange.setValues([rowData]);
-
-            updateAllExchangeRates(reportId, startDate.replace(/-/g, '/'));
-            recalculateHeader(reportId, 'MANUAL_DATE_UPDATE');
-            invalidateCache('Report Header');
-            
-            return { status: 'success' };
-        } finally {
-            lock.releaseLock();
+function deleteReportItem(payload) {
+  const { reportId, category, sequence } = payload;
+  if (!reportId || !category || sequence === undefined) {
+    return { status: 'error', message: 'Missing parameters' };
+  }
+  
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(20000)) {
+    try {
+      const sheetName = getResolvedSheetName(category);
+      const sheet = getSheet(sheetName);
+      const data = sheet.getDataRange().getValues();
+      const headers = data[0];
+      
+      const repIdx = headers.indexOf('報告編號');
+      const seqIdx = headers.indexOf('次序');
+      
+      if (repIdx === -1 || seqIdx === -1) {
+        return { status: 'error', message: 'Headers invalid' };
+      }
+      
+      let targetRowIndex = -1;
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][repIdx]) === String(reportId) && String(data[i][seqIdx]) === String(sequence)) {
+          targetRowIndex = i + 1;
+          break;
         }
-    } else {
-        return { status: 'error', message: 'Busy' };
+      }
+      
+      if (targetRowIndex !== -1) {
+        sheet.deleteRow(targetRowIndex);
+        SpreadsheetApp.flush();
+        
+        recalculateHeader(reportId, category);
+        invalidateCache(category);
+      }
+      
+      return { status: 'success', message: 'Item deleted successfully' };
+    } catch (e) {
+      return { status: 'error', message: e.toString() };
+    } finally {
+      lock.releaseLock();
     }
+  } else {
+    return { status: 'error', message: 'Database busy' };
+  }
 }
 
-function recalculateHeader(reportId, triggerCategory = null) {
-    let startDateStr = '';
-    const ALL_CATEGORIES = ['Flight', 'Accommodation', 'Rental Car', 'Transportation', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
+function recalculateHeader(reportId, category) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const headerSheet = ss.getSheetByName('Report Header');
+  const headerData = headerSheet.getDataRange().getValues();
+  const headers = headerData[0];
+  
+  const idIdx = headers.indexOf('報告編號');
+  if (idIdx === -1) return;
+  
+  let targetRowIndex = -1;
+  for (let i = 1; i < headerData.length; i++) {
+    if (String(headerData[i][idIdx]) === String(reportId)) {
+      targetRowIndex = i + 1;
+      break;
+    }
+  }
+  
+  if (targetRowIndex === -1) return;
+  
+  let rowData = headerData[targetRowIndex - 1];
+  
+  // 1. 自動從機票段 (Flight) 的日期帶入商旅起始日、商旅結束日、商旅天數
+  try {
+    const flightItems = sheetDataToJson('Flight', ss, true).filter(r => String(r['報告編號']) === String(reportId));
+    let dates = [];
+    flightItems.forEach(item => {
+      if (item['日期']) {
+        const d = new Date(item['日期']);
+        if (!isNaN(d.getTime())) dates.push(d);
+      }
+      if (item['行程類型'] === 'round-trip' && item['回程日期']) {
+        const d = new Date(item['回程日期']);
+        if (!isNaN(d.getTime())) dates.push(d);
+      }
+    });
     
-    // PERF FIX: Now relying on the O(1) Cache Proxy mechanism which warms instantly.
-    // Summing ALL categories to guarantee native USD precision and avoid floating-point loss.
+    if (dates.length > 0) {
+      dates.sort((a, b) => a.getTime() - b.getTime());
+      const minDate = dates[0];
+      const maxDate = dates[dates.length - 1];
+      
+      const yyyyMin = minDate.getFullYear();
+      const mmMin = String(minDate.getMonth() + 1).padStart(2, '0');
+      const ddMin = String(minDate.getDate()).padStart(2, '0');
+      const minDateStr = `${yyyyMin}/${mmMin}/${ddMin}`;
+      
+      const yyyyMax = maxDate.getFullYear();
+      const mmMax = String(maxDate.getMonth() + 1).padStart(2, '0');
+      const ddMax = String(maxDate.getDate()).padStart(2, '0');
+      const maxDateStr = `${yyyyMax}/${mmMax}/${ddMax}`;
+      
+      const diffTime = Math.abs(maxDate.getTime() - minDate.getTime());
+      const autoDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      
+      const startIdx = headers.indexOf('商旅起始日');
+      const endIdx = headers.indexOf('商旅結束日');
+      const daysIdx = headers.indexOf('商旅天數');
+      
+      if (startIdx !== -1) {
+        headerSheet.getRange(targetRowIndex, startIdx + 1).setValue(minDateStr);
+        rowData[startIdx] = minDateStr;
+      }
+      if (endIdx !== -1) {
+        headerSheet.getRange(targetRowIndex, endIdx + 1).setValue(maxDateStr);
+        rowData[endIdx] = maxDateStr;
+      }
+      if (daysIdx !== -1) {
+        headerSheet.getRange(targetRowIndex, daysIdx + 1).setValue(autoDays);
+        rowData[daysIdx] = autoDays;
+      }
+      
+      // 同步批次重算所有明細的外幣匯率（每筆明細會依據該筆自己的差旅日期前一天重算！）
+      updateAllExchangeRates(reportId);
+    }
+  } catch(e) {
+    console.error('Failed to auto-populate dates from flight info', e);
+  }
+  
+  // Calculate Business Trip Days
+  const startIdx = headers.indexOf('商旅起始日');
+  const endIdx = headers.indexOf('商旅結束日');
+  const daysIdx = headers.indexOf('商旅天數');
+  
+  let days = parseFloat(rowData[daysIdx]) || 0;
+  if (days === 0 && startIdx !== -1 && endIdx !== -1 && rowData[startIdx] && rowData[endIdx]) {
+    try {
+      const dStart = new Date(rowData[startIdx]);
+      const dEnd = new Date(rowData[endIdx]);
+      if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime())) {
+        const diffTime = Math.abs(dEnd.getTime() - dStart.getTime());
+        days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // inclusive
+        if (daysIdx !== -1) {
+          headerSheet.getRange(targetRowIndex, daysIdx + 1).setValue(days);
+        }
+      }
+    } catch(e) {}
+  }
+  
+  // 2. Calculate Grand Totals and Individual Category Totals
+  const categories = ['Flight', 'Accommodation', 'Rental Car', 'Transportation', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Lunch & Learn', 'Others'];
+  let grandTotalTWD = 0;
+  let personalTotalTWD = 0;
+  let advanceTotalTWD = 0;
+  
+  let catTotals = {
+    'Flight': 0,
+    'AccommodationPersonal': 0,
+    'AccommodationOverall': 0,
+    'RentalCarPersonal': 0,
+    'RentalCarOverall': 0,
+    'Transportation': 0,
+    'Gas': 0,
+    'Parking': 0,
+    'Internet': 0,
+    'Social': 0,
+    'Gift': 0,
+    'Luggage Fee': 0,
+    'Handing Fee': 0,
+    'Per Diem': 0,
+    'Lunch & Learn': 0,
+    'Others': 0
+  };
+  
+  categories.forEach(cat => {
+    try {
+      const items = sheetDataToJson(cat, ss, true).filter(r => String(r['報告編號']) === String(reportId));
+      items.forEach(item => {
+        const twdVal = parseFloat(item['TWD金額'] || 0);
+        const pTVal = parseFloat(item['TWD個人金額'] || item['TWD個人'] || 0);
+        const oTVal = parseFloat(item['TWD總體金額'] || item['TWD總額'] || item['TWD總額TWD'] || 0);
+        
+        if (cat === 'Accommodation') {
+          grandTotalTWD += oTVal;
+          personalTotalTWD += pTVal;
+          catTotals['AccommodationOverall'] += oTVal;
+          catTotals['AccommodationPersonal'] += pTVal;
+        } else if (cat === 'Rental Car') {
+          grandTotalTWD += oTVal;
+          personalTotalTWD += pTVal;
+          catTotals['RentalCarOverall'] += oTVal;
+          catTotals['RentalCarPersonal'] += pTVal;
+        } else if (cat === 'Advance Payment') {
+          // Pre-paid advances
+        } else {
+          grandTotalTWD += twdVal;
+          personalTotalTWD += twdVal;
+          catTotals[cat] += twdVal;
+        }
+      });
+    } catch(e) {}
+  });
+  
+  // Calculate Advance Payments separately
+  try {
+    const advItems = sheetDataToJson('Advance Payment', ss, true).filter(r => String(r['報告編號']) === String(reportId));
+    advItems.forEach(item => {
+      advanceTotalTWD += parseFloat(item['TWD金額'] || 0);
+    });
+  } catch(e) {}
+  
+  const rateUSDIdx = headers.indexOf('USD匯率');
+  const rateUSD = parseFloat(rowData[rateUSDIdx]) || 30.0; // fallback default
+  
+  const overallTWDIdx = headers.indexOf('合計TWD總體總額');
+  const personalTWDIdx = headers.indexOf('合計TWD個人總額');
+  const avgTWDIdx = headers.indexOf('合計TWD總體平均');
+  
+  const overallUSDIdx = headers.indexOf('合計USD總體總額');
+  const personalUSDIdx = headers.indexOf('合計USD個人總額');
+  const avgUSDIdx = headers.indexOf('合計USD總體平均');
+  
+  const advanceTWDIdx = headers.indexOf('預支費用總額');
+  
+  // 3. Write back Category Totals (TWD and USD)
+  const catFieldMap = {
+    '機票費總額': catTotals['Flight'],
+    '個人住宿費總額': catTotals['AccommodationPersonal'],
+    '總體住宿費總額': catTotals['AccommodationOverall'],
+    '個人租車費總額': catTotals['RentalCarPersonal'],
+    '總體租車費總額': catTotals['RentalCarOverall'],
+    '交通運輸費總額': catTotals['Transportation'],
+    '瓦斯費總額': catTotals['Gas'],
+    '停車費總額': catTotals['Parking'],
+    '網路費總額': catTotals['Internet'],
+    '社交費總額': catTotals['Social'],
+    '禮品費總額': catTotals['Gift'],
+    '行李費總額': catTotals['Luggage Fee'],
+    '手續費總額': catTotals['Handing Fee'],
+    '日支費總額': catTotals['Per Diem'],
+    '午餐與學費總額': catTotals['Lunch & Learn'],
+    '其他費用總額': catTotals['Others']
+  };
+  
+  for (let key in catFieldMap) {
+    const idx = headers.indexOf(key);
+    if (idx !== -1) {
+      headerSheet.getRange(targetRowIndex, idx + 1).setValue(Number((catFieldMap[key] || 0).toFixed(2)));
+    }
+  }
+  
+  const catUSDFieldMap = {
+    '機票費USD總額': catTotals['Flight'] / rateUSD,
+    '個人住宿費USD總額': catTotals['AccommodationPersonal'] / rateUSD,
+    '總體住宿費USD總額': catTotals['AccommodationOverall'] / rateUSD,
+    '個人租車費USD總額': catTotals['RentalCarPersonal'] / rateUSD,
+    '總體租車費USD總額': catTotals['RentalCarOverall'] / rateUSD,
+    '交通運輸費USD總額': catTotals['Transportation'] / rateUSD,
+    '瓦斯費USD總額': catTotals['Gas'] / rateUSD,
+    '停車費USD總額': catTotals['Parking'] / rateUSD,
+    '網路費USD總額': catTotals['Internet'] / rateUSD,
+    '社交費USD總額': catTotals['Social'] / rateUSD,
+    '禮品費USD總額': catTotals['Gift'] / rateUSD,
+    '行李費USD總額': catTotals['Luggage Fee'] / rateUSD,
+    '手續費USD總額': catTotals['Handing Fee'] / rateUSD,
+    '日支費USD總額': catTotals['Per Diem'] / rateUSD,
+    '午餐與學費USD總額': catTotals['Lunch & Learn'] / rateUSD,
+    '其他費用USD總額': catTotals['Others'] / rateUSD
+  };
+  
+  for (let key in catUSDFieldMap) {
+    const idx = headers.indexOf(key);
+    if (idx !== -1) {
+      headerSheet.getRange(targetRowIndex, idx + 1).setValue(Number((catUSDFieldMap[key] || 0).toFixed(2)));
+    }
+  }
+  
+  // 4. 動態收集並同步有使用到的外幣匯率至 Report Header
+  try {
+    let usedCurrencies = new Set();
+    categories.forEach(cat => {
+      try {
+        const items = sheetDataToJson(cat, ss, true).filter(r => String(r['報告編號']) === String(reportId));
+        items.forEach(item => {
+          if (item['幣別'] && String(item['幣別']).toUpperCase() !== 'TWD' && String(item['幣別']).toUpperCase() !== '') {
+            usedCurrencies.add(String(item['幣別']).toUpperCase());
+          }
+        });
+      } catch(e) {}
+    });
+    
+    let queryDate = '';
+    if (startIdx !== -1 && rowData[startIdx]) {
+      const dStart = new Date(rowData[startIdx]);
+      if (!isNaN(dStart.getTime())) {
+        dStart.setDate(dStart.getDate() - 1);
+        queryDate = Utilities.formatDate(dStart, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      }
+    }
+    if (!queryDate) {
+      const d = new Date();
+      d.setDate(d.getDate() - 1);
+      queryDate = Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    }
+    
+    usedCurrencies.forEach(currency => {
+      try {
+        let matchedRate = null;
+        // 遍歷所有分類明細，尋找該幣別最新一筆明細的匯率數值，作為前端大卡片展示的即期本行賣出匯率
+        for (let cat of categories) {
+          const items = sheetDataToJson(cat, ss, true).filter(r => String(r['報告編號']) === String(reportId) && String(r['幣別']).toUpperCase() === currency);
+          if (items.length > 0) {
+            const firstWithRate = items.find(item => parseFloat(item['匯率']) > 0);
+            if (firstWithRate) {
+              matchedRate = parseFloat(firstWithRate['匯率']);
+              break;
+            }
+          }
+        }
+        
+        // 如果明細中沒找到有匯率的（例如剛新增），才去查起始日前一天的匯率
+        if (matchedRate === null) {
+          const rateResult = getExchangeRate({ currency: currency, date: queryDate });
+          if (rateResult && rateResult.status === 'success') {
+            matchedRate = parseFloat(rateResult.rate) || 1.0;
+          }
+        }
+        
+        if (matchedRate !== null) {
+          const colName = `${currency}匯率`;
+          
+          let colIdx = headers.indexOf(colName);
+          if (colIdx === -1) {
+            // 動態追加欄位！
+            const newColNum = headers.length + 1;
+            headerSheet.getRange(1, newColNum).setValue(colName);
+            headers.push(colName); 
+            rowData.push('');      
+            colIdx = headers.length - 1;
+          }
+          
+          headerSheet.getRange(targetRowIndex, colIdx + 1).setValue(Number(matchedRate.toFixed(4)));
+          rowData[colIdx] = matchedRate;
+        }
+      } catch(e) {
+        console.warn(`Failed to process dynamic rate for ${currency}`, e);
+      }
+    });
+  } catch(e) {
+    console.error('Failed to auto sync used currencies to header', e);
+  }
+  
+  // 5. Apply Overall update to Report Header cells
+  if (overallTWDIdx !== -1) headerSheet.getRange(targetRowIndex, overallTWDIdx + 1).setValue(Number(grandTotalTWD.toFixed(2)));
+  if (personalTWDIdx !== -1) headerSheet.getRange(targetRowIndex, personalTWDIdx + 1).setValue(Number(personalTotalTWD.toFixed(2)));
+  if (avgTWDIdx !== -1) headerSheet.getRange(targetRowIndex, avgTWDIdx + 1).setValue(Number((days > 0 ? grandTotalTWD / days : grandTotalTWD).toFixed(2)));
+  
+  if (overallUSDIdx !== -1) headerSheet.getRange(targetRowIndex, overallUSDIdx + 1).setValue(Number((grandTotalTWD / rateUSD).toFixed(2)));
+  if (personalUSDIdx !== -1) headerSheet.getRange(targetRowIndex, personalUSDIdx + 1).setValue(Number((personalTotalTWD / rateUSD).toFixed(2)));
+  if (avgUSDIdx !== -1) headerSheet.getRange(targetRowIndex, avgUSDIdx + 1).setValue(Number(((days > 0 ? grandTotalTWD / days : grandTotalTWD) / rateUSD).toFixed(2)));
+  
+  if (advanceTWDIdx !== -1) headerSheet.getRange(targetRowIndex, advanceTWDIdx + 1).setValue(Number(advanceTotalTWD.toFixed(2)));
+  
+  invalidateCache('Report Header');
+}
+
+function updateAllExchangeRates(reportId) {
+  try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let categoriesToFetch = ALL_CATEGORIES;
-    
-    // Extract Header and Rate FIRST so they are available for precise USD logic
-    const headerSheet = getSheet('Report Header');
-    const headerData = headerSheet.getDataRange().getValues();
-    let rowIndex = -1;
-    for (let i = 0; i < headerData.length; i++) {
-        if (String(headerData[i][0]).trim() === String(reportId).trim()) { 
-            rowIndex = i + 1; 
-            break;
-        }
-    }
-    
-    if (rowIndex <= 0) return '';
-    
-    const headers = headerData[0];
-    const rowRange = headerSheet.getRange(rowIndex, 1, 1, headers.length);
-    const rowData = rowRange.getValues()[0];
-    
-    const findCol = (name) => headers.findIndex(h => String(h).trim() === name);
-
-    const rateCol = findCol('USD匯率');
-    let rate = 1; 
-    if (rateCol > -1) {
-        let val = Number(rowData[rateCol]);
-        if (val && val > 0) rate = val;
-    }
-
-    const myItemsMap = {};
-    categoriesToFetch.forEach(c => {
-        try {
-            const data = sheetDataToJson(c, ss);
-            myItemsMap[c] = data.filter(r => String(r['報告編號']) === String(reportId));
-        } catch(e) {
-            myItemsMap[c] = [];
-        }
-    });
-
-    const totalsPartial = {};
-    categoriesToFetch.forEach(cat => {
-        try {
-            const reportItems = myItemsMap[cat] || [];
-            let sumTWD = 0;
-            let sumUSD = 0;
-            
-            reportItems.forEach(item => {
-                 let valTWD = 0;
-                 if (cat === 'Accommodation' || cat === 'Rental Car') {
-                     valTWD = Number(String(item['TWD個人金額'] || 0).replace(/[^\d.-]/g, '')) || 0;
-                 } else {
-                     valTWD = Number(String(item['TWD金額'] || 0).replace(/[^\d.-]/g, '')) || 0;
-                 }
-                 sumTWD += valTWD;
-                 
-                 // Native USD exact
-                 const ccy = String(item['幣別'] || '').trim().toUpperCase();
-                 if (ccy === 'USD') {
-                     let rawAmt = 0;
-                     if (cat === 'Accommodation' || cat === 'Rental Car') {
-                         rawAmt = Number(String(item['個人金額'] || item['金額'] || 0).replace(/[^\d.-]/g, '')) || 0;
-                     } else {
-                         rawAmt = Number(String(item['金額'] || 0).replace(/[^\d.-]/g, '')) || 0;
-                     }
-                     sumUSD += rawAmt;
-                 } else {
-                     sumUSD += valTWD / rate;
-                 }
-            });
-            
-            if (cat === 'Flight') { totalsPartial['機票費總額'] = sumTWD; totalsPartial['機票費USD總額'] = sumUSD; }
-            if (cat === 'Transportation') { totalsPartial['交通運輸費總額'] = sumTWD; totalsPartial['交通運輸費USD總額'] = sumUSD; }
-            if (cat === 'Gas') { totalsPartial['瓦斯費總額'] = sumTWD; totalsPartial['瓦斯費USD總額'] = sumUSD; }
-            if (cat === 'Parking') { totalsPartial['停車費總額'] = sumTWD; totalsPartial['停車費USD總額'] = sumUSD; }
-            if (cat === 'Internet') { totalsPartial['網路費總額'] = sumTWD; totalsPartial['網路費USD總額'] = sumUSD; }
-            if (cat === 'Social') { totalsPartial['社交費總額'] = sumTWD; totalsPartial['社交費USD總額'] = sumUSD; }
-            if (cat === 'Gift') { totalsPartial['禮品費總額'] = sumTWD; totalsPartial['禮品費USD總額'] = sumUSD; }
-            if (cat === 'Luggage Fee') { totalsPartial['行李費總額'] = sumTWD; totalsPartial['行李費USD總額'] = sumUSD; }
-            if (cat === 'Handing Fee') { totalsPartial['手續費總額'] = sumTWD; totalsPartial['手續費USD總額'] = sumUSD; }
-            if (cat === 'Per Diem') { totalsPartial['日支費總額'] = sumTWD; totalsPartial['日支費USD總額'] = sumUSD; }
-            if (cat === 'Advance Payment') { totalsPartial['預支費用總額'] = sumTWD; totalsPartial['預支費用USD總額'] = sumUSD; }
-            if (cat === 'Lunch & Learn') { totalsPartial['午餐與學費總額'] = sumTWD; totalsPartial['午餐與學費USD總額'] = sumUSD; }
-            if (cat === 'Others') { totalsPartial['其他費用總額'] = sumTWD; totalsPartial['其他費用USD總額'] = sumUSD; }
-            
-            if (cat === 'Accommodation' || cat === 'Rental Car') {
-                const prefix = cat === 'Accommodation' ? '住宿' : '租車';
-                totalsPartial[`個人${prefix}費總額`] = sumTWD;
-                totalsPartial[`個人${prefix}費USD總額`] = sumUSD;
-                
-                let ovSumTWD = 0;
-                let ovSumUSD = 0;
-                reportItems.forEach(item => { 
-                    let ovTWD = Number(String(item['TWD總體金額'] || 0).replace(/[^\d.-]/g, '')) || 0;
-                    ovSumTWD += ovTWD;
-                    const ccy = String(item['幣別'] || '').trim().toUpperCase();
-                    if (ccy === 'USD') {
-                        ovSumUSD += Number(String(item['總體金額'] || item['金額'] || 0).replace(/[^\d.-]/g, '')) || 0;
-                    } else {
-                        ovSumUSD += ovTWD / rate;
-                    }
-                });
-                totalsPartial[`總體${prefix}費總額`] = ovSumTWD;
-                totalsPartial[`總體${prefix}費USD總額`] = ovSumUSD;
-            }
-        } catch(e) {}
-    });
-    
-      for (const [key, val] of Object.entries(totalsPartial)) {
-        let colIdx = findCol(key);
-        if (colIdx === -1) {
-          const newCol = headers.length + 1;
-          headerSheet.getRange(1, newCol).setValue(key);
-          headers.push(key);
-          colIdx = headers.length - 1;
-          rowData.push(val); 
-        } else {
-          rowData[colIdx] = val;
-        }
-      }
-      
-      let totalPersonalTWD = 0;
-      let totalOverallTWD = 0;
-      
-      const sumColsPersonal = ['機票費總額', '個人住宿費總額', '個人租車費總額', '交通運輸費總額', '瓦斯費總額', '停車費總額', '網路費總額', '社交費總額', '禮品費總額', '行李費總額', '手續費總額', '日支費總額', '午餐與學費總額', '其他費用總額'];
-      const sumColsOverall = ['機票費總額', '總體住宿費總額', '總體租車費總額', '交通運輸費總額', '瓦斯費總額', '停車費總額', '網路費總額', '社交費總額', '禮品費總額', '行李費總額', '手續費總額', '日支費總額', '午餐與學費總額', '其他費用總額'];
-
-      const parseSecureNum = (val) => {
-          if (val === undefined || val === null || val === '') return 0;
-          if (typeof val === 'number') return isNaN(val) ? 0 : val;
-          const cleaned = String(val).replace(/[^\d.-]/g, '');
-          const n = Number(cleaned);
-          return isNaN(n) ? 0 : n;
-      };
-
-      sumColsPersonal.forEach(c => {
-          let idx = findCol(c);
-          if (idx > -1) totalPersonalTWD += parseSecureNum(rowData[idx]);
-      });
-      sumColsOverall.forEach(c => {
-          let idx = findCol(c);
-          if (idx > -1) totalOverallTWD += parseSecureNum(rowData[idx]);
-      });
-      
-      const currencyCol = findCol('支付幣別');
-      let paymentCurrency = 'TWD';
-      if (currencyCol > -1) {
-          let val = rowData[currencyCol];
-          if (val) paymentCurrency = val;
-      }
-      
-      let allDates = [];
-      let diffDays = 0;
-      let endDateStr = '';
-      const doDateCalc = (!triggerCategory || triggerCategory === 'Flight');
-
-      if (doDateCalc) {
-          try {
-              const myFlights = myItemsMap['Flight'];
-              if (myFlights) {
-                  myFlights.forEach(item => {
-                      const parseDateStr = (dateVal) => {
-                          let dateObj = null;
-                          if (dateVal instanceof Date) return dateVal;
-                          if (typeof dateVal === 'string') {
-                              dateObj = new Date(dateVal.replace(/-/g, '/'));
-                          }
-                          return dateObj;
-                      };
-                      if (item['日期']) {
-                          let obj = parseDateStr(item['日期']);
-                          if (obj && !isNaN(obj.getTime())) allDates.push(obj.getTime());
-                      }
-                      if (item['行程類型'] === 'round-trip' && item['回程日期']) {
-                          let objRet = parseDateStr(item['回程日期']);
-                          if (objRet && !isNaN(objRet.getTime())) allDates.push(objRet.getTime());
-                      }
-                  });
-              }
-          } catch(e) {}
-      } else {
-          const cachedStartCol = findCol('商旅起始日');
-          if (cachedStartCol > -1) {
-               let val = String(rowData[cachedStartCol]);
-               if (rowData[cachedStartCol] instanceof Date) {
-                   const d = rowData[cachedStartCol];
-                   val = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
-               }
-               if (val) startDateStr = val;
-          }
-      }
-      
-      if (allDates.length > 0) {
-          const minDate = new Date(Math.min(...allDates));
-          const maxDate = new Date(Math.max(...allDates));
-          
-          const formatDate = (date) => date.getFullYear() + '/' + String(date.getMonth() + 1).padStart(2, '0') + '/' + String(date.getDate()).padStart(2, '0');
-          
-          startDateStr = formatDate(minDate);
-          endDateStr = formatDate(maxDate);
-          
-          const utc1 = Date.UTC(minDate.getFullYear(), minDate.getMonth(), minDate.getDate());
-          const utc2 = Date.UTC(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
-          diffDays = Math.floor((utc2 - utc1) / (1000 * 60 * 60 * 24)) + 1;
-      }
-
-      const colDays = findCol('商旅天數');
-      const colStart = findCol('商旅起始日');
-      const colEnd = findCol('商旅結束日');
-      
-      if (doDateCalc) {
-          if (colDays > -1) rowData[colDays] = (diffDays > 0 ? diffDays : 0);
-          if (colStart > -1) rowData[colStart] = startDateStr;
-          if (colEnd > -1) rowData[colEnd] = endDateStr;
-      } else {
-          if (colDays > -1) {
-              const existingDays = Number(rowData[colDays]);
-              diffDays = isNaN(existingDays) ? 0 : existingDays;
-          }
-      }
-
-      const colTotalPersonalTWD = findCol('合計TWD個人總額');
-      if (colTotalPersonalTWD > -1) rowData[colTotalPersonalTWD] = totalPersonalTWD;
-      
-      const colTotalOverallTWD = findCol('合計TWD總體總額');
-      if (colTotalOverallTWD > -1) rowData[colTotalOverallTWD] = totalOverallTWD;
-
-      let totalPersonalUSD = 0;
-      let totalOverallUSD = 0;
-      
-      const sumColsPersonalUSD = sumColsPersonal.map(n => n.replace('總額', 'USD總額'));
-      const sumColsOverallUSD = sumColsOverall.map(n => n.replace('總額', 'USD總額'));
-
-      // Use native USD if tracked, else fallback to TWD/rate
-      sumColsPersonalUSD.forEach((c, i) => {
-          let idx = findCol(c);
-          if (idx > -1) totalPersonalUSD += parseSecureNum(rowData[idx]);
-          else {
-              let sibIdx = findCol(sumColsPersonal[i]);
-              if (sibIdx > -1) totalPersonalUSD += parseSecureNum(rowData[sibIdx]) / rate;
-          }
-      });
-      
-      sumColsOverallUSD.forEach((c, i) => {
-          let idx = findCol(c);
-          if (idx > -1) totalOverallUSD += parseSecureNum(rowData[idx]);
-          else {
-              let sibIdx = findCol(sumColsOverall[i]);
-              if (sibIdx > -1) totalOverallUSD += parseSecureNum(rowData[sibIdx]) / rate;
-          }
-      });
-      
-      const colTotalPersonalUSD = findCol('合計USD個人總額');
-      if (colTotalPersonalUSD > -1) rowData[colTotalPersonalUSD] = totalPersonalUSD;
-      
-      const colTotalOverallUSD = findCol('合計USD總體總額');
-      if (colTotalOverallUSD > -1) rowData[colTotalOverallUSD] = totalOverallUSD;
-      
-      let avgPersonalTWD = 0;
-      let avgOverallTWD = 0;
-      let avgPersonalUSD = 0;
-      let avgOverallUSD = 0;
-      
-      if (diffDays > 0) {
-          avgPersonalTWD = totalPersonalTWD / diffDays;
-          avgOverallTWD = totalOverallTWD / diffDays;
-          avgPersonalUSD = totalPersonalUSD / diffDays;
-          avgOverallUSD = totalOverallUSD / diffDays;
-      }
-      
-      const colAvgPersonalTWD = findCol('合計TWD個人平均');
-      if (colAvgPersonalTWD > -1) rowData[colAvgPersonalTWD] = avgPersonalTWD;
-      
-      const colAvgOverallTWD = findCol('合計TWD總體平均');
-      if (colAvgOverallTWD > -1) rowData[colAvgOverallTWD] = avgOverallTWD;
-      
-      const colAvgPersonalUSD = findCol('合計USD個人平均');
-      if (colAvgPersonalUSD > -1) rowData[colAvgPersonalUSD] = avgPersonalUSD;
-      
-      const colAvgOverallUSD = findCol('合計USD總體平均');
-      if (colAvgOverallUSD > -1) rowData[colAvgOverallUSD] = avgOverallUSD;
-      
-      if (diffDays === 0) {
-          const resetCols = ['合計TWD個人平均', '合計TWD總體平均', '合計USD個人平均', '合計USD總體平均'];
-          resetCols.forEach(colName => {
-              const cIdx = findCol(colName);
-              if (cIdx > -1) rowData[cIdx] = 0;
-          });
-      }
-      
-      const expandedRange = headerSheet.getRange(rowIndex, 1, 1, headers.length);
-      expandedRange.setValues([rowData]);
-      invalidateCache('Report Header'); // Fix stale cache ghosting!
-    
-    return startDateStr;
-}
-
-/**
- * Updates Exchange Rate and Recalculates all dependent TWD amounts based on Trip Start Date
- */
-function updateAllExchangeRates(reportId, startDateStr, targetCategory = null, forceHeaderRateUpdate = false) {
-    if (!startDateStr || startDateStr === '-') return;
-
-    // Gather existing rate so we don't aggressively poll external APIs on minor item edits
-    const headerSheet = getSheet('Report Header');
-    const headerData = headerSheet.getDataRange().getValues();
-    let headerRowIndex = -1;
-    let existingUsdRate = 1.0;
-    for (let i = 1; i < headerData.length; i++) {
-        if (String(headerData[i][0]) === String(reportId)) {
-            headerRowIndex = i + 1; 
-            const rateCol = headerData[0].indexOf('USD匯率');
-            if (rateCol > -1) {
-                const val = Number(headerData[i][rateCol]);
-                if (val > 0) existingUsdRate = val;
-            }
-            break;
-        }
-    }
-
-    // Cache to prevent multiple BOT API calls for the same currency
-    const rateCache = { 'TWD': 1.0 }; 
-    
-    // Function to get rate
-    const getRate = (currency) => {
-        if (rateCache[currency] !== undefined) return rateCache[currency];
-        const res = getExchangeRate({ currency, date: startDateStr });
-        if (res && res.status === 'success' && res.rate) {
-            rateCache[currency] = res.rate;
-            Logger.log(`[RateUpdate] Fetched ${currency} rate = ${res.rate} for ${startDateStr}`);
-        } else {
-            rateCache[currency] = 1.0; // Fallback
-        }
-        return rateCache[currency];
-    };
-
-    let categories = ['Flight', 'Accommodation', 'Rental Car', 'Taxi', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Advance Payment', 'Lunch & Learn', 'Others'];
-    
-    if (targetCategory) {
-        categories = [targetCategory]; // Restrict target
-    }
+    const categories = ['Flight', 'Accommodation', 'Rental Car', 'Transportation', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Lunch & Learn', 'Others', 'Advance Payment'];
+    const fallbackDate = getTripStartDateMinusOneDay(reportId);
     
     categories.forEach(cat => {
-        try {
-            // Check cache upstream to completely avoid reading empty sheets physically
-            const cachedJson = sheetDataToJson(cat);
-            const hasItems = cachedJson.some(row => String(row['報告編號']) === String(reportId));
-            if (!hasItems) return; // INSTANT SKIP
+      try {
+        const sheet = ss.getSheetByName(cat);
+        if (!sheet) return;
+        
+        const dataRange = sheet.getDataRange();
+        const data = dataRange.getValues();
+        if (data.length < 2) return;
+        
+        const headers = data[0];
+        const repIdx = headers.indexOf('報告編號');
+        const curIdx = headers.indexOf('幣別');
+        const amtIdx = headers.indexOf('金額');
+        const rateIdx = headers.indexOf('匯率');
+        const twdIdx = headers.indexOf('TWD金額');
+        
+        // 尋找該分類對應的日期欄位
+        let dateHeaderName = '日期';
+        if (cat === 'Accommodation') dateHeaderName = '入住日期';
+        else if (cat === 'Rental Car') dateHeaderName = '借車日期';
+        else if (cat === 'Parking' || cat === 'Per Diem') dateHeaderName = '開始日期';
+        
+        const dateIdx = headers.indexOf(dateHeaderName);
+        
+        if (repIdx === -1 || curIdx === -1 || amtIdx === -1 || twdIdx === -1) return;
+        
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][repIdx]) === String(reportId)) {
+            const currency = String(data[i][curIdx]).toUpperCase();
+            const amount = parseFloat(data[i][amtIdx]) || 0;
             
-            const sheet = getSheet(cat);
-            if (!sheet) return;
-            const rawValues = sheet.getDataRange().getValues();
-            if (rawValues.length <= 1) return;
+            // 動態從該行明細中取出差旅日期
+            let itemDateVal = dateIdx !== -1 ? data[i][dateIdx] : null;
+            let queryDate = '';
             
-            const sheetHeaders = rawValues[0];
-            const idxId = sheetHeaders.indexOf('報告編號');
-            const idxCurrency = sheetHeaders.indexOf('幣別');
-            const idxRate = sheetHeaders.indexOf('匯率');
-            const idxAmount = sheetHeaders.indexOf('金額');
-            const idxTwdAmount = sheetHeaders.indexOf('TWD金額');
-            
-            const idxPersonal = sheetHeaders.indexOf('個人金額');
-            const idxTwdPersonal = sheetHeaders.indexOf('TWD個人金額');
-            const idxAdvance = sheetHeaders.indexOf('代墊金額');
-            const idxTwdAdvance = sheetHeaders.indexOf('TWD代墊金額');
-            const idxOverall = sheetHeaders.indexOf('總體金額');
-            const idxTwdOverall = sheetHeaders.indexOf('TWD總體金額');
-            
-            let hasChanges = false;
-            for (let i = 1; i < rawValues.length; i++) {
-                 if (String(rawValues[i][idxId]) === String(reportId)) {
-                     const currency = String(rawValues[i][idxCurrency]).trim().toUpperCase();
-                     
-                     if (currency !== '') {
-                         const rowRate = currency === 'TWD' ? 1.0 : getRate(currency);
-                         
-                         if (idxRate > -1) {
-                             rawValues[i][idxRate] = rowRate;
-                             hasChanges = true;
-                         }
-                         
-                         if (cat === 'Accommodation' || cat === 'Rental Car') {
-                             if (idxPersonal > -1 && idxTwdPersonal > -1) {
-                                 const val = Number(String(rawValues[i][idxPersonal]).replace(/[^\d.-]/g, '')) || 0;
-                                 rawValues[i][idxTwdPersonal] = Math.round(val * rowRate);
-                                 hasChanges = true;
-                             }
-                             if (idxAdvance > -1 && idxTwdAdvance > -1) {
-                                 const val = Number(String(rawValues[i][idxAdvance]).replace(/[^\d.-]/g, '')) || 0;
-                                 rawValues[i][idxTwdAdvance] = Math.round(val * rowRate);
-                                 hasChanges = true;
-                             }
-                             if (idxOverall > -1 && idxTwdOverall > -1) {
-                                 const val = Number(String(rawValues[i][idxOverall]).replace(/[^\d.-]/g, '')) || 0;
-                                 rawValues[i][idxTwdOverall] = Math.round(val * rowRate);
-                                 hasChanges = true;
-                             }
-                         } else {
-                             // Normal forms
-                             if (idxAmount > -1 && idxTwdAmount > -1) {
-                                 const val = Number(String(rawValues[i][idxAmount]).replace(/[^\d.-]/g, '')) || 0;
-                                 rawValues[i][idxTwdAmount] = Math.round(val * rowRate);
-                                 hasChanges = true;
-                             }
-                         }
-                     }
-                 }
+            if (itemDateVal) {
+              const d = new Date(itemDateVal);
+              if (!isNaN(d.getTime())) {
+                d.setDate(d.getDate() - 1);
+                queryDate = Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+              }
             }
-            if (hasChanges) {
-                // Bulk write back to sheet natively
-                sheet.getRange(1, 1, rawValues.length, sheetHeaders.length).setValues(rawValues);
-                invalidateCache(cat);
+            
+            // Fallback
+            if (!queryDate) {
+              queryDate = fallbackDate;
             }
-        } catch(e) {
-            Logger.log('Error updating rates for ' + cat + ': ' + e);
+            
+            let rate = 1.0;
+            if (currency !== 'TWD' && currency !== '') {
+              try {
+                const rateResult = getExchangeRate({ currency: currency, date: queryDate });
+                if (rateResult && rateResult.status === 'success') {
+                  rate = parseFloat(rateResult.rate) || 1.0;
+                }
+              } catch(e) {
+                console.warn('Failed to fetch rate inside updateAllExchangeRates', e);
+              }
+            }
+            
+            if (rateIdx !== -1) {
+              sheet.getRange(i + 1, rateIdx + 1).setValue(rate);
+            }
+            sheet.getRange(i + 1, twdIdx + 1).setValue(Number((amount * rate).toFixed(2)));
+            
+            // 特殊加總折算
+            if (cat === 'Accommodation' || cat === 'Rental Car') {
+              const personalIdx = headers.indexOf('個人金額');
+              const twdPersonalIdx = headers.indexOf('TWD個人金額');
+              const overallIdx = headers.indexOf('總體金額');
+              const twdOverallIdx = headers.indexOf('TWD總體金額');
+              const advanceIdx = headers.indexOf('代墊金額');
+              const twdAdvanceIdx = headers.indexOf('TWD代墊金額');
+              
+              if (personalIdx !== -1 && twdPersonalIdx !== -1) {
+                const amt = parseFloat(data[i][personalIdx]) || 0;
+                sheet.getRange(i + 1, twdPersonalIdx + 1).setValue(Number((amt * rate).toFixed(2)));
+              }
+              if (overallIdx !== -1 && twdOverallIdx !== -1) {
+                const amt = parseFloat(data[i][overallIdx]) || 0;
+                sheet.getRange(i + 1, twdOverallIdx + 1).setValue(Number((amt * rate).toFixed(2)));
+              }
+              if (advanceIdx !== -1 && twdAdvanceIdx !== -1) {
+                const amt = parseFloat(data[i][advanceIdx]) || 0;
+                sheet.getRange(i + 1, twdAdvanceIdx + 1).setValue(Number((amt * rate).toFixed(2)));
+              }
+            }
+          }
         }
+        
+        invalidateCache(cat);
+      } catch(e) {}
     });
+  } catch (e) {
+    console.error('Failed to update all exchange rates', e);
+  }
+}
 
-    // 2. Update Header Rate (USD is the primary reference)
-    const newUsdRate = getRate('USD');
+function getTripStartDateMinusOneDay(reportId) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const headerSheet = ss.getSheetByName('Report Header');
+    const headerData = headerSheet.getDataRange().getValues();
+    const headers = headerData[0];
     
-    if (headerRowIndex > -1 && (forceHeaderRateUpdate || existingUsdRate <= 1.0)) {
-        const headers = headerData[0];
-        const rateCol = headers.indexOf('USD匯率');
-        if (rateCol > -1) {
-            headerSheet.getRange(headerRowIndex, rateCol + 1).setValue(newUsdRate);
-            invalidateCache('Report Header');
+    const repIdx = headers.indexOf('報告編號');
+    const startIdx = headers.indexOf('商旅起始日');
+    
+    if (repIdx !== -1 && startIdx !== -1) {
+      for (let i = 1; i < headerData.length; i++) {
+        if (String(headerData[i][repIdx]) === String(reportId)) {
+          const rawVal = headerData[i][startIdx];
+          if (rawVal) {
+            const d = new Date(rawVal);
+            if (!isNaN(d.getTime())) {
+              d.setDate(d.getDate() - 1);
+              const yyyy = d.getFullYear();
+              const mm = String(d.getMonth() + 1).padStart(2, '0');
+              const dd = String(d.getDate()).padStart(2, '0');
+              return `${yyyy}-${mm}-${dd}`;
+            }
+          }
+          break;
         }
+      }
     }
+  } catch (e) {
+    console.error('Failed to get trip start date minus one day', e);
+  }
+  
+  // Fallback to yesterday
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// 輔助函數：取得每筆明細「該筆差旅日期前一天」作為匯率查詢日期
+function getItemDateMinusOneDay(category, itemData, reportId) {
+  const resolvedCategory = getResolvedSheetName(category);
+  let rawDate = null;
+  if (resolvedCategory === 'Accommodation') {
+    rawDate = itemData['入住日期'];
+  } else if (resolvedCategory === 'Rental Car') {
+    rawDate = itemData['借車日期'];
+  } else if (resolvedCategory === 'Parking' || resolvedCategory === 'Per Diem') {
+    rawDate = itemData['開始日期'];
+  } else {
+    rawDate = itemData['日期'];
+  }
+  
+  if (rawDate) {
+    const d = new Date(rawDate);
+    if (!isNaN(d.getTime())) {
+      d.setDate(d.getDate() - 1);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+  }
+  
+  // Fallback to trip start date minus one day
+  if (reportId) {
+    const tripStartQuery = getTripStartDateMinusOneDay(reportId);
+    if (tripStartQuery) return tripStartQuery;
+  }
+  
+  // Fallback to yesterday
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }

@@ -103,6 +103,9 @@ function doPost(e) {
       case 'getAllCountries':
         result = getAllCountries();
         break;
+      case 'debugDatabase':
+        result = debugDatabase(payload);
+        break;
 
       default:
         throw new Error(`Unknown action: ${action}`);
@@ -134,7 +137,7 @@ function getReportFullData(payload) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   
   // 1. Get Header
-  const headerDataRaw = sheetDataToJson('Report Header', ss);
+  const headerDataRaw = sheetDataToJson('Report Header', ss, true);
   let header = headerDataRaw.find(r => String(r['報告編號']) === String(reportId));
   
   if (!header) {
@@ -143,7 +146,7 @@ function getReportFullData(payload) {
 
   // Security Check
   if (String(header['用戶編號']) !== String(userId)) {
-      const memberDataRaw = sheetDataToJson('Member', ss);
+      const memberDataRaw = sheetDataToJson('Member', ss, true);
       const member = memberDataRaw.find(m => String(m['用戶編號']) === String(userId));
       
       let isAdmin = false;
@@ -165,7 +168,7 @@ function getReportFullData(payload) {
   // Populate true user name if missing
   if (!header['員工姓名'] || header['員工姓名'] === '') {
       try {
-          const memberDataRaw = sheetDataToJson('Member', ss);
+          const memberDataRaw = sheetDataToJson('Member', ss, true);
           const member = memberDataRaw.find(m => String(m['用戶編號']) === String(header['用戶編號']));
           if (member) {
               header['員工姓名'] = member['用戶名稱'];
@@ -181,7 +184,7 @@ function getReportFullData(payload) {
   categories.forEach(cat => {
       let reportItems = [];
       try {
-          const cachedData = sheetDataToJson(cat, ss);
+          const cachedData = sheetDataToJson(cat, ss, true);
           reportItems = cachedData.filter(r => String(r['報告編號']) === String(reportId));
           // Sort by sequence if applicable
           if (reportItems.length > 0 && reportItems[0]['次序'] !== undefined) {
@@ -470,6 +473,66 @@ function updateReportName(payload) {
     }
   } else {
     return { status: 'error', message: 'System busy, try again later' };
+  }
+}
+
+function updateReportTripInfo(payload) {
+  const { reportId, days, startDate, endDate, destination, paymentCurrency } = payload;
+  if (!reportId) return { status: 'error', message: 'Missing reportId' };
+  
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(10000)) {
+    try {
+      const headerSheet = getSheet('Report Header');
+      const data = headerSheet.getDataRange().getValues();
+      const headers = data[0];
+      
+      const repIdx = headers.indexOf('報告編號');
+      if (repIdx === -1) return { status: 'error', message: 'Header invalid' };
+      
+      let rowIndex = -1;
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][repIdx]) === String(reportId)) {
+          rowIndex = i + 1;
+          break;
+        }
+      }
+      
+      if (rowIndex === -1) return { status: 'error', message: 'Report not found' };
+      
+      const daysIdx = headers.indexOf('商旅天數');
+      const startIdx = headers.indexOf('商旅起始日');
+      const endIdx = headers.indexOf('商旅結束日');
+      const destIdx = headers.indexOf('出差國家');
+      const curIdx = headers.indexOf('支付幣別');
+      const timeIdx = headers.indexOf('最後修改時間');
+      
+      if (daysIdx !== -1 && days !== undefined) headerSheet.getRange(rowIndex, daysIdx + 1).setValue(days);
+      if (startIdx !== -1 && startDate !== undefined) headerSheet.getRange(rowIndex, startIdx + 1).setValue(startDate);
+      if (endIdx !== -1 && endDate !== undefined) headerSheet.getRange(rowIndex, endIdx + 1).setValue(endDate);
+      if (destIdx !== -1 && destination !== undefined) headerSheet.getRange(rowIndex, destIdx + 1).setValue(destination);
+      if (curIdx !== -1 && paymentCurrency !== undefined) headerSheet.getRange(rowIndex, curIdx + 1).setValue(paymentCurrency);
+      if (timeIdx !== -1) headerSheet.getRange(rowIndex, timeIdx + 1).setValue(new Date());
+      
+      SpreadsheetApp.flush();
+      invalidateCache('Report Header');
+      
+      // 財務規則！當商旅起始日被修改後，所有已存在的外幣明細的匯率與台幣金額都應該要自動重算！
+      if (startDate) {
+        updateAllExchangeRates(reportId, startDate);
+      }
+      
+      // 全局重算 TWD 累計
+      recalculateHeader(reportId, 'Flight');
+      
+      return { status: 'success', message: 'Trip info updated successfully' };
+    } catch(e) {
+      return { status: 'error', message: e.toString() };
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { status: 'error', message: 'Database busy' };
   }
 }
 
@@ -966,5 +1029,105 @@ function updateMemberPermission(payload) {
     }
   } else {
     return { status: 'error', message: 'System busy, please try again' };
+  }
+}
+
+function createNewReport(payload) {
+  const { userId } = payload;
+  if (!userId) {
+    return { status: 'error', message: 'Missing userId' };
+  }
+  
+  const lock = LockService.getScriptLock();
+  if (lock.tryLock(10000)) {
+    try {
+      const headerSheet = getSheet('Report Header');
+      const headerData = headerSheet.getDataRange().getValues();
+      const headers = headerData[0];
+      
+      // 1. Generate new Report ID
+      let lastNum = 0;
+      if (headerData.length > 1) {
+          for (let i = 1; i < headerData.length; i++) {
+             const p = String(headerData[i][0]).split('-');
+             if (p.length === 2 && (p[0] === 'BR' || p[0] === 'REP')) {
+                const n = parseInt(p[1], 10);
+                if (n > lastNum) lastNum = n;
+             }
+          }
+      }
+      const newNum = lastNum + 1;
+      const newReportId = 'BR-' + String(newNum).padStart(8, '0');
+      
+      // 2. Fetch User Info (Employee name, Job Title, Department) from Member sheet
+      const memberData = sheetDataToJson('Member');
+      const member = memberData.find(m => String(m['用戶編號']) === String(userId));
+      const userName = member ? member['用戶名稱'] : '';
+      const userDept = member ? (member['部門名稱'] || '') : '';
+      const userTitle = member ? (member['職稱'] || '') : '';
+      
+      // 3. Create new row based on headers
+      const newRow = new Array(headers.length).fill('');
+      
+      const idIdx = headers.indexOf('報告編號');
+      const userIdx = headers.indexOf('用戶編號');
+      const nameIdx = headers.indexOf('員工姓名');
+      const deptIdx = headers.indexOf('部門名稱');
+      const titleIdx = headers.indexOf('職稱');
+      const timeIdx = headers.indexOf('建立時間');
+      const modIdx = headers.indexOf('最後修改時間');
+      const repNameIdx = headers.indexOf('報告名稱');
+      const statusIdx = headers.indexOf('狀態');
+      const currencyIdx = headers.indexOf('支付幣別');
+      
+      if (idIdx !== -1) newRow[idIdx] = newReportId;
+      if (userIdx !== -1) newRow[userIdx] = userId;
+      if (nameIdx !== -1) newRow[nameIdx] = userName;
+      if (deptIdx !== -1) newRow[deptIdx] = userDept;
+      if (titleIdx !== -1) newRow[titleIdx] = userTitle;
+      if (timeIdx !== -1) newRow[timeIdx] = new Date();
+      if (modIdx !== -1) newRow[modIdx] = new Date();
+      if (repNameIdx !== -1) newRow[repNameIdx] = '商務旅行費用報告_' + newReportId;
+      if (currencyIdx !== -1) newRow[currencyIdx] = 'TWD';
+      
+      headerSheet.appendRow(newRow);
+      SpreadsheetApp.flush();
+      
+      invalidateCache('Report Header');
+      
+      return { status: 'success', reportId: newReportId };
+      
+    } catch(e) {
+      return { status: 'error', message: e.toString() };
+    } finally {
+      lock.releaseLock();
+    }
+  } else {
+    return { status: 'error', message: 'System busy, try again later' };
+  }
+}
+
+function debugDatabase(payload) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const headerSheet = ss.getSheetByName('Report Header');
+    const flightSheet = ss.getSheetByName('Flight');
+    const memberSheet = ss.getSheetByName('Member');
+    
+    const headerValues = headerSheet.getDataRange().getValues();
+    const flightValues = flightSheet.getDataRange().getValues();
+    const memberValues = memberSheet.getDataRange().getValues();
+    
+    return {
+      status: 'success',
+      headerColumns: headerValues[0],
+      flightColumns: flightValues[0],
+      memberColumns: memberValues[0],
+      headers: headerValues.slice(-5),
+      flights: flightValues.slice(-5),
+      members: memberValues.slice(-5)
+    };
+  } catch(e) {
+    return { status: 'error', message: e.toString() };
   }
 }
