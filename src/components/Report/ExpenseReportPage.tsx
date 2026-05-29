@@ -37,23 +37,52 @@ const ExpenseReportPage: React.FC = () => {
         );
     }
 
-    const isUSD = reportData.summary.paymentCurrency === 'USD';
-    const curSym = isUSD ? 'USD' : 'TWD';
-    const altCurSym = isUSD ? 'TWD' : 'USD';
 
-    // Main Totals
-    const dispTotalOverall = isUSD ? reportData.summary.totalUSD : reportData.summary.totalTWD;
-    const dispTotalPersonal = isUSD ? reportData.summary.personalUSD : reportData.summary.personalTWD;
-    const dispAdvance = isUSD ? (reportData.summary.advancePaymentTWD / (reportData.summary.rateUSD || 1)) : reportData.summary.advancePaymentTWD;
-    const dispPayable = dispTotalOverall - dispAdvance;
-    const dispAvgDay = isUSD ? reportData.summary.avgDayUSD : reportData.summary.avgDayTWD;
-
-    // Alt Totals (for the bottom 2 rows)
-    const altTotalOverall = isUSD ? reportData.summary.totalTWD : reportData.summary.totalUSD;
-    const altTotalPersonal = isUSD ? reportData.summary.personalTWD : (reportData.summary.rateUSD > 0 ? reportData.summary.personalTWD / reportData.summary.rateUSD : 0);
-    const altAvgDay = isUSD ? reportData.summary.avgDayTWD : reportData.summary.avgDayUSD;
 
     const { signOut } = useAuth();
+
+    // 動態掃描本次差旅實際使用到的外幣與匯率，且同一幣別僅顯示一次
+    const getUsedRates = () => {
+        if (!reportData || !reportData.sections) return {};
+        const ratesMap: Record<string, Set<number>> = {};
+        
+        reportData.sections.forEach(section => {
+            if (Array.isArray(section.data)) {
+                section.data.forEach((item: any) => {
+                    const currency = String(item['幣別'] || '').toUpperCase();
+                    if (currency && currency !== 'TWD') {
+                        let rateVal = parseFloat(item['匯率']);
+                        
+                        // 自癒計算
+                        if (isNaN(rateVal) || rateVal <= 0) {
+                            const amt = parseFloat(item['金額'] || item['個人金額'] || item['總體金額'] || 0);
+                            const twdAmt = parseFloat(item['TWD金額'] || item['TWD個人金額'] || item['TWD總體金額'] || 0);
+                            if (amt > 0 && twdAmt > 0) {
+                                rateVal = twdAmt / amt;
+                            }
+                        }
+                        
+                        if (!isNaN(rateVal) && rateVal > 0) {
+                            if (!ratesMap[currency]) {
+                                ratesMap[currency] = new Set<number>();
+                            }
+                            ratesMap[currency].add(Number(rateVal.toFixed(4)));
+                        }
+                    }
+                });
+            }
+        });
+        
+        const finalRates: Record<string, string> = {};
+        Object.keys(ratesMap).forEach(cur => {
+            const sortedRates = Array.from(ratesMap[cur]).sort((a, b) => a - b);
+            finalRates[cur] = sortedRates.map(r => Number(r.toFixed(2)).toString()).join(' / ');
+        });
+        
+        return finalRates;
+    };
+
+    const usedRates = getUsedRates();
 
     const handleLogout = () => {
         signOut();
@@ -79,12 +108,22 @@ const ExpenseReportPage: React.FC = () => {
                         <h1 className="text-2xl font-bold text-gray-800 mb-2 leading-tight">
                             {reportData.summary.reportName || `${t('app_title')} - ${reportData.reportId}`}
                         </h1>
-                        <div className="text-base text-gray-600 flex flex-wrap gap-x-6 gap-y-2">
+                        <div className="text-base text-gray-600 flex flex-wrap gap-x-6 gap-y-2 mb-1">
                             <span>{t('user')}: <span className="font-medium text-gray-700">{reportData.user}</span></span>
                             <span>{t('days')}: {reportData.summary.days}</span>
                             <span>{t('rate_usd')}: {reportData.summary.rateUSD}</span>
                             <span>{t('period')}: {reportData.summary.period}</span>
                         </div>
+                        {Object.keys(usedRates).length > 0 && (
+                            <div className="flex flex-wrap gap-2 pt-2 border-t border-dashed border-gray-200 mt-2">
+                                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider self-center mr-1">實際使用匯率:</span>
+                                {Object.keys(usedRates).map(cur => (
+                                    <span key={cur} className="bg-emerald-50 text-emerald-800 text-xs px-2.5 py-1 rounded-md border border-emerald-100 font-bold">
+                                        {cur}：{usedRates[cur]}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div className="flex gap-3 items-center">
                         <button
@@ -128,7 +167,7 @@ const ExpenseReportPage: React.FC = () => {
                        No, `html - to - image` captures what is visible.
                        
                        Better Strategy: Wrap the info part of the Top Bar in a div with ID 'report-header-section'.
-                    */}
+                     */}
 
                     {/* We need to separate the header info from buttons for the PDF capture */}
                     <div className="hidden" id="report-header-section">
@@ -136,7 +175,7 @@ const ExpenseReportPage: React.FC = () => {
                              No, html-to-image captures rendered element. If it's hidden (display:none), it might render empty.
                              Safest way: Capture the visible header info.
                              Let's add ID to the left part of the top bar.
-                         */}
+                          */}
                     </div>
 
                     {/* Let's modify the Top Bar to be capture-friendly or just capture the essential parts below. 
@@ -144,56 +183,83 @@ const ExpenseReportPage: React.FC = () => {
                        Usually includes Header.
                        
                        Let's wrap the "Header Info" inside the top bar with the ID.
-                    */}
+                     */}
 
                     {/* Summary Cards */}
                     <div id="report-summary-section" className="mb-6 bg-slate-200 p-4 rounded-xl">
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div className="md:col-span-1 bg-slate-600 text-white rounded-xl overflow-hidden shadow-md">
-                                <div className="bg-slate-800 p-3 text-center font-bold border-b border-slate-500">{t('expense_summary')}</div>
+                            <div className="md:col-span-1 bg-slate-700 text-white rounded-xl overflow-hidden shadow-md">
+                                <div className="bg-slate-800 p-3 text-center font-bold border-b border-slate-600">{t('expense_summary', '支出摘要')}</div>
                                 <div className="p-4 grid grid-cols-1 gap-5 text-base">
-                                    <div className="flex justify-between border-b border-slate-500 pb-2 text-red-200">
-                                        <span className="font-medium">{t('advance_payment_summary', '預支費用')}({curSym}):</span>
-                                        <div className="text-right">
-                                            <span>{dispAdvance.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 2 : 0 })}</span>
+                                    {/* 預支費用 */}
+                                    <div className="flex flex-col border-b border-slate-600 pb-2 text-red-200">
+                                        <div className="flex justify-between">
+                                            <span className="font-semibold text-sm">{t('advance_payment_summary', '預支費用')}：</span>
+                                            <span className="font-bold text-base">TWD {Math.round(reportData.summary.advancePaymentTWD).toLocaleString()}</span>
+                                        </div>
+                                        {reportData.summary.rateUSD > 0 && (
+                                            <div className="text-right text-xs text-red-300 font-bold mt-0.5">
+                                                USD {(reportData.summary.advancePaymentTWD / reportData.summary.rateUSD).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {/* 總金額 (個人/總體) */}
+                                    <div className="flex flex-col border-b border-slate-600 pb-2">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="font-semibold text-sm">{t('total_amount_text', '總金額')}：</span>
+                                            <div className="pl-2 flex flex-col gap-1 border-l-2 border-slate-500">
+                                                <div className="flex justify-between">
+                                                    <span className="text-xs text-slate-300">{t('personal', '個人')}</span>
+                                                    <span className="font-bold text-sm">TWD {Math.round(reportData.summary.personalTWD).toLocaleString()}</span>
+                                                </div>
+                                                <div className="text-right text-xs text-slate-400 font-bold">
+                                                    USD {reportData.summary.personalUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </div>
+                                                <div className="flex justify-between mt-1 border-t border-slate-600/50 pt-1">
+                                                    <span className="text-xs text-slate-300">{t('overall', '總體')}</span>
+                                                    <span className="font-bold text-sm">TWD {Math.round(reportData.summary.totalTWD).toLocaleString()}</span>
+                                                </div>
+                                                <div className="text-right text-xs text-slate-400 font-bold">
+                                                    USD {reportData.summary.totalUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex justify-between border-b border-slate-500 pb-2">
-                                        <span className="font-medium">{t('total_amount_text', '總金額')}({curSym}):</span>
-                                        <div className="text-right">
-                                            <span>{dispTotalPersonal.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 2 : 0 })} ({t('personal')})</span>
-                                            <span className="mx-1">/</span>
-                                            <span>{dispTotalOverall.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 2 : 0 })} ({t('overall')})</span>
+
+                                    {/* 應付金額 */}
+                                    <div className="flex flex-col border-b border-slate-600 pb-2 text-emerald-200 font-bold">
+                                        <div className="flex justify-between">
+                                            <span>{t('payable_summary', '應付金額')}：</span>
+                                            <span>TWD {Math.round(reportData.summary.totalTWD - reportData.summary.advancePaymentTWD).toLocaleString()}</span>
                                         </div>
+                                        {reportData.summary.rateUSD > 0 && (
+                                            <div className="text-right text-xs text-emerald-300 font-bold mt-0.5">
+                                                USD {(reportData.summary.totalUSD - (reportData.summary.advancePaymentTWD / reportData.summary.rateUSD)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="flex justify-between border-b border-slate-500 pb-2 text-blue-200 font-bold">
-                                        <span>{t('payable_summary', '應付金額')}({curSym}):</span>
-                                        <div className="text-right">
-                                            <span>{dispPayable.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 2 : 0 })}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-between border-b border-slate-500 pb-2">
-                                        <span className="font-medium">{t('avg_day', '平均每天')}({curSym}):</span>
-                                        <div className="text-right">
-                                            <span>{(reportData.summary.days > 0 ? dispTotalPersonal / reportData.summary.days : 0).toLocaleString(undefined, { maximumFractionDigits: isUSD ? 2 : 0 })}</span>
-                                            <span className="mx-1">/</span>
-                                            <span>{dispAvgDay.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 2 : 0 })}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-between border-b border-slate-500 pb-2">
-                                        <span className="font-medium">{t('total_amount_text', '總金額')}({altCurSym}):</span>
-                                        <div className="text-right">
-                                            <span>{altTotalPersonal.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 0 : 2 })}</span>
-                                            <span className="mx-1">/</span>
-                                            <span>{altTotalOverall.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 0 : 2 })}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="font-medium">{t('avg_day', '平均每天')}({altCurSym}):</span>
-                                        <div className="text-right">
-                                            <span>{(reportData.summary.days > 0 ? altTotalPersonal / reportData.summary.days : 0).toLocaleString(undefined, { maximumFractionDigits: isUSD ? 0 : 2 })}</span>
-                                            <span className="mx-1">/</span>
-                                            <span>{altAvgDay.toLocaleString(undefined, { maximumFractionDigits: isUSD ? 0 : 2 })}</span>
+
+                                    {/* 平均每天 */}
+                                    <div className="flex flex-col pb-2">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="font-semibold text-sm">{t('avg_day', '平均每天')}：</span>
+                                            <div className="pl-2 flex flex-col gap-1 border-l-2 border-slate-500">
+                                                <div className="flex justify-between">
+                                                    <span className="text-xs text-slate-300">{t('personal', '個人')}</span>
+                                                    <span className="font-bold text-sm">TWD {Math.round(reportData.summary.days > 0 ? reportData.summary.personalTWD / reportData.summary.days : 0).toLocaleString()}</span>
+                                                </div>
+                                                <div className="text-right text-xs text-slate-400 font-bold">
+                                                    USD {(reportData.summary.days > 0 ? reportData.summary.personalUSD / reportData.summary.days : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </div>
+                                                <div className="flex justify-between mt-1 border-t border-slate-600/50 pt-1">
+                                                    <span className="text-xs text-slate-300">{t('overall', '總體')}</span>
+                                                    <span className="font-bold text-sm">TWD {Math.round(reportData.summary.avgDayTWD).toLocaleString()}</span>
+                                                </div>
+                                                <div className="text-right text-xs text-slate-400 font-bold">
+                                                    USD {reportData.summary.avgDayUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

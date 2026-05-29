@@ -816,32 +816,8 @@ function getTripStartDateMinusOneDay(reportId) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// 輔助函數：取得每筆明細「該筆差旅日期前一天」作為匯率查詢日期
+// 輔助函數：取得每筆明細匯率查詢日期（依財務規則一律自動取得「出差開始日期/商旅起始日的前一天」，不受發票/明細日期影響）
 function getItemDateMinusOneDay(category, itemData, reportId) {
-  const resolvedCategory = getResolvedSheetName(category);
-  let rawDate = null;
-  if (resolvedCategory === 'Accommodation') {
-    rawDate = itemData['入住日期'];
-  } else if (resolvedCategory === 'Rental Car') {
-    rawDate = itemData['借車日期'];
-  } else if (resolvedCategory === 'Parking' || resolvedCategory === 'Per Diem') {
-    rawDate = itemData['開始日期'];
-  } else {
-    rawDate = itemData['日期'];
-  }
-  
-  if (rawDate) {
-    const d = new Date(rawDate);
-    if (!isNaN(d.getTime())) {
-      d.setDate(d.getDate() - 1);
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    }
-  }
-  
-  // Fallback to trip start date minus one day
   if (reportId) {
     const tripStartQuery = getTripStartDateMinusOneDay(reportId);
     if (tripStartQuery) return tripStartQuery;

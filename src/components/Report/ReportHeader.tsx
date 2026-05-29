@@ -15,6 +15,7 @@ interface ReportHeaderProps {
     userName?: string;
     onUpdateSuccess: () => void;
     extraRates?: Record<string, number>;
+    items?: Record<string, any[]>;
 }
 
 const ReportHeader: React.FC<ReportHeaderProps> = ({
@@ -27,7 +28,8 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
     paymentCurrency,
     userName,
     onUpdateSuccess,
-    extraRates
+    extraRates,
+    items
 }) => {
     const { t } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
@@ -69,6 +71,52 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
             setLoading(false);
         }
     };
+
+    // 動態掃描本次差旅實際使用到的外幣與匯率，且同一幣別僅顯示一次
+    const getUsedRates = () => {
+        if (!items) return {};
+        const ratesMap: Record<string, Set<number>> = {};
+        
+        Object.keys(items).forEach(category => {
+            const list = items[category];
+            if (Array.isArray(list)) {
+                list.forEach((item: any) => {
+                    const currency = String(item['幣別'] || '').toUpperCase();
+                    // 排除 TWD，僅收集外幣
+                    if (currency && currency !== 'TWD') {
+                        let rateVal = parseFloat(item['匯率']);
+                        
+                        // 自癒計算：若明細中沒有匯率欄位但有金額及TWD金額（如 Lunch & Learn 或特殊明細）
+                        if (isNaN(rateVal) || rateVal <= 0) {
+                            const amt = parseFloat(item['金額'] || item['個人金額'] || item['總體金額'] || 0);
+                            const twdAmt = parseFloat(item['TWD金額'] || item['TWD個人金額'] || item['TWD總體金額'] || 0);
+                            if (amt > 0 && twdAmt > 0) {
+                                rateVal = twdAmt / amt;
+                            }
+                        }
+                        
+                        if (!isNaN(rateVal) && rateVal > 0) {
+                            if (!ratesMap[currency]) {
+                                ratesMap[currency] = new Set<number>();
+                            }
+                            ratesMap[currency].add(Number(rateVal.toFixed(4)));
+                        }
+                    }
+                });
+            }
+        });
+        
+        const finalRates: Record<string, string> = {};
+        Object.keys(ratesMap).forEach(cur => {
+            const sortedRates = Array.from(ratesMap[cur]).sort((a, b) => a - b);
+            // 由於皆是用出差起始日前一天的匯率，理論上每種外幣只會有一個匯率，但為求100%防禦性，若有複數匯率則以斜線分隔
+            finalRates[cur] = sortedRates.map(r => Number(r.toFixed(2)).toString()).join(' / ');
+        });
+        
+        return finalRates;
+    };
+
+    const usedRates = getUsedRates();
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6 relative">
@@ -182,6 +230,21 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
                         <span className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('payment_currency', '支付幣別')}</span>
                         <span className="font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md w-fit border border-blue-100">{paymentCurrency || 'TWD'}</span>
                     </div>
+
+                    {Object.keys(usedRates).length > 0 && (
+                        <div className="flex flex-col col-span-1 md:col-span-2 lg:col-span-3 border-t border-dashed border-gray-200 pt-4 mt-2">
+                            <span className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-bold text-gray-500">實際使用匯率 (台銀即期賣出)</span>
+                            <div className="flex flex-wrap gap-3">
+                                {Object.keys(usedRates).map(cur => (
+                                    <div key={cur} className="bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 flex items-baseline gap-1.5 shadow-sm transition hover:shadow-md hover:border-emerald-200">
+                                        <span className="font-black text-emerald-800 text-sm tracking-wide">{cur}</span>
+                                        <span className="text-gray-400 text-xs font-semibold">:</span>
+                                        <span className="font-bold text-gray-700 text-sm">{usedRates[cur]}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

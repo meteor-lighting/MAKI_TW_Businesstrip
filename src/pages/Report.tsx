@@ -291,6 +291,7 @@ export default function Report() {
                         paymentCurrency={reportData.header['支付幣別'] || 'TWD'}
                         userName={reportData.header['員工姓名'] || reportData.header['用戶編號'] || user?.name || user?.id}
                         onUpdateSuccess={handleItemChanged}
+                        items={reportData.items}
                         extraRates={Object.keys(reportData.header)
                             .filter(key => key.endsWith('匯率') && key !== 'USD匯率' && Number(reportData.header[key]) > 0)
                             .reduce((obj, key) => {
