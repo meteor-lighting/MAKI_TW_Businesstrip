@@ -514,6 +514,17 @@ function updateReportTripInfo(payload) {
       if (curIdx !== -1 && paymentCurrency !== undefined) headerSheet.getRange(rowIndex, curIdx + 1).setValue(paymentCurrency);
       if (timeIdx !== -1) headerSheet.getRange(rowIndex, timeIdx + 1).setValue(new Date());
       
+      // 當使用者手動修改了天數或起始/結束日期，將「是否手動天數」標記為 Y 以保留使用者的手動編輯
+      if (days !== undefined || startDate !== undefined || endDate !== undefined) {
+        let manualIdx = headers.indexOf('是否手動天數');
+        if (manualIdx === -1) {
+          manualIdx = headers.length;
+          headerSheet.getRange(1, manualIdx + 1).setValue('是否手動天數');
+          headers.push('是否手動天數');
+        }
+        headerSheet.getRange(rowIndex, manualIdx + 1).setValue('Y');
+      }
+      
       SpreadsheetApp.flush();
       invalidateCache('Report Header');
       

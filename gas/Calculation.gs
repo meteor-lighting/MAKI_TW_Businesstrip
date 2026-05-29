@@ -377,82 +377,83 @@ function recalculateHeader(reportId, category) {
   
   let rowData = headerData[targetRowIndex - 1];
   
-  // 1. 自動從機票段 (Flight) 的日期帶入商旅起始日、商旅結束日、商旅天數
+  // 1. 自動從機票段 (Flight) 的日期帶入商旅起始日、商旅結束日、商旅天數 (若使用者手動修改則保留不覆蓋)
   try {
-    const flightItems = sheetDataToJson('Flight', ss, true).filter(r => String(r['報告編號']) === String(reportId));
-    let dates = [];
-    flightItems.forEach(item => {
-      if (item['日期']) {
-        const d = new Date(item['日期']);
-        if (!isNaN(d.getTime())) dates.push(d);
-      }
-      if (item['行程類型'] === 'round-trip' && item['回程日期']) {
-        const d = new Date(item['回程日期']);
-        if (!isNaN(d.getTime())) dates.push(d);
-      }
-    });
+    const manualIdx = headers.indexOf('是否手動天數');
+    const isManual = manualIdx !== -1 && String(rowData[manualIdx]).toUpperCase() === 'Y';
     
-    if (dates.length > 0) {
-      dates.sort((a, b) => a.getTime() - b.getTime());
-      const minDate = dates[0];
-      const maxDate = dates[dates.length - 1];
+    if (!isManual) {
+      const flightItems = sheetDataToJson('Flight', ss, true).filter(r => String(r['報告編號']) === String(reportId));
       
-      const yyyyMin = minDate.getFullYear();
-      const mmMin = String(minDate.getMonth() + 1).padStart(2, '0');
-      const ddMin = String(minDate.getDate()).padStart(2, '0');
-      const minDateStr = `${yyyyMin}/${mmMin}/${ddMin}`;
+      let departureDates = [];
+      let arrivalDates = [];
       
-      const yyyyMax = maxDate.getFullYear();
-      const mmMax = String(maxDate.getMonth() + 1).padStart(2, '0');
-      const ddMax = String(maxDate.getDate()).padStart(2, '0');
-      const maxDateStr = `${yyyyMax}/${mmMax}/${ddMax}`;
+      flightItems.forEach(item => {
+        // 第一段起飛與抵達
+        const dep1 = parseDateTime(item['日期'], item['出發時間']);
+        if (dep1) departureDates.push(dep1);
+        
+        const arr1 = parseArrivalDateTime(item['日期'], item['抵達時間'], item['跨日']);
+        if (arr1) arrivalDates.push(arr1);
+        
+        // 若為來回，還有第二段回程
+        if (item['行程類型'] === 'round-trip') {
+          const dep2 = parseDateTime(item['回程日期'], item['回程出發時間']);
+          if (dep2) departureDates.push(dep2);
+          
+          const arr2 = parseArrivalDateTime(item['回程日期'], item['回程抵達時間'], item['回程跨日']);
+          if (arr2) arrivalDates.push(arr2);
+        }
+      });
       
-      const diffTime = Math.abs(maxDate.getTime() - minDate.getTime());
-      const autoDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      
-      const startIdx = headers.indexOf('商旅起始日');
-      const endIdx = headers.indexOf('商旅結束日');
-      const daysIdx = headers.indexOf('商旅天數');
-      
-      if (startIdx !== -1) {
-        headerSheet.getRange(targetRowIndex, startIdx + 1).setValue(minDateStr);
-        rowData[startIdx] = minDateStr;
+      if (departureDates.length > 0 && arrivalDates.length > 0) {
+        // 抓取第一筆起飛與最後一筆抵達
+        const firstDep = new Date(Math.min(...departureDates.map(d => d.getTime())));
+        const lastArr = new Date(Math.max(...arrivalDates.map(d => d.getTime())));
+        
+        // 格式化日期字串 (YYYY/MM/DD)
+        const formatYMD = (d) => {
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          return `${yyyy}/${mm}/${dd}`;
+        };
+        
+        const minDateStr = formatYMD(firstDep);
+        const maxDateStr = formatYMD(lastArr);
+        
+        // 計算商旅天數 (出發 >= 14:00 算 0.5 天，返台 <= 12:00 算 0.5 天)
+        const autoDays = calculateBusinessTripDays(firstDep, lastArr);
+        
+        const startIdx = headers.indexOf('商旅起始日');
+        const endIdx = headers.indexOf('商旅結束日');
+        const daysIdx = headers.indexOf('商旅天數');
+        
+        if (startIdx !== -1) {
+          headerSheet.getRange(targetRowIndex, startIdx + 1).setValue(minDateStr);
+          rowData[startIdx] = minDateStr;
+        }
+        if (endIdx !== -1) {
+          headerSheet.getRange(targetRowIndex, endIdx + 1).setValue(maxDateStr);
+          rowData[endIdx] = maxDateStr;
+        }
+        if (daysIdx !== -1) {
+          headerSheet.getRange(targetRowIndex, daysIdx + 1).setValue(autoDays);
+          rowData[daysIdx] = autoDays;
+        }
+        
+        // 自動同步批次重算所有明細的外幣匯率
+        updateAllExchangeRates(reportId);
       }
-      if (endIdx !== -1) {
-        headerSheet.getRange(targetRowIndex, endIdx + 1).setValue(maxDateStr);
-        rowData[endIdx] = maxDateStr;
-      }
-      if (daysIdx !== -1) {
-        headerSheet.getRange(targetRowIndex, daysIdx + 1).setValue(autoDays);
-        rowData[daysIdx] = autoDays;
-      }
-      
-      // 同步批次重算所有明細的外幣匯率（每筆明細會依據該筆自己的差旅日期前一天重算！）
-      updateAllExchangeRates(reportId);
     }
   } catch(e) {
     console.error('Failed to auto-populate dates from flight info', e);
   }
   
-  // Calculate Business Trip Days
   const startIdx = headers.indexOf('商旅起始日');
   const endIdx = headers.indexOf('商旅結束日');
   const daysIdx = headers.indexOf('商旅天數');
-  
   let days = parseFloat(rowData[daysIdx]) || 0;
-  if (days === 0 && startIdx !== -1 && endIdx !== -1 && rowData[startIdx] && rowData[endIdx]) {
-    try {
-      const dStart = new Date(rowData[startIdx]);
-      const dEnd = new Date(rowData[endIdx]);
-      if (!isNaN(dStart.getTime()) && !isNaN(dEnd.getTime())) {
-        const diffTime = Math.abs(dEnd.getTime() - dStart.getTime());
-        days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // inclusive
-        if (daysIdx !== -1) {
-          headerSheet.getRange(targetRowIndex, daysIdx + 1).setValue(days);
-        }
-      }
-    } catch(e) {}
-  }
   
   // 2. Calculate Grand Totals and Individual Category Totals
   const categories = ['Flight', 'Accommodation', 'Rental Car', 'Transportation', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Lunch & Learn', 'Others'];
@@ -816,4 +817,78 @@ function getItemDateMinusOneDay(category, itemData, reportId) {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
+}
+
+// 輔助函數：解析航班起飛時間
+function parseDateTime(dateVal, timeVal) {
+  if (!dateVal) return null;
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return null;
+  
+  let hours = 0;
+  let minutes = 0;
+  if (timeVal) {
+    const parts = String(timeVal).trim().split(':');
+    if (parts.length >= 2) {
+      hours = parseInt(parts[0], 10) || 0;
+      minutes = parseInt(parts[1], 10) || 0;
+    }
+  }
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), hours, minutes, 0);
+}
+
+// 輔助函數：解析航班抵台時間 (含跨日處理)
+function parseArrivalDateTime(dateVal, timeVal, crossDayVal) {
+  const baseDate = parseDateTime(dateVal, timeVal);
+  if (!baseDate) return null;
+  
+  let daysToAdd = 0;
+  if (crossDayVal) {
+    const clean = String(crossDayVal).replace(/[^\d]/g, '');
+    daysToAdd = parseInt(clean, 10) || 0;
+  }
+  if (daysToAdd > 0) {
+    baseDate.setDate(baseDate.getDate() + daysToAdd);
+  }
+  return baseDate;
+}
+
+// 輔助函數：依照起飛起飛與抵達時間計算天數
+function calculateBusinessTripDays(firstDep, lastArr) {
+  if (!firstDep || !lastArr) return 0;
+  
+  const dStart = new Date(firstDep.getFullYear(), firstDep.getMonth(), firstDep.getDate());
+  const dEnd = new Date(lastArr.getFullYear(), lastArr.getMonth(), lastArr.getDate());
+  
+  const diffTime = dEnd.getTime() - dStart.getTime();
+  if (diffTime < 0) return 0;
+  
+  const totalDaysDiff = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (totalDaysDiff === 0) {
+    let startWeight = 1.0;
+    if (firstDep.getHours() >= 14) {
+      startWeight = 0.5;
+    }
+    let endWeight = 1.0;
+    const endMinutes = lastArr.getHours() * 60 + lastArr.getMinutes();
+    if (endMinutes <= 12 * 60) {
+      endWeight = 0.5;
+    }
+    return Math.min(1.0, startWeight + endWeight - 0.5 > 0 ? startWeight + endWeight - 0.5 : 0.5);
+  }
+  
+  let startDayVal = 1.0;
+  if (firstDep.getHours() >= 14) {
+    startDayVal = 0.5;
+  }
+  
+  let endDayVal = 1.0;
+  const endMinutes = lastArr.getHours() * 60 + lastArr.getMinutes();
+  if (endMinutes <= 12 * 60) {
+    endDayVal = 0.5;
+  }
+  
+  const midDays = totalDaysDiff - 1;
+  return startDayVal + endDayVal + midDays;
 }
