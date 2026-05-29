@@ -708,22 +708,8 @@ function updateAllExchangeRates(reportId) {
             const currency = String(data[i][curIdx]).toUpperCase();
             const amount = parseFloat(data[i][amtIdx]) || 0;
             
-            // 動態從該行明細中取出差旅日期
-            let itemDateVal = dateIdx !== -1 ? data[i][dateIdx] : null;
-            let queryDate = '';
-            
-            if (itemDateVal) {
-              const d = new Date(itemDateVal);
-              if (!isNaN(d.getTime())) {
-                d.setDate(d.getDate() - 1);
-                queryDate = Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-              }
-            }
-            
-            // Fallback
-            if (!queryDate) {
-              queryDate = fallbackDate;
-            }
+            // 依據財務規則，一律且強制自動取得出差開始日期前一天（fallbackDate）的匯率，不因個別發票或明細日期影響
+            const queryDate = fallbackDate;
             
             let rate = 1.0;
             if (currency !== 'TWD' && currency !== '') {
