@@ -34,7 +34,9 @@ const LunchLearnForm: React.FC<GenericFormProps> = ({
         地區: '',
         幣別: 'TWD',
         金額: '',
-        備註: ''
+        備註: '',
+        人數: '1',
+        經銷商: ''
     });
 
     useEffect(() => {
@@ -42,7 +44,9 @@ const LunchLearnForm: React.FC<GenericFormProps> = ({
             setFormData({
                 ...formData,
                 ...editingItem,
-                金額: String(editingItem['金額'] || '')
+                金額: String(editingItem['金額'] || ''),
+                人數: String(editingItem['人數'] || '1'),
+                經銷商: String(editingItem['經銷商'] || '')
             });
         }
     }, [editingItem]);
@@ -60,7 +64,7 @@ const LunchLearnForm: React.FC<GenericFormProps> = ({
             });
             if (res.status === 'success') {
                 if (!editingItem) {
-                    setFormData({ 日期: '', 地區: '', 幣別: 'TWD', 金額: '', 備註: '' });
+                    setFormData({ 日期: '', 地區: '', 幣別: 'TWD', 金額: '', 備註: '', 人數: '1', 經銷商: '' });
                 }
                 onSubmitSuccess();
                 if (onCancelEdit) onCancelEdit();
@@ -83,6 +87,17 @@ const LunchLearnForm: React.FC<GenericFormProps> = ({
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('region')}</label>
                     <CityAutocomplete value={formData.地區} onChange={val => setFormData({ ...formData, 地區: val })} placeholder={t('select_city', '選擇或輸入城市...')} />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('dealer')}</label>
+                    <input type="text" value={formData.經銷商} onChange={e => setFormData({ ...formData, 經銷商: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg outline-none" required />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('headcount')}</label>
+                    <input type="number" value={formData.人數} onChange={e => setFormData({ ...formData, 人數: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg outline-none" min="1" required />
                 </div>
             </div>
 

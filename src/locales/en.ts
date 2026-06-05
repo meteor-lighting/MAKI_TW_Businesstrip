@@ -21,6 +21,8 @@ export const en = {
         "confirm_delete_report": "Are you sure you want to delete this report? This action cannot be undone.",
         "delete_success": "Report deleted successfully",
         "delete_error": "An error occurred while deleting the report",
+        "dealer": "Dealer",
+        "headcount": "Headcount",
         "lock": "Lock",
         "unlock": "Unlock",
         "locked": "Locked",

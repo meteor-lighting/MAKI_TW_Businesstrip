@@ -55,17 +55,18 @@ const AccommodationForm: React.FC<AccommodationFormProps> = ({
     }, [editingItem]);
 
     useEffect(() => {
-        const p = parseFloat(formData.個人金額) || 0;
+        const overall = parseFloat(formData.總體金額) || 0;
         const d = parseFloat(formData.代墊金額) || 0;
-        const sum = p + d;
+        const diff = overall - d;
         setFormData(prev => {
-            const currentOverall = parseFloat(prev.總體金額) || 0;
-            if (currentOverall !== sum || prev.總體金額 === '') {
-                return { ...prev, 總體金額: sum > 0 ? String(sum) : '' };
+            const currentPersonal = parseFloat(prev.個人金額) || 0;
+            const diffStr = diff >= 0 ? String(diff) : '0';
+            if (currentPersonal !== diff || prev.個人金額 === '' || (overall === 0 && d === 0)) {
+                return { ...prev, 個人金額: overall > 0 || d > 0 ? diffStr : '' };
             }
             return prev;
         });
-    }, [formData.個人金額, formData.代墊金額]);
+    }, [formData.總體金額, formData.代墊金額]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -137,8 +138,8 @@ const AccommodationForm: React.FC<AccommodationFormProps> = ({
                     </select>
                 </div>
                 <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('personal_amount')}</label>
-                    <input type="number" value={formData.個人金額} onChange={e => setFormData({ ...formData, 個人金額: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg outline-none" required />
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('overall_amount')}</label>
+                    <input type="number" value={formData.總體金額} onChange={e => setFormData({ ...formData, 總體金額: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg outline-none" required />
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('advance_payment')}</label>
@@ -152,8 +153,8 @@ const AccommodationForm: React.FC<AccommodationFormProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                 <div className="space-y-1">
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('overall_amount')}</label>
-                    <input type="number" value={formData.總體金額} onChange={e => setFormData({ ...formData, 總體金額: e.target.value })} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg outline-none" placeholder={t('overall_placeholder')} />
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('personal_amount')}</label>
+                    <input type="number" value={formData.個人金額} readOnly className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg outline-none text-gray-500 cursor-not-allowed" placeholder="自動計算 (報告總額 - 代墊金額)" />
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('remark')}</label>

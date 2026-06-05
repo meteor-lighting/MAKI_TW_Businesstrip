@@ -42,6 +42,7 @@ const ParkingForm: React.FC<GenericFormProps> = ({
             setFormData({
                 ...formData,
                 ...editingItem,
+                日期: editingItem['日期'] || editingItem['開始日期'] || '',
                 金額: String(editingItem['金額'] || '')
             });
         }
@@ -56,7 +57,11 @@ const ParkingForm: React.FC<GenericFormProps> = ({
                 reportId,
                 category: 'Parking',
                 sequence: editingItem?.次序,
-                itemData: { ...formData }
+                itemData: {
+                    ...formData,
+                    開始日期: formData.日期,
+                    結束日期: formData.日期
+                }
             });
             if (res.status === 'success') {
                 if (!editingItem) {

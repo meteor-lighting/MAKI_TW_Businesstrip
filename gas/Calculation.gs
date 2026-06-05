@@ -115,8 +115,6 @@ function addReportItem(payload) {
 
       // 住宿與租車的每人每日均分金額
       if (ppDayIdx !== -1) {
-        const people = parseInt(itemData['代墊人數']) || 1;
-        const overallAmount = overallIdx !== -1 ? (parseFloat(row[overallIdx]) || 0) : (parseFloat(itemData['個人金額']) || 0);
         const checkInIdx = headers.indexOf('入住日期') !== -1 ? headers.indexOf('入住日期') : headers.indexOf('借車日期');
         const checkOutIdx = headers.indexOf('退房日期') !== -1 ? headers.indexOf('退房日期') : headers.indexOf('還車日期');
         
@@ -132,7 +130,14 @@ function addReportItem(payload) {
           } catch(e) {}
         }
         
-        row[ppDayIdx] = Number((overallAmount / people / days).toFixed(2));
+        if (category === 'Accommodation') {
+          const personalAmount = parseFloat(itemData['個人金額']) || 0;
+          row[ppDayIdx] = Number((personalAmount / days).toFixed(2));
+        } else {
+          const people = parseInt(itemData['代墊人數']) || 1;
+          const overallAmount = overallIdx !== -1 ? (parseFloat(row[overallIdx]) || 0) : (parseFloat(itemData['個人金額']) || 0);
+          row[ppDayIdx] = Number((overallAmount / people / days).toFixed(2));
+        }
       }
       
       sheet.appendRow(row);
@@ -270,8 +275,6 @@ function updateReportItem(payload) {
 
       // 住宿與租車的每人每日均分金額
       if (ppDayIdx !== -1) {
-        const people = parseInt(itemData['代墊人數']) || 1;
-        const overallAmount = overallIdx !== -1 ? (parseFloat(updatedRow[overallIdx]) || 0) : (parseFloat(itemData['個人金額']) || 0);
         const checkInIdx = headers.indexOf('入住日期') !== -1 ? headers.indexOf('入住日期') : headers.indexOf('借車日期');
         const checkOutIdx = headers.indexOf('退房日期') !== -1 ? headers.indexOf('退房日期') : headers.indexOf('還車日期');
         
@@ -287,7 +290,14 @@ function updateReportItem(payload) {
           } catch(e) {}
         }
         
-        updatedRow[ppDayIdx] = Number((overallAmount / people / days).toFixed(2));
+        if (category === 'Accommodation') {
+          const personalAmount = parseFloat(itemData['個人金額']) || 0;
+          updatedRow[ppDayIdx] = Number((personalAmount / days).toFixed(2));
+        } else {
+          const people = parseInt(itemData['代墊人數']) || 1;
+          const overallAmount = overallIdx !== -1 ? (parseFloat(updatedRow[overallIdx]) || 0) : (parseFloat(itemData['個人金額']) || 0);
+          updatedRow[ppDayIdx] = Number((overallAmount / people / days).toFixed(2));
+        }
       }
       
       sheet.getRange(targetRowIndex, 1, 1, headers.length).setValues([updatedRow]);

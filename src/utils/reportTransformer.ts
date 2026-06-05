@@ -36,7 +36,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     const header = raw.header || {};
 
     // Standardize and normalize columns for Accommodation and Rental Car items to handle dual-header structures seamlessly.
-    const normalizeItems = (items: any[] | undefined) => {
+    const normalizeItems = (items: any[] | undefined, category: string) => {
         if (!items) return [];
         return items.map((item: any) => {
             const copy = { ...item };
@@ -74,8 +74,6 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
             if (ppd === 0) {
                 const checkIn = copy['入住日期'] || copy['借車日期'];
                 const checkOut = copy['退房日期'] || copy['還車日期'];
-                const people = safeNum(copy['代墊人數'] || 1) || 1;
-                const totalAmount = safeNum(copy['總體金額'] || copy['個人金額'] || 0);
                 
                 let days = 1;
                 if (checkIn && checkOut) {
@@ -91,7 +89,14 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
                     }
                 }
                 
-                ppd = totalAmount / people / days;
+                if (category === 'Accommodation') {
+                    const personalAmount = safeNum(copy['個人金額'] !== undefined ? copy['個人金額'] : (safeNum(copy['總體金額']) - safeNum(copy['代墊金額'] || 0)));
+                    ppd = personalAmount / days;
+                } else {
+                    const people = safeNum(copy['代墊人數'] || 1) || 1;
+                    const totalAmount = safeNum(copy['總體金額'] || copy['個人金額'] || 0);
+                    ppd = totalAmount / people / days;
+                }
                 copy['每人每天金額'] = ppd;
             }
 
@@ -100,10 +105,10 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     };
 
     if (raw.items['Accommodation']) {
-        raw.items['Accommodation'] = normalizeItems(raw.items['Accommodation']);
+        raw.items['Accommodation'] = normalizeItems(raw.items['Accommodation'], 'Accommodation');
     }
     if (raw.items['Rental Car']) {
-        raw.items['Rental Car'] = normalizeItems(raw.items['Rental Car']);
+        raw.items['Rental Car'] = normalizeItems(raw.items['Rental Car'], 'Rental Car');
     }
 
     // 1. Calculate Summary Totals
@@ -334,6 +339,13 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
 
     otherCats.forEach(cat => {
         const catItems = raw.items[cat.key] || [];
+        if (cat.key === 'Parking') {
+            catItems.forEach((item: any) => {
+                if (!item['日期']) {
+                    item['日期'] = item['開始日期'] || item['結束日期'] || '';
+                }
+            });
+        }
         // Assuming 'TWD金額' is the column for total in these sections as per format standardization
         const catTotal = catItems.reduce((sum, item) => sum + Number(item['TWD金額'] || 0), 0);
         catTotals[cat.key] = catTotal;
@@ -341,8 +353,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         let columns: any[] = [];
         if (cat.key === 'Parking') {
             columns = [
-                { header: t('start_date', '開始日期'), headerKey: 'start_date', accessorKey: '開始日期', width: 15, type: 'date' },
-                { header: t('end_date', '結束日期'), headerKey: 'end_date', accessorKey: '結束日期', width: 15, type: 'date' },
+                { header: t('date'), headerKey: 'date', accessorKey: '日期', width: 15, type: 'date' },
                 { header: t('region'), headerKey: 'region', accessorKey: '地區', width: 15 },
                 { header: t('currency'), headerKey: 'currency', accessorKey: '幣別', width: 10 },
                 { header: t('amount'), headerKey: 'amount', accessorKey: '金額', width: 10, type: 'currency' },
