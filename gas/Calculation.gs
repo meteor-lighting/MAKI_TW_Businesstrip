@@ -640,13 +640,19 @@ function recalculateHeader(reportId, category) {
       const dStart = new Date(rowData[startIdx]);
       if (!isNaN(dStart.getTime())) {
         dStart.setDate(dStart.getDate() - 1);
-        queryDate = Utilities.formatDate(dStart, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+        const yyyy = dStart.getFullYear();
+        const mm = String(dStart.getMonth() + 1).padStart(2, '0');
+        const dd = String(dStart.getDate()).padStart(2, '0');
+        queryDate = `${yyyy}-${mm}-${dd}`;
       }
     }
     if (!queryDate) {
       const d = new Date();
       d.setDate(d.getDate() - 1);
-      queryDate = Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      queryDate = `${yyyy}-${mm}-${dd}`;
     }
     
     usedCurrencies.forEach(currency => {
@@ -654,7 +660,7 @@ function recalculateHeader(reportId, category) {
         let matchedRate = null;
         
         // 財務規則：統一且強制使用商旅開始日期的前一天 (queryDate) 之台灣銀行即期本行賣出匯率
-        const rateResult = getExchangeRate({ currency: currency, date: queryDate });
+        const rateResult = getExchangeRate({ currency: currency, date: queryDate, forceRefresh: true });
         if (rateResult && rateResult.status === 'success') {
           matchedRate = parseFloat(rateResult.rate) || 1.0;
         }
@@ -722,6 +728,10 @@ function updateAllExchangeRates(reportId, explicitStartDate) {
       fallbackDate = getTripStartDateMinusOneDay(reportId);
     }
     
+    // 執行緒內記憶體快取，防止同一次重算發起重複的網路請求與公式輪詢
+    const localRateCache = {};
+    const localRateResultCache = {};
+
     categories.forEach(cat => {
       try {
         const sheet = ss.getSheetByName(cat);
@@ -761,13 +771,20 @@ function updateAllExchangeRates(reportId, explicitStartDate) {
             let rate = 1.0;
             let rateResult = null;
             if (currency !== 'TWD' && currency !== '') {
-              try {
-                rateResult = getExchangeRate({ currency: currency, date: queryDate });
-                if (rateResult && rateResult.status === 'success') {
-                  rate = parseFloat(rateResult.rate) || 1.0;
+              if (localRateCache[currency] !== undefined) {
+                rate = localRateCache[currency];
+                rateResult = localRateResultCache[currency];
+              } else {
+                try {
+                  rateResult = getExchangeRate({ currency: currency, date: queryDate, forceRefresh: true });
+                  if (rateResult && rateResult.status === 'success') {
+                    rate = parseFloat(rateResult.rate) || 1.0;
+                  }
+                  localRateCache[currency] = rate;
+                  localRateResultCache[currency] = rateResult;
+                } catch(e) {
+                  console.warn('Failed to fetch rate inside updateAllExchangeRates', e);
                 }
-              } catch(e) {
-                console.warn('Failed to fetch rate inside updateAllExchangeRates', e);
               }
             }
             

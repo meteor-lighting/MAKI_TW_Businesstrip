@@ -91,6 +91,9 @@ function doPost(e) {
       case 'getExchangeRate':
         result = getExchangeRate(payload);
         break;
+      case 'debugSource':
+        result = { status: 'success', source: getExchangeRate.toString() };
+        break;
       case 'searchFlight':
         result = searchFlight(payload);
         break;

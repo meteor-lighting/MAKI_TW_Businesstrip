@@ -1,6 +1,7 @@
 /**
  * External APIs Proxy
  */
+const executionRateCache = {};
 
 const AVIATION_API_KEY = PropertiesService.getScriptProperties().getProperty('AVIATION_API_KEY');
 // const GEONAMES_USERNAME = PropertiesService.getScriptProperties().getProperty('GEONAMES_USERNAME');
@@ -80,100 +81,140 @@ function getExchangeRate(payload) {
   // date: YYYY/MM/DD or YYYY-MM-DD
   const currency = (payload.currency || 'USD').toUpperCase();
   let dateStr = payload.date;
+  const forceRefresh = payload.forceRefresh || false;
 
-  if (currency === 'TWD') return { status: 'success', rate: 1.0 };
+  if (currency === 'TWD') return { status: 'success', rate: 1.0, date: dateStr, message: 'TWD rate is fixed to 1.0' };
 
   if (!dateStr) {
       const today = new Date();
       dateStr = `${today.getFullYear()}/${today.getMonth()+1}/${today.getDate()}`;
   }
 
+  const executionRateCacheKey = `${currency}_${dateStr.replace(/[^0-9]/g, '')}`;
+  if (executionRateCache[executionRateCacheKey]) {
+      return executionRateCache[executionRateCacheKey];
+  }
+
   // GLOBAL CACHE FOR EXTERNAL API
-  // This completely stops the system from attacking Bank of Taiwan aggressively on every request
   const scriptCache = CacheService.getScriptCache();
   const cacheKey = `BOT_RATE_${currency}_${dateStr.replace(/[^0-9]/g, '')}`;
-  const cachedResponse = scriptCache.get(cacheKey);
-  if (cachedResponse) {
-      return JSON.parse(cachedResponse);
+  if (!forceRefresh) {
+      const cachedResponse = scriptCache.get(cacheKey);
+      if (cachedResponse) {
+          return JSON.parse(cachedResponse);
+      }
   }
 
   // Target: Previous Day (T-1)
   // If T-1 is holiday, keep going back up to 5 days.
   
   const targetDate = new Date(dateStr);
-  if (isNaN(targetDate.getTime())) return { status: 'error', message: 'Invalid Date' };
-
-  // Note: We need T-1 relative to the Input Date.
-  // We will loop back starting from T-1.
+  if (isNaN(targetDate.getTime())) {
+      return { status: 'error', message: `Invalid base date: ${dateStr}` };
+  }
   
-  // Start searching exactly from the provided Target Date (which is already T-1)
-  let currentSearchDate = new Date(targetDate);
-  
-  let attempts = 0;
   let rate = null;
   let usedDate = '';
   const debugLog = [];
-  // Loop up to 10 days back
+  
+  const fallbackRates = {
+      'USD': 30.0, 'JPY': 0.21, 'EUR': 32.5, 'CNY': 4.2, 'TWD': 1.0, 'THB': 0.9, 'CAD': 23.5, 'HKD': 3.9
+  };
+  
+  // 計算 FinMind 查詢範圍：從基準日 targetDate 往前推 15 天，以防中間遇到長假
+  const dStart = new Date(targetDate);
+  dStart.setDate(dStart.getDate() - 15);
+  const qStart = `${dStart.getFullYear()}-${String(dStart.getMonth() + 1).padStart(2, '0')}-${String(dStart.getDate()).padStart(2, '0')}`;
+  const qEnd = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+  
+  let apiRecords = [];
+  
+  // 核心通道一：一次性拉取 15 天歷史匯率（防範 HTTP 402 限流且速度極快）
+  try {
+      const url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanExchangeRate&data_id=${currency}&start_date=${qStart}&end_date=${qEnd}`;
+      const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+      if (response.getResponseCode() === 200) {
+          const resJson = JSON.parse(response.getContentText());
+          if (resJson && resJson.data && resJson.data.length > 0) {
+              apiRecords = resJson.data;
+              debugLog.push(`FinMind API range fetch success: loaded ${apiRecords.length} records`);
+          } else {
+              debugLog.push(`FinMind API returned empty range data`);
+          }
+      } else {
+          debugLog.push(`FinMind API HTTP ${response.getResponseCode()}`);
+      }
+  } catch (e) {
+      debugLog.push(`FinMind API Exception: ${e.toString()}`);
+  }
+  
+  // 開始前推 10 天找尋營業日
+  let currentSearchDate = new Date(targetDate);
+  let attempts = 0;
+  
   while (rate === null && attempts < 10) {
       const yyyy = currentSearchDate.getFullYear();
       const mm = String(currentSearchDate.getMonth() + 1).padStart(2, '0');
       const dd = String(currentSearchDate.getDate()).padStart(2, '0');
-      const queryDate = `${yyyy}-${mm}-${dd}`; // BOT uses YYYY-MM-DD in URL
-      console.log(`Fetching rate for ${currency} on ${queryDate} (Attempt ${attempts + 1})`);
+      const queryDate = `${yyyy}-${mm}-${dd}`;
       
-      // 通道 1：使用偽裝的 UrlFetchApp.fetch
-      try {
-          const url = `https://rate.bot.com.tw/xrt/all/${queryDate}`;
-          const response = UrlFetchApp.fetch(url, {
-              muteHttpExceptions: true,
-              headers: {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      // 1. 優先從 FinMind 記憶體資料中讀取
+      if (apiRecords.length > 0) {
+          const matched = apiRecords.find(r => r.date === queryDate);
+          if (matched) {
+              const r = parseFloat(matched.spot_sell);
+              if (!isNaN(r) && r > 0) {
+                  rate = r;
+                  usedDate = queryDate;
+                  debugLog.push(`[${queryDate}] Channel 1 Match found`);
+                  break;
               }
-          });
-          
-          if (response.getResponseCode() === 200) {
-              const html = response.getContentText();
-              const rows = html.split('<tr');
-              let foundRow = false;
-              
-              for (const rowFragment of rows) {
-                  if (rowFragment.includes(`(${currency})`)) {
-                      foundRow = true;
-                      
-                      const cellRegex = /class="[^"]*rate-content-sight[^"]*"[^>]*>([\d.]+)<\/td>/g;
-                      let result;
-                      const cellValues = [];
-                      while ((result = cellRegex.exec(rowFragment)) !== null) {
-                          cellValues.push(result[1]);
-                      }
-                      
-                      if (cellValues.length >= 2) {
-                          const r = parseFloat(cellValues[1]);
-                          if (!isNaN(r)) {
-                              rate = r;
-                              usedDate = queryDate;
-                          } else {
-                              debugLog.push(`[${queryDate}] Channel 1 parsing NaN: ${cellValues[1]}`);
-                          }
-                      } else {
-                          debugLog.push(`[${queryDate}] Channel 1 cells short: ${cellValues.length}`);
-                      }
-                      break;
-                  }
-              }
-              if (foundRow && rate !== null) {
-                  debugLog.push(`[${queryDate}] Channel 1 (UrlFetch) success`);
-              } else if (!foundRow) {
-                  debugLog.push(`[${queryDate}] Channel 1 (UrlFetch) failed: currency not found`);
-              }
-          } else {
-              debugLog.push(`[${queryDate}] Channel 1 HTTP ${response.getResponseCode()}`);
           }
-      } catch (e) {
-          debugLog.push(`[${queryDate}] Channel 1 Exception: ${e.toString()}`);
       }
       
-      // 通道 2：如果通道 1 失敗，使用 Google Sheets IMPORTHTML 公式進行代理抓取自癒
+      // 2. 備份通道：UrlFetch HTML 爬網頁 (Chrome UA 偽裝)
+      if (rate === null) {
+          try {
+              const url = `https://rate.bot.com.tw/xrt/all/${queryDate}`;
+              const response = UrlFetchApp.fetch(url, {
+                  muteHttpExceptions: true,
+                  headers: {
+                      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                  }
+              });
+              if (response.getResponseCode() === 200) {
+                  const html = response.getContentText();
+                  const rows = html.split('<tr');
+                  let foundRow = false;
+                  for (const rowFragment of rows) {
+                      if (rowFragment.includes(`(${currency})`)) {
+                          foundRow = true;
+                          const cellRegex = /class="[^"]*rate-content-sight[^"]*"[^>]*>([\d.]+)<\/td>/g;
+                          let result;
+                          const cellValues = [];
+                          while ((result = cellRegex.exec(rowFragment)) !== null) {
+                              cellValues.push(result[1]);
+                          }
+                          if (cellValues.length >= 2) {
+                              const r = parseFloat(cellValues[1]);
+                              if (!isNaN(r)) {
+                                  rate = r;
+                                  usedDate = queryDate;
+                              }
+                          }
+                          break;
+                      }
+                  }
+                  if (foundRow && rate !== null) {
+                      debugLog.push(`[${queryDate}] Channel 2 success`);
+                  }
+              }
+          } catch (e) {
+              debugLog.push(`[${queryDate}] Channel 2 exception: ${e.toString()}`);
+          }
+      }
+      
+      // 3. 備份通道：IMPORTHTML 公式兜底
       if (rate === null) {
           try {
               const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -188,38 +229,48 @@ function getExchangeRate(payload) {
               tempSheet.getRange('A1').setValue(formula);
               SpreadsheetApp.flush();
               
-              // 輪詢等待公式加載與外部資料展開
               let values = [];
               let retries = 0;
               while (retries < 6) {
-                  Utilities.sleep(500); // 等待 500ms
+                  Utilities.sleep(500);
                   values = tempSheet.getDataRange().getValues();
                   if (values.length > 2 && String(values[0][0]).indexOf('#N/A') === -1) {
                       break;
                   }
                   retries++;
               }
+              if (values.length > 0 && String(values[0][0]).indexOf('#REF!') !== -1) {
+                  debugLog.push(`[${queryDate}] Ch3 blocked (#REF!). Creating helper sheet.`);
+                  try {
+                      const authSheetName = '允許匯率授權(請點A1允許)';
+                      let authSheet = ss.getSheetByName(authSheetName);
+                      if (!authSheet) {
+                          authSheet = ss.insertSheet(authSheetName, 0);
+                          authSheet.getRange('A1').setValue('=IMPORTHTML("https://rate.bot.com.tw/xrt/all/2026-04-30", "table", 1)');
+                          authSheet.getRange('B1').setValue('← 請將滑鼠游標移到左邊 A1 單元格的 #REF! 錯誤上，點選彈窗裡的「允許存取 (Allow access)」按鈕。解鎖後此工作表即可刪除。');
+                          SpreadsheetApp.flush();
+                      }
+                  } catch (sheetErr) {
+                      debugLog.push(`Helper sheet creation failed: ${sheetErr.toString()}`);
+                  }
+              }
               
               if (values.length > 1 && String(values[0][0]).indexOf('Error') === -1) {
                   for (let i = 0; i < values.length; i++) {
                       const text = String(values[i][0]);
                       if (text.indexOf(`(${currency})`) !== -1 || text.indexOf(currency) !== -1) {
-                          // 即期本行賣出為第 5 欄（0-based index 為 4）
                           const r = parseFloat(values[i][4]);
                           if (!isNaN(r) && r > 0) {
                               rate = r;
                               usedDate = queryDate;
-                              debugLog.push(`[${queryDate}] Channel 2 (IMPORTHTML) success`);
+                              debugLog.push(`[${queryDate}] Channel 3 success`);
                               break;
                           }
                       }
                   }
               }
-              if (rate === null) {
-                  debugLog.push(`[${queryDate}] Channel 2 (IMPORTHTML) failed`);
-              }
           } catch (e) {
-              debugLog.push(`[${queryDate}] Channel 2 Exception: ${e.toString()}`);
+              debugLog.push(`[${queryDate}] Channel 3 exception: ${e.toString()}`);
           }
       }
       
@@ -227,36 +278,43 @@ function getExchangeRate(payload) {
           break;
       }
       
-      // If failed (rate is still null), go back 1 more day
       currentSearchDate.setDate(currentSearchDate.getDate() - 1);
       attempts++;
   }
-
+  
   if (rate !== null) {
+      // 成功了！嘗試自動清理授權引導工作表
+      try {
+          const ss = SpreadsheetApp.getActiveSpreadsheet();
+          const authSheet = ss.getSheetByName('允許匯率授權(請點A1允許)');
+          if (authSheet) {
+              ss.deleteSheet(authSheet);
+              SpreadsheetApp.flush();
+          }
+      } catch (e) {
+          console.warn('Failed to delete helper sheet: ' + e);
+      }
+
       const response = { 
           status: 'success', 
           rate: rate, 
           date: usedDate, 
-          message: `Rate for ${currency} on ${usedDate}. Debug: ${debugLog.join('; ')}` 
+          message: `[V1.3-RangeFetch] Rate for ${currency} on ${usedDate}. Debug: ${debugLog.join('; ')}` 
       };
-      // Cache valid rates for 6 hours (21600 seconds)
       scriptCache.put(cacheKey, JSON.stringify(response), 21600);
+      executionRateCache[executionRateCacheKey] = response;
       return response;
   } else {
-      // Fallback to mock/default if all fail
       console.warn(`Could not find rate for ${currency} around ${dateStr}, using fallback.`);
-      const fallbackRates = {
-          'USD': 30.0, 'JPY': 0.21, 'EUR': 32.5, 'CNY': 4.2, 'TWD': 1.0, 'THB': 0.9, 'CAD': 23.5, 'HKD': 3.9
-      };
-      
       const fallbackResponse = { 
           status: 'success', 
           rate: fallbackRates[currency] || 1.0, 
-          isFallback: true,
-          message: `Fallback used. Debug: ${debugLog.join('; ')}` 
+          isFallback: true, 
+          message: `[V1.3-RangeFetch] Fallback used. Debug: ${debugLog.join('; ')}` 
       };
-       // Do not cache fallback responses so we can retry and get actual rates as soon as possible
-       return fallbackResponse;
+      scriptCache.put(cacheKey, JSON.stringify(fallbackResponse), 15);
+      executionRateCache[executionRateCacheKey] = fallbackResponse;
+      return fallbackResponse;
   }
 }
 
