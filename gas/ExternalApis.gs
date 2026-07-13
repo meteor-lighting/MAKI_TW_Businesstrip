@@ -123,7 +123,12 @@ function getExchangeRate(payload) {
       
       try {
           const url = `https://rate.bot.com.tw/xrt/all/${queryDate}`;
-          const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+          const response = UrlFetchApp.fetch(url, {
+              muteHttpExceptions: true,
+              headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+              }
+          });
           
           if (response.getResponseCode() !== 200) {
               debugLog.push(`[${queryDate}] HTTP ${response.getResponseCode()}`);
@@ -203,9 +208,8 @@ function getExchangeRate(payload) {
           isFallback: true,
           message: `Fallback used. Debug: ${debugLog.join('; ')}` 
       };
-      // Cache fallbacks for a shorter time (1 hour = 3600 seconds) so it retries later
-      scriptCache.put(cacheKey, JSON.stringify(fallbackResponse), 3600);
-      return fallbackResponse;
+       // Do not cache fallback responses so we can retry and get actual rates as soon as possible
+       return fallbackResponse;
   }
 }
 
