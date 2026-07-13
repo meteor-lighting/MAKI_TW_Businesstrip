@@ -720,12 +720,14 @@ function updateAllExchangeRates(reportId, explicitStartDate) {
         
         const dateIdx = headers.indexOf(dateHeaderName);
         
-        if (repIdx === -1 || curIdx === -1 || amtIdx === -1 || twdIdx === -1) return;
+        if (repIdx === -1 || curIdx === -1) return;
+        
+        const isAccommodationOrRentalCar = (cat === 'Accommodation' || cat === 'Rental Car');
+        if (!isAccommodationOrRentalCar && (amtIdx === -1 || twdIdx === -1)) return;
         
         for (let i = 1; i < data.length; i++) {
           if (String(data[i][repIdx]) === String(reportId)) {
             const currency = String(data[i][curIdx]).toUpperCase();
-            const amount = parseFloat(data[i][amtIdx]) || 0;
             
             // 依據財務規則，一律且強制自動取得出差開始日期前一天（fallbackDate）的匯率，不因個別發票或明細日期影響
             const queryDate = fallbackDate;
@@ -745,10 +747,8 @@ function updateAllExchangeRates(reportId, explicitStartDate) {
             if (rateIdx !== -1) {
               sheet.getRange(i + 1, rateIdx + 1).setValue(rate);
             }
-            sheet.getRange(i + 1, twdIdx + 1).setValue(Math.round(amount * rate));
             
-            // 特殊加總折算
-            if (cat === 'Accommodation' || cat === 'Rental Car') {
+            if (isAccommodationOrRentalCar) {
               const personalIdx = headers.indexOf('個人金額');
               const twdPersonalIdx = headers.indexOf('TWD個人金額');
               const overallIdx = headers.indexOf('總體金額');
@@ -767,6 +767,11 @@ function updateAllExchangeRates(reportId, explicitStartDate) {
               if (advanceIdx !== -1 && twdAdvanceIdx !== -1) {
                 const amt = parseFloat(data[i][advanceIdx]) || 0;
                 sheet.getRange(i + 1, twdAdvanceIdx + 1).setValue(Math.round(amt * rate));
+              }
+            } else {
+              if (amtIdx !== -1 && twdIdx !== -1) {
+                const amount = parseFloat(data[i][amtIdx]) || 0;
+                sheet.getRange(i + 1, twdIdx + 1).setValue(Math.round(amount * rate));
               }
             }
           }
