@@ -121,6 +121,7 @@ function getExchangeRate(payload) {
       const queryDate = `${yyyy}-${mm}-${dd}`; // BOT uses YYYY-MM-DD in URL
       console.log(`Fetching rate for ${currency} on ${queryDate} (Attempt ${attempts + 1})`);
       
+      // 通道 1：使用偽裝的 UrlFetchApp.fetch
       try {
           const url = `https://rate.bot.com.tw/xrt/all/${queryDate}`;
           const response = UrlFetchApp.fetch(url, {
@@ -130,56 +131,102 @@ function getExchangeRate(payload) {
               }
           });
           
-          if (response.getResponseCode() !== 200) {
-              debugLog.push(`[${queryDate}] HTTP ${response.getResponseCode()}`);
-          } else {
+          if (response.getResponseCode() === 200) {
               const html = response.getContentText();
-              
-              // Robust parsing: Split by table rows
               const rows = html.split('<tr');
               let foundRow = false;
               
               for (const rowFragment of rows) {
-                  // Re-add <tr to make it look like tag if needed, but not strictly necessary for content check
-                  // Check if this row fragment contains our currency code in parens e.g. (USD)
                   if (rowFragment.includes(`(${currency})`)) {
                       foundRow = true;
                       
-                      // Find all `rate-content-sight` cells in this row
-                      // Pattern: <td ... class="...rate-content-sight..." ...>RATE</td>
                       const cellRegex = /class="[^"]*rate-content-sight[^"]*"[^>]*>([\d.]+)<\/td>/g;
                       let result;
                       const cellValues = [];
-                      
                       while ((result = cellRegex.exec(rowFragment)) !== null) {
                           cellValues.push(result[1]);
                       }
                       
-                      // Typically: cellValues[0] = Spot Buy, cellValues[1] = Spot Sell
                       if (cellValues.length >= 2) {
                           const r = parseFloat(cellValues[1]);
                           if (!isNaN(r)) {
                               rate = r;
                               usedDate = queryDate;
                           } else {
-                              debugLog.push(`[${queryDate}] Rate parsing NaN: ${cellValues[1]}`);
+                              debugLog.push(`[${queryDate}] Channel 1 parsing NaN: ${cellValues[1]}`);
                           }
                       } else {
-                          debugLog.push(`[${queryDate}] Insufficient cells found: ${cellValues.length}`);
+                          debugLog.push(`[${queryDate}] Channel 1 cells short: ${cellValues.length}`);
                       }
-                      break; // Stop looking at other rows
+                      break;
                   }
               }
-              
-              if (!foundRow) {
-                  debugLog.push(`[${queryDate}] Row for (${currency}) not found`);
+              if (foundRow && rate !== null) {
+                  debugLog.push(`[${queryDate}] Channel 1 (UrlFetch) success`);
+              } else if (!foundRow) {
+                  debugLog.push(`[${queryDate}] Channel 1 (UrlFetch) failed: currency not found`);
               }
+          } else {
+              debugLog.push(`[${queryDate}] Channel 1 HTTP ${response.getResponseCode()}`);
           }
       } catch (e) {
-          console.warn(`Fetch error for ${queryDate}: ${e}`);
-          debugLog.push(`[${queryDate}] Exception: ${e.toString()}`);
+          debugLog.push(`[${queryDate}] Channel 1 Exception: ${e.toString()}`);
       }
-
+      
+      // 通道 2：如果通道 1 失敗，使用 Google Sheets IMPORTHTML 公式進行代理抓取自癒
+      if (rate === null) {
+          try {
+              const ss = SpreadsheetApp.getActiveSpreadsheet();
+              let tempSheet = ss.getSheetByName('__TempRateTable');
+              if (!tempSheet) {
+                  tempSheet = ss.insertSheet('__TempRateTable');
+                  tempSheet.hideSheet();
+              }
+              tempSheet.clear();
+              
+              const formula = `=IMPORTHTML("https://rate.bot.com.tw/xrt/all/${queryDate}", "table", 1)`;
+              tempSheet.getRange('A1').setValue(formula);
+              SpreadsheetApp.flush();
+              
+              // 輪詢等待公式加載與外部資料展開
+              let values = [];
+              let retries = 0;
+              while (retries < 6) {
+                  Utilities.sleep(500); // 等待 500ms
+                  values = tempSheet.getDataRange().getValues();
+                  if (values.length > 2 && String(values[0][0]).indexOf('#N/A') === -1) {
+                      break;
+                  }
+                  retries++;
+              }
+              
+              if (values.length > 1 && String(values[0][0]).indexOf('Error') === -1) {
+                  for (let i = 0; i < values.length; i++) {
+                      const text = String(values[i][0]);
+                      if (text.indexOf(`(${currency})`) !== -1 || text.indexOf(currency) !== -1) {
+                          // 即期本行賣出為第 5 欄（0-based index 為 4）
+                          const r = parseFloat(values[i][4]);
+                          if (!isNaN(r) && r > 0) {
+                              rate = r;
+                              usedDate = queryDate;
+                              debugLog.push(`[${queryDate}] Channel 2 (IMPORTHTML) success`);
+                              break;
+                          }
+                      }
+                  }
+              }
+              if (rate === null) {
+                  debugLog.push(`[${queryDate}] Channel 2 (IMPORTHTML) failed`);
+              }
+          } catch (e) {
+              debugLog.push(`[${queryDate}] Channel 2 Exception: ${e.toString()}`);
+          }
+      }
+      
+      if (rate !== null) {
+          break;
+      }
+      
       // If failed (rate is still null), go back 1 more day
       currentSearchDate.setDate(currentSearchDate.getDate() - 1);
       attempts++;
@@ -190,7 +237,7 @@ function getExchangeRate(payload) {
           status: 'success', 
           rate: rate, 
           date: usedDate, 
-          message: `Rate for ${currency} on ${usedDate}` 
+          message: `Rate for ${currency} on ${usedDate}. Debug: ${debugLog.join('; ')}` 
       };
       // Cache valid rates for 6 hours (21600 seconds)
       scriptCache.put(cacheKey, JSON.stringify(response), 21600);
