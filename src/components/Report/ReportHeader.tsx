@@ -75,7 +75,7 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
     // 動態掃描本次差旅實際使用到的外幣與匯率，且同一幣別僅顯示一次
     const getUsedRates = () => {
         if (!items) return {};
-        const ratesMap: Record<string, Set<number>> = {};
+        const usedCurrencies = new Set<string>();
         
         Object.keys(items).forEach(category => {
             const list = items[category];
@@ -83,34 +83,38 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
                 list.forEach((item: any) => {
                     const currency = String(item['幣別'] || '').toUpperCase();
                     // 排除 TWD，僅收集外幣
-                    if (currency && currency !== 'TWD') {
-                        let rateVal = parseFloat(item['匯率']);
-                        
-                        // 自癒計算：若明細中沒有匯率欄位但有金額及TWD金額（如 Lunch & Learn 或特殊明細）
-                        if (isNaN(rateVal) || rateVal <= 0) {
-                            const amt = parseFloat(item['金額'] || item['個人金額'] || item['總體金額'] || 0);
-                            const twdAmt = parseFloat(item['TWD金額'] || item['TWD個人金額'] || item['TWD總體金額'] || 0);
-                            if (amt > 0 && twdAmt > 0) {
-                                rateVal = twdAmt / amt;
-                            }
-                        }
-                        
-                        if (!isNaN(rateVal) && rateVal > 0) {
-                            if (!ratesMap[currency]) {
-                                ratesMap[currency] = new Set<number>();
-                            }
-                            ratesMap[currency].add(Number(rateVal.toFixed(4)));
-                        }
+                    if (currency && currency !== 'TWD' && currency !== '') {
+                        usedCurrencies.add(currency);
                     }
                 });
             }
         });
         
         const finalRates: Record<string, string> = {};
-        Object.keys(ratesMap).forEach(cur => {
-            const sortedRates = Array.from(ratesMap[cur]).sort((a, b) => a - b);
-            // 由於皆是用出差起始日前一天的匯率，理論上每種外幣只會有一個匯率，但為求100%防禦性，若有複數匯率則以斜線分隔
-            finalRates[cur] = sortedRates.map(r => Number(r.toFixed(2)).toString()).join(' / ');
+        usedCurrencies.forEach(cur => {
+            let rateVal = 0;
+            if (cur === 'USD') {
+                rateVal = rate;
+            } else if (extraRates) {
+                rateVal = extraRates[`${cur}匯率`] || 0;
+            }
+            
+            // 如果 header 中沒有對應匯率（可能剛加入明細尚未更新至 header），才 fallback 去掃描明細中的匯率
+            if (rateVal <= 0) {
+                Object.keys(items).forEach(category => {
+                    const list = items[category];
+                    if (Array.isArray(list) && rateVal <= 0) {
+                        const matchedItem = list.find((item: any) => String(item['幣別']).toUpperCase() === cur && parseFloat(item['匯率']) > 0);
+                        if (matchedItem) {
+                            rateVal = parseFloat(matchedItem['匯率']);
+                        }
+                    }
+                });
+            }
+            
+            if (rateVal > 0) {
+                finalRates[cur] = Number(rateVal.toFixed(2)).toString();
+            }
         });
         
         return finalRates;

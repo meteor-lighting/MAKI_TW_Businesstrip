@@ -453,7 +453,7 @@ function recalculateHeader(reportId, category) {
         }
         
         // 自動同步批次重算所有明細的外幣匯率
-        updateAllExchangeRates(reportId);
+        updateAllExchangeRates(reportId, minDateStr);
       }
     }
   } catch(e) {
@@ -528,7 +528,7 @@ function recalculateHeader(reportId, category) {
   } catch(e) {}
   
   const rateUSDIdx = headers.indexOf('USD匯率');
-  const rateUSD = parseFloat(rowData[rateUSDIdx]) || 30.0; // fallback default
+  let rateUSD = parseFloat(rowData[rateUSDIdx]) || 30.0; // fallback default
   
   const overallTWDIdx = headers.indexOf('合計TWD總體總額');
   const personalTWDIdx = headers.indexOf('合計TWD個人總額');
@@ -596,6 +596,8 @@ function recalculateHeader(reportId, category) {
   // 4. 動態收集並同步有使用到的外幣匯率至 Report Header
   try {
     let usedCurrencies = new Set();
+    usedCurrencies.add('USD'); // 永遠包含 USD，保證 USD 匯率欄位也被更新
+    
     categories.forEach(cat => {
       try {
         const items = sheetDataToJson(cat, ss, true).filter(r => String(r['報告編號']) === String(reportId));
@@ -624,24 +626,11 @@ function recalculateHeader(reportId, category) {
     usedCurrencies.forEach(currency => {
       try {
         let matchedRate = null;
-        // 遍歷所有分類明細，尋找該幣別最新一筆明細的匯率數值，作為前端大卡片展示的即期本行賣出匯率
-        for (let cat of categories) {
-          const items = sheetDataToJson(cat, ss, true).filter(r => String(r['報告編號']) === String(reportId) && String(r['幣別']).toUpperCase() === currency);
-          if (items.length > 0) {
-            const firstWithRate = items.find(item => parseFloat(item['匯率']) > 0);
-            if (firstWithRate) {
-              matchedRate = parseFloat(firstWithRate['匯率']);
-              break;
-            }
-          }
-        }
         
-        // 如果明細中沒找到有匯率的（例如剛新增），才去查起始日前一天的匯率
-        if (matchedRate === null) {
-          const rateResult = getExchangeRate({ currency: currency, date: queryDate });
-          if (rateResult && rateResult.status === 'success') {
-            matchedRate = parseFloat(rateResult.rate) || 1.0;
-          }
+        // 財務規則：統一且強制使用商旅開始日期的前一天 (queryDate) 之台灣銀行即期本行賣出匯率
+        const rateResult = getExchangeRate({ currency: currency, date: queryDate });
+        if (rateResult && rateResult.status === 'success') {
+          matchedRate = parseFloat(rateResult.rate) || 1.0;
         }
         
         if (matchedRate !== null) {
@@ -659,6 +648,11 @@ function recalculateHeader(reportId, category) {
           
           headerSheet.getRange(targetRowIndex, colIdx + 1).setValue(Number(matchedRate.toFixed(4)));
           rowData[colIdx] = matchedRate;
+          
+          // 如果是 USD 欄位，同時將該數值更新到變數中，供隨後的 USD 統計換算使用！
+          if (currency === 'USD') {
+            rateUSD = matchedRate;
+          }
         }
       } catch(e) {
         console.warn(`Failed to process dynamic rate for ${currency}`, e);
@@ -682,11 +676,25 @@ function recalculateHeader(reportId, category) {
   invalidateCache('Report Header');
 }
 
-function updateAllExchangeRates(reportId) {
+function updateAllExchangeRates(reportId, explicitStartDate) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const categories = ['Flight', 'Accommodation', 'Rental Car', 'Transportation', 'Gas', 'Parking', 'Internet', 'Social', 'Gift', 'Luggage Fee', 'Handing Fee', 'Per Diem', 'Lunch & Learn', 'Others', 'Advance Payment'];
-    const fallbackDate = getTripStartDateMinusOneDay(reportId);
+    
+    let fallbackDate;
+    if (explicitStartDate) {
+      const d = new Date(explicitStartDate);
+      if (!isNaN(d.getTime())) {
+        d.setDate(d.getDate() - 1);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        fallbackDate = `${yyyy}-${mm}-${dd}`;
+      }
+    }
+    if (!fallbackDate) {
+      fallbackDate = getTripStartDateMinusOneDay(reportId);
+    }
     
     categories.forEach(cat => {
       try {
