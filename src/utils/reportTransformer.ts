@@ -35,6 +35,46 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
 
     const header = raw.header || {};
 
+    // 解析 header 中所有集中管理的外幣匯率
+    const exchangeRates: Record<string, number> = {
+        TWD: 1.0
+    };
+    Object.keys(header).forEach(key => {
+        if (key.endsWith('匯率')) {
+            const currency = key.replace(/匯率$/, '').toUpperCase();
+            const val = safeNum(header[key]);
+            if (val > 0) {
+                exchangeRates[currency] = val;
+            }
+        }
+    });
+
+    // 依據集中管理的匯率資料強制修正所有明細的匯率與折算後的 TWD 金額，達到前端自癒與絕對同步
+    Object.keys(raw.items).forEach(cat => {
+        const list = raw.items[cat];
+        if (Array.isArray(list)) {
+            list.forEach((item: any) => {
+                const currency = String(item['幣別'] || 'TWD').toUpperCase();
+                const rate = exchangeRates[currency] !== undefined ? exchangeRates[currency] : (safeNum(item['匯率'] || 1) || 1);
+                item['匯率'] = rate;
+                
+                const isAccOrCar = (cat === 'Accommodation' || cat === 'Rental Car');
+                if (isAccOrCar) {
+                    const pers = safeNum(item['個人金額'] !== undefined ? item['個人金額'] : item['金額']);
+                    const over = safeNum(item['總體金額'] !== undefined ? item['總體金額'] : (safeNum(item['個人金額']) + safeNum(item['代墊金額'])));
+                    const adv = safeNum(item['代墊金額']);
+                    
+                    item['TWD個人金額'] = Math.round(pers * rate);
+                    item['TWD總體金額'] = Math.round(over * rate);
+                    item['TWD代墊金額'] = Math.round(adv * rate);
+                } else {
+                    const amt = safeNum(item['金額'] !== undefined ? item['金額'] : item['個人金額']);
+                    item['TWD金額'] = Math.round(amt * rate);
+                }
+            });
+        }
+    });
+
     // Standardize and normalize columns for Accommodation and Rental Car items to handle dual-header structures seamlessly.
     const normalizeItems = (items: any[] | undefined, category: string) => {
         if (!items) return [];

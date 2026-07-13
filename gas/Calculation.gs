@@ -36,9 +36,10 @@ function addReportItem(payload) {
       
       // 自動獲取匯率 (支援所有外幣，調用台灣銀行即期賣出匯率)
       let rate = 1.0;
+      let rateResult = null;
       if (itemData['幣別'] && itemData['幣別'] !== 'TWD') {
         try {
-          const rateResult = getExchangeRate({ currency: itemData['幣別'], date: rateQueryDate });
+          rateResult = getExchangeRate({ currency: itemData['幣別'], date: rateQueryDate });
           if (rateResult && rateResult.status === 'success') {
             rate = parseFloat(rateResult.rate) || 1.0;
           }
@@ -140,6 +141,18 @@ function addReportItem(payload) {
         }
       }
       
+      console.log(
+        `[匯率除錯 - 新增明細] 報告編號: ${reportId}, ` +
+        `分類: ${category}, ` +
+        `原始匯率基準日: ${rateQueryDate}, ` +
+        `實際採用匯率日期: ${rateResult && rateResult.date ? rateResult.date : (itemData['幣別'] === 'TWD' ? 'TWD固定匯率' : 'Fallback')}, ` +
+        `幣別: ${itemData['幣別'] || 'TWD'}, ` +
+        `台銀資料欄位名稱: 即期匯率／本行賣出, ` +
+        `取得的即期本行賣出匯率: ${rate}, ` +
+        `原幣金額: ${itemData['金額'] || itemData['總體金額'] || 0}, ` +
+        `換算後 TWD 金額: ${Math.round((parseFloat(itemData['金額'] || itemData['總體金額']) || 0) * rate)}`
+      );
+
       sheet.appendRow(row);
       SpreadsheetApp.flush();
       
@@ -197,9 +210,10 @@ function updateReportItem(payload) {
       
       // 自動獲取匯率 (支援所有幣別)
       let rate = 1.0;
+      let rateResult = null;
       if (itemData['幣別'] && itemData['幣別'] !== 'TWD') {
         try {
-          const rateResult = getExchangeRate({ currency: itemData['幣別'], date: rateQueryDate });
+          rateResult = getExchangeRate({ currency: itemData['幣別'], date: rateQueryDate });
           if (rateResult && rateResult.status === 'success') {
             rate = parseFloat(rateResult.rate) || 1.0;
           }
@@ -300,6 +314,18 @@ function updateReportItem(payload) {
         }
       }
       
+      console.log(
+        `[匯率除錯 - 修改明細] 報告編號: ${reportId}, ` +
+        `分類: ${category}, ` +
+        `原始匯率基準日: ${rateQueryDate}, ` +
+        `實際採用匯率日期: ${rateResult && rateResult.date ? rateResult.date : (itemData['幣別'] === 'TWD' ? 'TWD固定匯率' : 'Fallback')}, ` +
+        `幣別: ${itemData['幣別'] || 'TWD'}, ` +
+        `台銀資料欄位名稱: 即期匯率／本行賣出, ` +
+        `取得的即期本行賣出匯率: ${rate}, ` +
+        `原幣金額: ${itemData['金額'] || itemData['總體金額'] || 0}, ` +
+        `換算後 TWD 金額: ${Math.round((parseFloat(itemData['金額'] || itemData['總體金額']) || 0) * rate)}`
+      );
+
       sheet.getRange(targetRowIndex, 1, 1, headers.length).setValues([updatedRow]);
       SpreadsheetApp.flush();
       
@@ -733,9 +759,10 @@ function updateAllExchangeRates(reportId, explicitStartDate) {
             const queryDate = fallbackDate;
             
             let rate = 1.0;
+            let rateResult = null;
             if (currency !== 'TWD' && currency !== '') {
               try {
-                const rateResult = getExchangeRate({ currency: currency, date: queryDate });
+                rateResult = getExchangeRate({ currency: currency, date: queryDate });
                 if (rateResult && rateResult.status === 'success') {
                   rate = parseFloat(rateResult.rate) || 1.0;
                 }
@@ -756,23 +783,51 @@ function updateAllExchangeRates(reportId, explicitStartDate) {
               const advanceIdx = headers.indexOf('代墊金額');
               const twdAdvanceIdx = headers.indexOf('TWD代墊金額');
               
+              let pAmt = 0, oAmt = 0, aAmt = 0;
               if (personalIdx !== -1 && twdPersonalIdx !== -1) {
-                const amt = parseFloat(data[i][personalIdx]) || 0;
-                sheet.getRange(i + 1, twdPersonalIdx + 1).setValue(Math.round(amt * rate));
+                pAmt = parseFloat(data[i][personalIdx]) || 0;
+                sheet.getRange(i + 1, twdPersonalIdx + 1).setValue(Math.round(pAmt * rate));
               }
               if (overallIdx !== -1 && twdOverallIdx !== -1) {
-                const amt = parseFloat(data[i][overallIdx]) || 0;
-                sheet.getRange(i + 1, twdOverallIdx + 1).setValue(Math.round(amt * rate));
+                oAmt = parseFloat(data[i][overallIdx]) || 0;
+                sheet.getRange(i + 1, twdOverallIdx + 1).setValue(Math.round(oAmt * rate));
               }
               if (advanceIdx !== -1 && twdAdvanceIdx !== -1) {
-                const amt = parseFloat(data[i][advanceIdx]) || 0;
-                sheet.getRange(i + 1, twdAdvanceIdx + 1).setValue(Math.round(amt * rate));
+                aAmt = parseFloat(data[i][advanceIdx]) || 0;
+                sheet.getRange(i + 1, twdAdvanceIdx + 1).setValue(Math.round(aAmt * rate));
               }
+              
+              console.log(
+                `[匯率除錯] 報告編號: ${reportId}, ` +
+                `分類: ${cat}, ` +
+                `商旅開始日期: ${explicitStartDate || '由Header取得'}, ` +
+                `原始匯率基準日: ${fallbackDate}, ` +
+                `實際採用匯率日期: ${rateResult && rateResult.date ? rateResult.date : (currency === 'TWD' ? 'TWD固定匯率' : 'Fallback')}, ` +
+                `幣別: ${currency}, ` +
+                `台銀資料欄位名稱: 即期匯率／本行賣出, ` +
+                `取得的即期本行賣出匯率: ${rate}, ` +
+                `原幣金額(總體/個人): ${oAmt}/${pAmt}, ` +
+                `換算後 TWD 金額(總體/個人): ${Math.round(oAmt * rate)}/${Math.round(pAmt * rate)}`
+              );
             } else {
+              let amount = 0;
               if (amtIdx !== -1 && twdIdx !== -1) {
-                const amount = parseFloat(data[i][amtIdx]) || 0;
+                amount = parseFloat(data[i][amtIdx]) || 0;
                 sheet.getRange(i + 1, twdIdx + 1).setValue(Math.round(amount * rate));
               }
+              
+              console.log(
+                `[匯率除錯] 報告編號: ${reportId}, ` +
+                `分類: ${cat}, ` +
+                `商旅開始日期: ${explicitStartDate || '由Header取得'}, ` +
+                `原始匯率基準日: ${fallbackDate}, ` +
+                `實際採用匯率日期: ${rateResult && rateResult.date ? rateResult.date : (currency === 'TWD' ? 'TWD固定匯率' : 'Fallback')}, ` +
+                `幣別: ${currency}, ` +
+                `台銀資料欄位名稱: 即期匯率／本行賣出, ` +
+                `取得的即期本行賣出匯率: ${rate}, ` +
+                `原幣金額: ${amount}, ` +
+                `換算後 TWD 金額: ${Math.round(amount * rate)}`
+              );
             }
           }
         }
