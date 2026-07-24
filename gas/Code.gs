@@ -138,9 +138,10 @@ function getReportFullData(payload) {
   }
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const forceRefresh = payload.forceRefresh === true;
   
   // 1. Get Header
-  const headerDataRaw = sheetDataToJson('Report Header', ss, true);
+  const headerDataRaw = sheetDataToJson('Report Header', ss, forceRefresh);
   let header = headerDataRaw.find(r => String(r['報告編號']) === String(reportId));
   
   if (!header) {
@@ -149,7 +150,7 @@ function getReportFullData(payload) {
 
   // Security Check
   if (String(header['用戶編號']) !== String(userId)) {
-      const memberDataRaw = sheetDataToJson('Member', ss, true);
+      const memberDataRaw = sheetDataToJson('Member', ss, forceRefresh);
       const member = memberDataRaw.find(m => String(m['用戶編號']) === String(userId));
       
       let isAdmin = false;
@@ -171,7 +172,7 @@ function getReportFullData(payload) {
   // Populate true user name if missing
   if (!header['員工姓名'] || header['員工姓名'] === '') {
       try {
-          const memberDataRaw = sheetDataToJson('Member', ss, true);
+          const memberDataRaw = sheetDataToJson('Member', ss, forceRefresh);
           const member = memberDataRaw.find(m => String(m['用戶編號']) === String(header['用戶編號']));
           if (member) {
               header['員工姓名'] = member['用戶名稱'];
@@ -187,7 +188,7 @@ function getReportFullData(payload) {
   categories.forEach(cat => {
       let reportItems = [];
       try {
-          const cachedData = sheetDataToJson(cat, ss, true);
+          const cachedData = sheetDataToJson(cat, ss, forceRefresh);
           reportItems = cachedData.filter(r => String(r['報告編號']) === String(reportId));
           // Sort by sequence if applicable
           if (reportItems.length > 0 && reportItems[0]['次序'] !== undefined) {
