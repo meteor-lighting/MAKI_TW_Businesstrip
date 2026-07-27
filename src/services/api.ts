@@ -207,22 +207,28 @@ async function fetchReportList() {
     if (error) throw error;
     return {
         status: 'success' as const,
-        data: (data || []).map((row: any) => ({
-            reportId: row.id,
-            userId: row.employee_code,
-            userName: row.display_name,
-            days: row.days,
-            startDate: row.start_date,
-            endDate: row.end_date,
-            status: row.status,
-            createdAt: row.created_at,
-            reportName: row.report_name,
-            paymentCurrency: row.payment_currency,
-            totalAmount: Number(row.total_twd || 0),
-            advanceAmount: Number(row.advance_twd || 0),
-            totalUSDAmount: Number(row.total_usd || 0),
-            rate: Number(row.usd_rate || 1),
-        })),
+        data: (data || []).map((row: any) => {
+            const totalAmount = Number(row.total_twd || 0);
+            const rate = Number(row.usd_rate || 1);
+            const totalUSDAmount = rate > 0 ? totalAmount / rate : totalAmount;
+            return {
+                reportId: row.id,
+                userId: row.employee_code,
+                userName: row.display_name,
+                days: row.days,
+                startDate: row.start_date,
+                endDate: row.end_date,
+                status: row.status,
+                createdAt: row.created_at,
+                reportName: row.report_name,
+                paymentCurrency: row.payment_currency,
+                totalAmount,
+                advanceAmount: Number(row.advance_twd || 0),
+                // Do not trust a stale stored total_usd value from an import.
+                totalUSDAmount,
+                rate,
+            };
+        }),
     };
 }
 
@@ -409,8 +415,21 @@ async function callVoidRpc(name: string, args: Record<string, any>) {
 }
 
 function reportHeader(report: any) {
+    const data = { ...(report.data || {}) };
+    const rate = numeric(data['USD匯率']) || 1;
+    const totalTwd = numeric(data['合計TWD總體總額']);
+    const personalTwd = numeric(data['合計TWD個人總額']);
+    const days = numeric(report.days ?? data['商旅天數']);
+
+    // Imported reports can contain stale USD header totals. Keep the TWD
+    // totals as the source of truth and derive every USD header value here.
+    data['合計USD總體總額'] = rate > 0 ? totalTwd / rate : totalTwd;
+    data['合計USD個人總額'] = rate > 0 ? personalTwd / rate : personalTwd;
+    data['合計USD總體平均'] = days > 0 ? data['合計USD總體總額'] / days : data['合計USD總體總額'];
+    data['合計USD個人平均'] = days > 0 ? data['合計USD個人總額'] / days : data['合計USD個人總額'];
+
     return {
-        ...(report.data || {}),
+        ...data,
         報告編號: report.id,
         報告名稱: report.report_name,
         狀態: report.status,

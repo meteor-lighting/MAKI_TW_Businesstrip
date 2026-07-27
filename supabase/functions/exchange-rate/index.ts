@@ -69,7 +69,10 @@ const authenticatedHandler = withSupabase(
           String(b.date).localeCompare(String(a.date))
         );
       const latest = rows[0];
-      const rate = latest ? Number(latest.spot_sell) : fallbackRates[currency];
+      // Keep the same four-decimal precision contract as the legacy Apps
+      // Script. The database stores this numeric value without display
+      // formatting, so calculations and exports use the preserved precision.
+      const rate = latest ? normalizeLegacyRate(latest.spot_sell) : normalizeLegacyRate(fallbackRates[currency]);
       if (!rate) throw new Error(`No exchange rate is available for ${currency}`);
 
       const rateDate = latest?.date || requested;
@@ -106,4 +109,9 @@ function json(value: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function normalizeLegacyRate(value: unknown) {
+  const rate = Number(value);
+  return Number.isFinite(rate) && rate > 0 ? Number(rate.toFixed(4)) : 0;
 }

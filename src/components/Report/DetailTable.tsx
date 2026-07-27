@@ -50,8 +50,16 @@ const DetailTable: React.FC<DetailTableProps> = ({ id, title, total, columns, da
                             <tr key={rowIndex} className={clsx("border-b", rowIndex % 2 === 0 ? "bg-gray-100" : "bg-white")}>
                                 {columns.map((col, colIndex) => {
                                     let cellValue = row[col.accessorKey];
+                                    const isRateField = String(col.accessorKey).endsWith('匯率') || col.headerKey === 'exchange_rate';
 
-                                    if (col.type === 'currency' || col.type === 'number') {
+                                    // Rates remain full precision for calculations, but never
+                                    // expose the raw database decimal in the web table.
+                                    if (isRateField && cellValue !== undefined && cellValue !== null && cellValue !== '') {
+                                        const rate = Number(cellValue);
+                                        cellValue = Number.isFinite(rate) ? rate.toFixed(3) : String(cellValue);
+                                    }
+
+                                    if (!isRateField && (col.type === 'currency' || col.type === 'number')) {
                                         const isTwdField = String(col.accessorKey).toUpperCase().includes('TWD');
                                         const isTwdRow = String(row['幣別']).toUpperCase() === 'TWD';
                                         const valNum = Number(cellValue || 0);

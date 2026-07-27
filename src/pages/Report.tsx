@@ -677,7 +677,7 @@ export default function Report() {
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
                                     { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => Number(item['匯率'] ?? 0).toFixed(3) },
                                     { key: '備註', header: t('remark') },
                                 ]}
                             />
@@ -740,7 +740,7 @@ export default function Report() {
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
                                     { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => Number(item['匯率'] ?? 0).toFixed(3) },
                                     { key: '備註', header: t('remark') },
                                 ]}
                             />
@@ -803,7 +803,7 @@ export default function Report() {
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
                                     { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => Number(item['匯率'] ?? 0).toFixed(3) },
                                     { key: '備註', header: t('remark') },
                                 ]}
                             />
@@ -865,7 +865,7 @@ export default function Report() {
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
                                     { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => Number(item['匯率'] ?? 0).toFixed(3) },
                                     { key: '備註', header: t('remark') },
                                 ]}
                             />
@@ -927,7 +927,7 @@ export default function Report() {
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
                                     { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => Number(item['匯率'] ?? 0).toFixed(3) },
                                     { key: '備註', header: t('remark') },
                                 ]}
                             />
@@ -989,7 +989,7 @@ export default function Report() {
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
                                     { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => Number(item['匯率'] ?? 0).toFixed(3) },
                                     { key: '備註', header: t('remark') },
                                 ]}
                             />
@@ -1051,7 +1051,7 @@ export default function Report() {
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
                                     { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => Number(item['匯率'] ?? 0).toFixed(3) },
                                     { key: '備註', header: t('remark') },
                                 ]}
                             />
@@ -1113,7 +1113,7 @@ export default function Report() {
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
                                     { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => Number(item['匯率'] ?? 0).toFixed(3) },
                                     { key: '備註', header: t('remark') },
                                 ]}
                             />
@@ -1186,7 +1186,7 @@ export default function Report() {
                                     { key: '每日金額', header: t('daily_amount'), render: (item: any) => item['每日金額'] ?? 0 },
                                     { key: '金額', header: t('total_amount_per_diem'), render: (item: any) => item['金額'] ?? 0 },
                                     { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => Number(item['匯率'] ?? 0).toFixed(3) },
                                     { key: '備註', header: t('remark') },
                                 ]}
                             />
@@ -1249,7 +1249,7 @@ export default function Report() {
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
                                     { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => Number(item['匯率'] ?? 0).toFixed(3) },
                                     { key: '備註', header: t('remark') },
                                 ]}
                             />
@@ -1312,7 +1312,7 @@ export default function Report() {
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
                                     { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => Number(item['匯率'] ?? 0).toFixed(3) },
                                     { key: '備註', header: t('remark') },
                                 ]}
                             />
@@ -1374,7 +1374,7 @@ export default function Report() {
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount'), render: (item: any) => item['金額'] ?? 0 },
                                     { key: 'TWD金額', header: t('twd_amount'), render: (item: any) => item['TWD金額'] ?? 0 },
-                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => item['匯率'] ?? 0 },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => Number(item['匯率'] ?? 0).toFixed(3) },
                                     { key: '經銷商', header: t('dealer') },
                                     { key: '人數', header: t('headcount'), render: (item: any) => item['人數'] ?? '' },
                                 ]}

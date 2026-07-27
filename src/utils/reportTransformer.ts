@@ -49,28 +49,14 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
         }
     });
 
-    // 依據集中管理的匯率資料強制修正所有明細的匯率與折算後的 TWD 金額，達到前端自癒與絕對同步
+    // Preserve imported Google Sheets amounts. Only fill a missing item rate;
+    // recalculating TWD values in the browser can change legacy rounded rows.
     Object.keys(raw.items).forEach(cat => {
         const list = raw.items[cat];
         if (Array.isArray(list)) {
             list.forEach((item: any) => {
                 const currency = String(item['幣別'] || 'TWD').toUpperCase();
-                const rate = exchangeRates[currency] !== undefined ? exchangeRates[currency] : (safeNum(item['匯率'] || 1) || 1);
-                item['匯率'] = rate;
-                
-                const isAccOrCar = (cat === 'Accommodation' || cat === 'Rental Car');
-                if (isAccOrCar) {
-                    const pers = safeNum(item['個人金額'] !== undefined ? item['個人金額'] : item['金額']);
-                    const over = safeNum(item['總體金額'] !== undefined ? item['總體金額'] : (safeNum(item['個人金額']) + safeNum(item['代墊金額'])));
-                    const adv = safeNum(item['代墊金額']);
-                    
-                    item['TWD個人金額'] = Math.round(pers * rate);
-                    item['TWD總體金額'] = Math.round(over * rate);
-                    item['TWD代墊金額'] = Math.round(adv * rate);
-                } else {
-                    const amt = safeNum(item['金額'] !== undefined ? item['金額'] : item['個人金額']);
-                    item['TWD金額'] = Math.round(amt * rate);
-                }
+                if (safeNum(item['匯率']) <= 0) item['匯率'] = exchangeRates[currency] || 1;
             });
         }
     });
@@ -494,11 +480,14 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     const finalTotalTWD = Math.round(safeNum(header['合計TWD總體總額']) || calcTotalTWD);
     const finalPersonalTWD = Math.round(safeNum(header['合計TWD個人總額']) || calcPersonalTWD);
     
-    const finalTotalUSD = safeNum(header['合計USD總體總額']) || (rateUSD > 0 ? finalTotalTWD / rateUSD : finalTotalTWD);
-    const finalPersonalUSD = safeNum(header['合計USD個人總額']) || (rateUSD > 0 ? finalPersonalTWD / rateUSD : finalPersonalTWD);
+    // USD header totals can be stale in imported Google Sheet reports. Derive
+    // them from the authoritative TWD totals and the full-precision rate so
+    // GAS and Supabase render the same value.
+    const finalTotalUSD = rateUSD > 0 ? finalTotalTWD / rateUSD : finalTotalTWD;
+    const finalPersonalUSD = rateUSD > 0 ? finalPersonalTWD / rateUSD : finalPersonalTWD;
 
     const finalAvgDayTWD = Math.round(safeNum(header['合計TWD總體平均']) || (days > 0 ? finalTotalTWD / days : finalTotalTWD));
-    const finalAvgDayUSD = safeNum(header['合計USD總體平均']) || (days > 0 ? finalTotalUSD / days : finalTotalUSD);
+    const finalAvgDayUSD = days > 0 ? finalTotalUSD / days : finalTotalUSD;
 
     return {
         reportId,

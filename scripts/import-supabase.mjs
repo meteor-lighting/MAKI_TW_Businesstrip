@@ -238,7 +238,10 @@ const flightRecords = rows('Flights')
 await replaceFlights(supabase, flightRecords);
 
 assert(await supabase.rpc('sync_report_sequence'), 'report sequence');
-for (const report of reportRecords) assert(await supabase.rpc('recalculate_report', { target_report_id: report.id }), `recalculate ${report.id}`);
+// The workbook already contains the legacy Google Sheets totals. Do not
+// recalculate imported reports here: doing so replaces the legacy provider
+// rate with the rounded rate stored on an expense row and changes the result.
+// Reports created or edited in Supabase are still recalculated by the RPCs.
 
 const checks = {};
 for (const table of ['profiles', 'profile_login_aliases', 'reports', 'expense_items', 'countries', 'cities', 'flight_schedules']) {

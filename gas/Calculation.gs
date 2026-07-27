@@ -723,7 +723,9 @@ function recalculateHeader(reportId, category) {
             colIdx = headers.length - 1;
           }
           
-          headerSheet.getRange(targetRowIndex, colIdx + 1).setValue(Number(matchedRate.toFixed(4)));
+          // Keep the full provider precision. USD totals must use the same rate
+          // that is stored on the expense rows and in the Supabase migration.
+          headerSheet.getRange(targetRowIndex, colIdx + 1).setValue(matchedRate);
           rowData[colIdx] = matchedRate;
           
           // 如果是 USD 欄位，同時將該數值更新到變數中，供隨後的 USD 統計換算使用！
