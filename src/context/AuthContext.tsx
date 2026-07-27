@@ -1,13 +1,16 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { sendRequest } from '../services/api';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { loadCurrentUser, sendRequest } from '../services/api';
+import { supabase } from '../lib/supabase';
 
-interface User {
+export interface User {
     id: string;
+    authId?: string;
     name: string;
     email: string;
     role?: string;
     canViewOthers?: boolean;
     canCopyOthers?: boolean;
+    mustResetPassword?: boolean;
 }
 
 interface AuthContextType {
@@ -16,40 +19,63 @@ interface AuthContextType {
     isLoading: boolean;
     signIn: (username: string, password: string) => Promise<void>;
     signUp: (username: string, password: string, email: string) => Promise<void>;
-    signOut: () => void;
+    signOut: () => Promise<void>;
+    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const refreshUser = async () => {
+        const { data } = await supabase.auth.getSession();
+        if (!data.session) {
+            setUser(null);
+            return;
+        }
+        setUser(await loadCurrentUser());
+    };
 
     useEffect(() => {
-        // Check local storage for existing session (mock implementation)
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            try {
-                setUser(JSON.parse(storedUser));
-            } catch (e) {
-                console.error('Failed to parse user from local storage', e);
-                localStorage.removeItem('user');
+        let active = true;
+        supabase.auth.getSession()
+            .then(async ({ data }) => {
+                if (!active) return;
+                if (data.session) setUser(await loadCurrentUser());
+            })
+            .catch((error) => console.error('Unable to restore Supabase session', error))
+            .finally(() => active && setIsLoading(false));
+
+        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+            if (!active) return;
+            if (!session) {
+                setUser(null);
+                setIsLoading(false);
+            } else if (
+                event === 'SIGNED_IN'
+                || event === 'PASSWORD_RECOVERY'
+                || event === 'TOKEN_REFRESHED'
+                || event === 'USER_UPDATED'
+            ) {
+                window.setTimeout(() => {
+                    loadCurrentUser().then(setUser).catch(console.error).finally(() => setIsLoading(false));
+                }, 0);
             }
-        }
-        setIsLoading(false);
+        });
+        return () => {
+            active = false;
+            listener.subscription.unsubscribe();
+        };
     }, []);
 
     const signIn = async (username: string, password: string) => {
         setIsLoading(true);
         try {
             const response = await sendRequest('signin', { username, password });
-            if (response.status === 'success' && response.user) {
-                setUser(response.user);
-                localStorage.setItem('user', JSON.stringify(response.user));
-                // Token handling should be here in real app
-            } else {
-                throw new Error(response.message || 'Login failed');
-            }
+            if (response.status !== 'success' || !response.user) throw new Error(response.message || 'Login failed');
+            setUser(response.user);
         } finally {
             setIsLoading(false);
         }
@@ -58,28 +84,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const signUp = async (username: string, password: string, email: string) => {
         setIsLoading(true);
         try {
-            const response = await sendRequest('signup', { username, password, email });
-            if (response.status !== 'success') {
-                throw new Error(response.message || 'Signup failed');
-            }
-            // Auto login after signup? Or require explicit login. 
-            // Prompt implies "Sign Up success -> Sign In".
+            await sendRequest('signup', { username, password, email });
         } finally {
             setIsLoading(false);
         }
     };
 
-    const signOut = () => {
+    const signOut = async () => {
+        await supabase.auth.signOut();
         setUser(null);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        sessionStorage.removeItem('token');
         sessionStorage.removeItem('activeReportId');
-        // window.location.href = '/'; // Optional redirect
     };
 
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, signIn, signUp, signOut }}>
+        <AuthContext.Provider value={{
+            user,
+            isAuthenticated: Boolean(user),
+            isLoading,
+            signIn,
+            signUp,
+            signOut,
+            refreshUser,
+        }}>
             {children}
         </AuthContext.Provider>
     );
@@ -87,8 +113,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
     const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
+    if (!context) throw new Error('useAuth must be used within an AuthProvider');
     return context;
 }

@@ -7,9 +7,14 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "supabase:smoke": "node test_api.cjs",
+    "supabase:import:check": "node scripts/import-supabase.mjs --dry-run",
+    "supabase:import": "node scripts/import-supabase.mjs",
+    "supabase:set-role": "node scripts/set-user-role.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.8",
     "clsx": "^2.1.0",
     "date-fns": "^3.6.0",
     "docx": "^9.5.1",

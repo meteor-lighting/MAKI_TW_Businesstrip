@@ -1,38 +1,35 @@
-const URL = 'https://script.google.com/macros/s/AKfycbw4qhoxcWJ1j47KdunKc5LQpHJW9PbMuwR1eZ1LDPkyM7C-ehcXTy1BOnZKtjfC5KEw/exec';
+const fs = require('node:fs');
+const path = require('node:path');
 
-async function auth() {
-  const req = await fetch(URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'signin', payload: { username: 'aaa', password: 'bbb' } }) 
-  });
-  const res = await req.json();
-  console.log("SignIn:", JSON.stringify(res, null, 2));
-  return res.user?.id;
+const envPath = path.join(__dirname, '.env.local');
+if (!fs.existsSync(envPath)) throw new Error('Create .env.local before running this smoke test.');
+
+const env = {};
+for (const rawLine of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+  const line = rawLine.trim();
+  if (!line || line.startsWith('#')) continue;
+  const index = line.indexOf('=');
+  if (index < 1) continue;
+  env[line.slice(0, index).trim()] = line.slice(index + 1).trim().replace(/^(['"])(.*)\1$/, '$2');
 }
+
+const baseUrl = String(env.VITE_SUPABASE_URL || '').replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
+const publishableKey = env.VITE_SUPABASE_PUBLISHABLE_KEY;
+if (!baseUrl) throw new Error('VITE_SUPABASE_URL is not defined in .env.local.');
+if (!publishableKey) throw new Error('VITE_SUPABASE_PUBLISHABLE_KEY is not defined in .env.local.');
 
 async function test() {
-  const userId = await auth() || '000001';
-  console.log("Using User ID:", userId);
-
-  const req = await fetch(URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'getUserReports', payload: { userId } }) 
+  const response = await fetch(`${baseUrl}/rest/v1/countries?select=name&limit=1`, {
+    headers: { apikey: publishableKey },
   });
-  const res = await req.json();
-  console.log("getUserReports:", JSON.stringify(res, null, 2));
-
-  if (res.status === 'success' && res.data.length > 0) {
-     const toDelete = res.data[0];
-     console.log("Attempting to delete report:", toDelete.reportId);
-     const delReq = await fetch(URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'deleteReport', payload: { userId, reportId: toDelete.reportId } }) 
-     });
-     const delRes = await delReq.json();
-     console.log("Delete Response:", JSON.stringify(delRes, null, 2));
+  if (!response.ok) {
+    throw new Error(`Supabase REST smoke test failed (${response.status}): ${await response.text()}`);
   }
+  const rows = await response.json();
+  console.log(`Supabase REST is reachable. Countries returned: ${rows.length}`);
 }
-test();
+
+test().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exitCode = 1;
+});

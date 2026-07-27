@@ -71,9 +71,11 @@ typings/
 
 # dotenv environment variables file
 .env
+.envlocal
 .env.test
 .env.production
 .env.local
+Business Travel Expense DB.xlsx
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
