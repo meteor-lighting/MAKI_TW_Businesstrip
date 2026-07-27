@@ -113,7 +113,7 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
             }
             
             if (rateVal > 0) {
-                finalRates[cur] = Number(rateVal.toFixed(2)).toString();
+                finalRates[cur] = rateVal.toFixed(3);
             }
         });
         
@@ -200,12 +200,12 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
                     </div>
                     <div className="flex flex-col">
                         <span className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t('rate_usd', 'USD匯率')}</span>
-                        <span className="font-medium text-gray-800">{rate}</span>
+                        <span className="font-medium text-gray-800">{Number(rate).toFixed(3)}</span>
                     </div>
                     {extraRates && Object.keys(extraRates).map(colName => (
                         <div className="flex flex-col" key={colName}>
                             <span className="text-xs text-gray-500 uppercase tracking-wider mb-1">{colName}</span>
-                            <span className="font-medium text-gray-800">{extraRates[colName]}</span>
+                            <span className="font-medium text-gray-800">{Number(extraRates[colName]).toFixed(3)}</span>
                         </div>
                     ))}
                     <div className="flex flex-col">

@@ -16,9 +16,10 @@ export default function SignIn() {
     const [successMsg, setSuccessMsg] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Forgot Password State
     const [isForgotPassword, setIsForgotPassword] = useState(false);
-    const [resetEmail, setResetEmail] = useState('');
+    const [resetIdentifier, setResetIdentifier] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -38,16 +39,26 @@ export default function SignIn() {
         e.preventDefault();
         setError('');
         setSuccessMsg('');
+        if (newPassword.length < 8) {
+            setError(t('password_min_length'));
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setError(t('password_mismatch'));
+            return;
+        }
         setLoading(true);
         try {
-            const res = await sendRequest('forgotPassword', { email: resetEmail });
+            const res = await sendRequest('forgotPassword', {
+                identifier: resetIdentifier,
+                newPassword,
+            });
             if (res.status === 'success') {
-                setSuccessMsg(t('password_reset_sent'));
-                setTimeout(() => {
-                    setIsForgotPassword(false);
-                    setSuccessMsg('');
-                    setResetEmail('');
-                }, 3000);
+                setUsername(resetIdentifier);
+                setIsForgotPassword(false);
+                setSuccessMsg(t('password_reset_complete'));
+                setNewPassword('');
+                setConfirmPassword('');
             } else {
                 setError(res.message || t('error'));
             }
@@ -71,20 +82,53 @@ export default function SignIn() {
                 </div>
 
                 {isForgotPassword ? (
-                    /* Forgot Password Form */
                     <form className="mt-8 space-y-6" onSubmit={handleForgotPassword}>
-                        <div className="rounded-md shadow-sm -space-y-px">
+                        <p className="text-sm text-gray-600 text-center">
+                            {t('password_setup_instructions')}
+                        </p>
+                        <div className="rounded-md shadow-sm space-y-3">
                             <div>
-                                <label htmlFor="reset-email" className="sr-only">{t('email')}</label>
+                                <label htmlFor="reset-identifier" className="sr-only">{t('username')}</label>
                                 <input
-                                    id="reset-email"
-                                    name="email"
-                                    type="email"
+                                    id="reset-identifier"
+                                    name="identifier"
+                                    type="text"
                                     required
-                                    className="appearance-none rounded relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                                    placeholder={t('enter_email')}
-                                    value={resetEmail}
-                                    onChange={(e) => setResetEmail(e.target.value)}
+                                    autoComplete="username"
+                                    className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    placeholder={t('username')}
+                                    value={resetIdentifier}
+                                    onChange={(e) => setResetIdentifier(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="reset-password" className="sr-only">{t('new_password')}</label>
+                                <input
+                                    id="reset-password"
+                                    name="new-password"
+                                    type="password"
+                                    required
+                                    minLength={8}
+                                    autoComplete="new-password"
+                                    className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    placeholder={t('new_password')}
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="confirm-password" className="sr-only">{t('confirm_new_password')}</label>
+                                <input
+                                    id="confirm-password"
+                                    name="confirm-password"
+                                    type="password"
+                                    required
+                                    minLength={8}
+                                    autoComplete="new-password"
+                                    className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                    placeholder={t('confirm_new_password')}
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -98,7 +142,7 @@ export default function SignIn() {
                                 disabled={loading}
                                 className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
                             >
-                                {loading ? t('loading') : t('send_reset_email')}
+                                {loading ? t('loading') : t('reset_password')}
                             </button>
                         </div>
 
@@ -149,6 +193,7 @@ export default function SignIn() {
                         </div>
 
                         {error && <div className="text-red-500 text-sm">{error}</div>}
+                        {successMsg && <div className="text-green-600 text-sm">{successMsg}</div>}
 
                         <div className="flex items-center justify-between">
                             <div className="text-sm">
@@ -157,7 +202,9 @@ export default function SignIn() {
                                     className="font-medium text-indigo-600 hover:text-indigo-500"
                                     onClick={() => {
                                         setIsForgotPassword(true);
+                                        setResetIdentifier(username);
                                         setError('');
+                                        setSuccessMsg('');
                                     }}
                                 >
                                     {t('forgot_password')}

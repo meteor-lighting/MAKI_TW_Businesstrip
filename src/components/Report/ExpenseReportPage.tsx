@@ -66,7 +66,7 @@ const ExpenseReportPage: React.FC = () => {
                             if (!ratesMap[currency]) {
                                 ratesMap[currency] = new Set<number>();
                             }
-                            ratesMap[currency].add(Number(rateVal.toFixed(4)));
+                            ratesMap[currency].add(Number(rateVal.toFixed(3)));
                         }
                     }
                 });
@@ -76,7 +76,7 @@ const ExpenseReportPage: React.FC = () => {
         const finalRates: Record<string, string> = {};
         Object.keys(ratesMap).forEach(cur => {
             const sortedRates = Array.from(ratesMap[cur]).sort((a, b) => a - b);
-            finalRates[cur] = sortedRates.map(r => Number(r.toFixed(2)).toString()).join(' / ');
+            finalRates[cur] = sortedRates.map(r => r.toFixed(3)).join(' / ');
         });
         
         return finalRates;
@@ -111,7 +111,7 @@ const ExpenseReportPage: React.FC = () => {
                         <div className="text-base text-gray-600 flex flex-wrap gap-x-6 gap-y-2 mb-1">
                             <span>{t('user')}: <span className="font-medium text-gray-700">{reportData.user}</span></span>
                             <span>{t('days')}: {reportData.summary.days}</span>
-                            <span>{t('rate_usd')}: {reportData.summary.rateUSD}</span>
+                            <span>{t('rate_usd')}: {Number(reportData.summary.rateUSD).toFixed(3)}</span>
                             <span>{t('period')}: {reportData.summary.period}</span>
                         </div>
                         {Object.keys(usedRates).length > 0 && (

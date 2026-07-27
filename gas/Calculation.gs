@@ -14,18 +14,24 @@ function addReportItem(payload) {
     try {
       const sheetName = getResolvedSheetName(category);
       const sheet = getSheet(sheetName);
-      const data = sheet.getDataRange().getValues();
-      const headers = data[0];
+      const lastColumn = sheet.getLastColumn();
+      const lastRow = sheet.getLastRow();
+      const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
       
       // 計算次序
       const seqIdx = headers.indexOf('次序');
       const repIdx = headers.indexOf('報告編號');
       let maxSeq = 0;
       if (seqIdx !== -1 && repIdx !== -1) {
-        for (let i = 1; i < data.length; i++) {
-          if (String(data[i][repIdx]) === String(reportId)) {
-            const seq = parseInt(data[i][seqIdx], 10);
-            if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+        const rowCount = Math.max(lastRow - 1, 0);
+        if (rowCount > 0) {
+          const reportIds = sheet.getRange(2, repIdx + 1, rowCount, 1).getValues();
+          const sequences = sheet.getRange(2, seqIdx + 1, rowCount, 1).getValues();
+          for (let i = 0; i < rowCount; i++) {
+            if (String(reportIds[i][0]) === String(reportId)) {
+              const seq = parseInt(sequences[i][0], 10);
+              if (!isNaN(seq) && seq > maxSeq) maxSeq = seq;
+            }
           }
         }
       }
@@ -154,7 +160,6 @@ function addReportItem(payload) {
       );
 
       sheet.appendRow(row);
-      SpreadsheetApp.flush();
       
       // 全局累加計算並寫入 Report Header
       recalculateHeader(reportId, category);
@@ -183,8 +188,9 @@ function updateReportItem(payload) {
     try {
       const sheetName = getResolvedSheetName(category);
       const sheet = getSheet(sheetName);
-      const data = sheet.getDataRange().getValues();
-      const headers = data[0];
+      const lastColumn = sheet.getLastColumn();
+      const lastRow = sheet.getLastRow();
+      const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
       
       const repIdx = headers.indexOf('報告編號');
       const seqIdx = headers.indexOf('次序');
@@ -194,10 +200,15 @@ function updateReportItem(payload) {
       }
       
       let targetRowIndex = -1;
-      for (let i = 1; i < data.length; i++) {
-        if (String(data[i][repIdx]) === String(reportId) && String(data[i][seqIdx]) === String(sequence)) {
-          targetRowIndex = i + 1;
-          break;
+      const rowCount = Math.max(lastRow - 1, 0);
+      if (rowCount > 0) {
+        const reportIds = sheet.getRange(2, repIdx + 1, rowCount, 1).getValues();
+        const sequences = sheet.getRange(2, seqIdx + 1, rowCount, 1).getValues();
+        for (let i = 0; i < rowCount; i++) {
+          if (String(reportIds[i][0]) === String(reportId) && String(sequences[i][0]) === String(sequence)) {
+            targetRowIndex = i + 2;
+            break;
+          }
         }
       }
       
@@ -222,7 +233,7 @@ function updateReportItem(payload) {
         }
       }
       
-      const updatedRow = [...data[targetRowIndex - 1]];
+      const updatedRow = sheet.getRange(targetRowIndex, 1, 1, headers.length).getValues()[0];
       headers.forEach((h, i) => {
         if (h === '報告編號' || h === '次序' || h === '建立時間') {
           // Keep intact
@@ -327,7 +338,6 @@ function updateReportItem(payload) {
       );
 
       sheet.getRange(targetRowIndex, 1, 1, headers.length).setValues([updatedRow]);
-      SpreadsheetApp.flush();
       
       // 全局累加計算並寫入 Report Header
       recalculateHeader(reportId, category);
@@ -355,8 +365,9 @@ function deleteReportItem(payload) {
     try {
       const sheetName = getResolvedSheetName(category);
       const sheet = getSheet(sheetName);
-      const data = sheet.getDataRange().getValues();
-      const headers = data[0];
+      const lastColumn = sheet.getLastColumn();
+      const lastRow = sheet.getLastRow();
+      const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
       
       const repIdx = headers.indexOf('報告編號');
       const seqIdx = headers.indexOf('次序');
@@ -366,16 +377,20 @@ function deleteReportItem(payload) {
       }
       
       let targetRowIndex = -1;
-      for (let i = 1; i < data.length; i++) {
-        if (String(data[i][repIdx]) === String(reportId) && String(data[i][seqIdx]) === String(sequence)) {
-          targetRowIndex = i + 1;
-          break;
+      const rowCount = Math.max(lastRow - 1, 0);
+      if (rowCount > 0) {
+        const reportIds = sheet.getRange(2, repIdx + 1, rowCount, 1).getValues();
+        const sequences = sheet.getRange(2, seqIdx + 1, rowCount, 1).getValues();
+        for (let i = 0; i < rowCount; i++) {
+          if (String(reportIds[i][0]) === String(reportId) && String(sequences[i][0]) === String(sequence)) {
+            targetRowIndex = i + 2;
+            break;
+          }
         }
       }
       
       if (targetRowIndex !== -1) {
         sheet.deleteRow(targetRowIndex);
-        SpreadsheetApp.flush();
         
         recalculateHeader(reportId, category);
         invalidateCache(category);
@@ -412,6 +427,29 @@ function recalculateHeader(reportId, category) {
   if (targetRowIndex === -1) return;
   
   let rowData = headerData[targetRowIndex - 1];
+
+  // Reuse report items throughout this recalculation. Only the changed sheet
+  // needs a forced refresh; all other categories can use the shared cache.
+  // Repair.gs calls this function without a category, so preserve its full
+  // refresh behavior for manual repair runs.
+  let reportItemsByCategory = {};
+  const changedSheetName = getResolvedSheetName(category || '');
+  const refreshAllCategories = !category;
+  const getReportItems = (cat) => {
+    const resolved = getResolvedSheetName(cat);
+    if (Object.prototype.hasOwnProperty.call(reportItemsByCategory, resolved)) {
+      return reportItemsByCategory[resolved];
+    }
+
+    const allItems = sheetDataToJson(
+      cat,
+      ss,
+      refreshAllCategories || resolved === changedSheetName
+    );
+    const reportItems = allItems.filter(r => String(r['報告編號']) === String(reportId));
+    reportItemsByCategory[resolved] = reportItems;
+    return reportItems;
+  };
   
   // 1. 自動從機票段 (Flight) 的日期帶入商旅起始日、商旅結束日、商旅天數 (若使用者手動修改則保留不覆蓋)
   try {
@@ -419,7 +457,7 @@ function recalculateHeader(reportId, category) {
     const isManual = manualIdx !== -1 && String(rowData[manualIdx]).toUpperCase() === 'Y';
     
     if (!isManual) {
-      const flightItems = sheetDataToJson('Flight', ss, true).filter(r => String(r['報告編號']) === String(reportId));
+      const flightItems = getReportItems('Flight');
       
       let departureDates = [];
       let arrivalDates = [];
@@ -479,7 +517,14 @@ function recalculateHeader(reportId, category) {
         }
         
         // 自動同步批次重算所有明細的外幣匯率
-        updateAllExchangeRates(reportId, minDateStr);
+        // Adding/editing another expense does not change the trip dates, so
+        // avoid rescanning every sheet and refetching every rate.
+        if (!category || category === 'Flight') {
+          updateAllExchangeRates(reportId, minDateStr);
+          // updateAllExchangeRates may change TWD amounts and invalidates the
+          // shared sheet cache, so discard snapshots captured before it ran.
+          reportItemsByCategory = {};
+        }
       }
     }
   } catch(e) {
@@ -518,7 +563,7 @@ function recalculateHeader(reportId, category) {
   
   categories.forEach(cat => {
     try {
-      const items = sheetDataToJson(cat, ss, true).filter(r => String(r['報告編號']) === String(reportId));
+      const items = getReportItems(cat);
       items.forEach(item => {
         const twdVal = parseFloat(item['TWD金額'] || 0);
         const pTVal = parseFloat(item['TWD個人金額'] || item['TWD個人'] || 0);
@@ -547,7 +592,7 @@ function recalculateHeader(reportId, category) {
   
   // Calculate Advance Payments separately
   try {
-    const advItems = sheetDataToJson('Advance Payment', ss, true).filter(r => String(r['報告編號']) === String(reportId));
+    const advItems = getReportItems('Advance Payment');
     advItems.forEach(item => {
       advanceTotalTWD += parseFloat(item['TWD金額'] || 0);
     });
@@ -626,7 +671,7 @@ function recalculateHeader(reportId, category) {
     
     categories.forEach(cat => {
       try {
-        const items = sheetDataToJson(cat, ss, true).filter(r => String(r['報告編號']) === String(reportId));
+        const items = getReportItems(cat);
         items.forEach(item => {
           if (item['幣別'] && String(item['幣別']).toUpperCase() !== 'TWD' && String(item['幣別']).toUpperCase() !== '') {
             usedCurrencies.add(String(item['幣別']).toUpperCase());
@@ -660,7 +705,7 @@ function recalculateHeader(reportId, category) {
         let matchedRate = null;
         
         // 財務規則：統一且強制使用商旅開始日期的前一天 (queryDate) 之台灣銀行即期本行賣出匯率
-        const rateResult = getExchangeRate({ currency: currency, date: queryDate, forceRefresh: true });
+        const rateResult = getExchangeRate({ currency: currency, date: queryDate });
         if (rateResult && rateResult.status === 'success') {
           matchedRate = parseFloat(rateResult.rate) || 1.0;
         }
@@ -678,7 +723,9 @@ function recalculateHeader(reportId, category) {
             colIdx = headers.length - 1;
           }
           
-          headerSheet.getRange(targetRowIndex, colIdx + 1).setValue(Number(matchedRate.toFixed(4)));
+          // Keep the full provider precision. USD totals must use the same rate
+          // that is stored on the expense rows and in the Supabase migration.
+          headerSheet.getRange(targetRowIndex, colIdx + 1).setValue(matchedRate);
           rowData[colIdx] = matchedRate;
           
           // 如果是 USD 欄位，同時將該數值更新到變數中，供隨後的 USD 統計換算使用！

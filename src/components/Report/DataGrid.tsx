@@ -22,6 +22,21 @@ interface DataGridProps<T> {
     onSelectionChange?: (items: T[]) => void;
 }
 
+function formatGridValue(value: React.ReactNode): React.ReactNode {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value.toLocaleString(undefined, { maximumFractionDigits: 3 });
+    }
+
+    if (typeof value === 'string' && /^[-+]?\d+\.\d+$/.test(value.trim())) {
+        const numericValue = Number(value);
+        if (Number.isFinite(numericValue)) {
+            return numericValue.toLocaleString(undefined, { maximumFractionDigits: 3 });
+        }
+    }
+
+    return value;
+}
+
 export default function DataGrid<T>({ 
     columns, 
     data, 
@@ -147,7 +162,7 @@ export default function DataGrid<T>({
                                 )}
                                 {columns.map((col, colIdx) => (
                                     <td key={colIdx} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {col.render ? col.render(item) : String(item[col.key as keyof T])}
+                                        {formatGridValue(col.render ? col.render(item) : String(item[col.key as keyof T]))}
                                     </td>
                                 ))}
                                 {(onDelete || onEdit || onCopy) && (
