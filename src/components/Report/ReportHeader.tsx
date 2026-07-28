@@ -167,6 +167,12 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
                         <select value={editPaymentCurrency} onChange={(e) => setEditPaymentCurrency(e.target.value)} className="w-full p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                         <option value="TWD">TWD</option>
                         <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="JPY">JPY</option>
+                        <option value="CNY">CNY</option>
+                        <option value="HKD">HKD</option>
+                        <option value="THB">THB</option>
+                        <option value="CAD">CAD</option>
                         </select>
                     </div>
 

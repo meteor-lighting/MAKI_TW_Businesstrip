@@ -1,10 +1,59 @@
 import { supabase } from '../lib/supabase';
+import {
+    getExpenseDate,
+    getExpenseTime,
+    getNextAvailableExpenseTime,
+    moveExpenseToSlot,
+} from '../components/Report/calendarExpense';
 
 export interface ApiResponse<T = any> {
     status: 'success' | 'error';
     message?: string;
     data?: T;
     [key: string]: any;
+}
+
+export interface UploadedExpenseReceipt {
+    path: string;
+    name: string;
+}
+
+export async function uploadExpenseReceipt(
+    reportId: string,
+    file: File,
+): Promise<UploadedExpenseReceipt> {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) throw authError || new Error('Not signed in');
+
+    const extensionByMime: Record<string, string> = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/webp': 'webp',
+        'application/pdf': 'pdf',
+    };
+    const extension = extensionByMime[file.type] || 'jpg';
+    const safeName = file.name
+        .replace(/\.[^/.]+$/, '')
+        .replace(/[^a-zA-Z0-9_-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 60) || 'receipt';
+    const path = `${authData.user.id}/${reportId}/${crypto.randomUUID()}-${safeName}.${extension}`;
+    const { error } = await supabase.storage
+        .from('expense-receipts')
+        .upload(path, file, {
+            contentType: file.type || 'image/jpeg',
+            upsert: false,
+        });
+    if (error) throw error;
+    return { path, name: file.name };
+}
+
+export async function openExpenseReceipt(path: string) {
+    const { data, error } = await supabase.storage
+        .from('expense-receipts')
+        .createSignedUrl(path, 60 * 10);
+    if (error) throw error;
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
 }
 
 const categoryAliases: Record<string, string> = {
@@ -51,6 +100,8 @@ export async function sendRequest<T = any>(action: string, payload: any = {}): P
                 }) as ApiResponse<T>;
             case 'updateReportTripInfo':
                 return await updateTripInfo(payload) as ApiResponse<T>;
+            case 'updateReportExchangeRate':
+                return await updateReportExchangeRateAction(payload) as ApiResponse<T>;
             case 'copyReport':
                 return await copyReportAction(payload) as ApiResponse<T>;
             case 'addItem':
@@ -81,7 +132,15 @@ export async function sendRequest<T = any>(action: string, payload: any = {}): P
         }
     } catch (error) {
         console.error(`Supabase request failed (${action}):`, error);
-        throw error instanceof Error ? error : new Error(String(error));
+        if (error instanceof Error) throw error;
+        if (error && typeof error === 'object') {
+            const details = error as { message?: string; details?: string; hint?: string; code?: string };
+            const message = [details.message, details.details, details.hint]
+                .filter(Boolean)
+                .join(' ');
+            if (message) throw new Error(details.code ? `${details.code}: ${message}` : message);
+        }
+        throw new Error(String(error));
     }
 }
 
@@ -285,7 +344,17 @@ async function copyReportAction(payload: any) {
 
 async function upsertItem(payload: any, updating: boolean) {
     const category = normalizeCategory(payload.category);
-    const data = await addCalculatedAmounts(category, { ...(payload.itemData || {}) }, payload.reportId);
+    const shouldInitializeTrip = category === 'Flight'
+        && !updating
+        && await isFirstFlight(payload.reportId);
+    const calendarItemData = await addDefaultCalendarPlacement(
+        payload.reportId,
+        category,
+        { ...(payload.itemData || {}) },
+        updating,
+        payload.sequence,
+    );
+    const data = await addCalculatedAmounts(category, calendarItemData, payload.reportId);
     const { error } = await supabase.rpc('upsert_expense_item', {
         target_report_id: payload.reportId,
         target_category: category,
@@ -293,7 +362,95 @@ async function upsertItem(payload: any, updating: boolean) {
         item_data: data,
     });
     if (error) throw error;
+    if (shouldInitializeTrip) {
+        await initializeTripFromFirstFlight(payload.reportId, data);
+    }
     return { status: 'success' as const, message: updating ? 'Item updated successfully' : 'Item added successfully' };
+}
+
+async function updateReportExchangeRateAction(payload: any) {
+    const currency = String(payload.currency || 'USD').trim().toUpperCase();
+    const rate = Number(payload.rate);
+    if (!/^[A-Z]{3}$/.test(currency) || currency === 'TWD') {
+        throw new Error('Only non-TWD currency rates can be edited');
+    }
+    if (!Number.isFinite(rate) || rate <= 0) {
+        throw new Error('Exchange rate must be greater than zero');
+    }
+    return callVoidRpc('update_report_exchange_rate', {
+        target_report_id: payload.reportId,
+        target_currency: currency,
+        new_rate: rate,
+    });
+}
+
+async function isFirstFlight(reportId: string) {
+    const { data, error } = await supabase
+        .from('expense_items')
+        .select('id')
+        .eq('report_id', reportId)
+        .eq('category', 'Flight')
+        .limit(1);
+    if (error) throw error;
+    return (data || []).length === 0;
+}
+
+async function initializeTripFromFirstFlight(reportId: string, flight: Record<string, any>) {
+    const startDate = String(flight['日期'] || '');
+    if (!startDate) return;
+
+    const endDate = flight['行程類型'] === 'round-trip'
+        ? String(flight['回程日期'] || startDate)
+        : startDate;
+    const start = new Date(`${startDate}T12:00:00`);
+    const end = new Date(`${endDate}T12:00:00`);
+    const days = Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())
+        ? 1
+        : Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
+
+    await updateTripInfo({
+        reportId,
+        days,
+        startDate,
+        endDate,
+        destination: String(flight['抵達地'] || ''),
+        paymentCurrency: String(flight['幣別'] || 'TWD'),
+    });
+}
+
+async function addDefaultCalendarPlacement(
+    reportId: string,
+    category: string,
+    itemData: Record<string, any>,
+    updating: boolean,
+    sequence?: number,
+) {
+    const date = getExpenseDate(category, itemData);
+    if (!date || getExpenseTime(itemData)) return itemData;
+
+    const { data: existingItems, error } = await supabase
+        .from('expense_items')
+        .select('category,sequence,data')
+        .eq('report_id', reportId);
+    if (error) throw error;
+
+    const occupiedTimes = (existingItems || [])
+        .filter((existing: any) => {
+            const isCurrentItem = updating
+                && existing.category === category
+                && Number(existing.sequence) === Number(sequence);
+            return !isCurrentItem
+                && getExpenseDate(existing.category, existing.data || {}) === date;
+        })
+        .map((existing: any) => getExpenseTime(existing.data || {}))
+        .filter(Boolean);
+
+    return moveExpenseToSlot(
+        category,
+        itemData,
+        date,
+        getNextAvailableExpenseTime(occupiedTimes),
+    );
 }
 
 async function copyItemsAction(payload: any) {
@@ -309,7 +466,16 @@ async function addCalculatedAmounts(category: string, data: Record<string, any>,
     const rateDate = itemRateDate(category, data);
     let rate = Number(data['匯率'] || 0);
     if (currency === 'TWD') rate = 1;
-    else rate = await fetchExchangeRate(currency, rateDate);
+    else {
+        const { data: report, error } = await supabase
+            .from('reports')
+            .select('data')
+            .eq('id', reportId)
+            .single();
+        if (error) throw error;
+        const reportRate = numeric(report?.data?.[`${currency}匯率`]);
+        rate = reportRate > 0 ? reportRate : await fetchExchangeRate(currency, rateDate);
+    }
     data['匯率'] = rate;
     if (category === 'Accommodation' || category === 'Rental Car') {
         const personal = numeric(data['個人金額']);
@@ -508,6 +674,8 @@ export const updateReportTripInfo = async (
     reportId: string, days: number | string, startDate: string, endDate: string,
     destination?: string, paymentCurrency?: string,
 ) => sendRequest('updateReportTripInfo', { reportId, days, startDate, endDate, destination, paymentCurrency });
+export const updateReportExchangeRate = async (reportId: string, currency: string, rate: number) =>
+    sendRequest('updateReportExchangeRate', { reportId, currency, rate });
 
 let cachedFlights: any[] | null = null;
 export const getAllFlights = async () => {

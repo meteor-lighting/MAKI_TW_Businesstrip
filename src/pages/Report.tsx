@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { CheckCircle2, Copy, ReceiptText } from 'lucide-react';
 import { transformReportData } from '../utils/reportTransformer';
 import { formatTimeHHmm } from '../utils/formatters';
 
@@ -28,6 +28,11 @@ import LunchLearnForm from '../components/Report/forms/LunchLearnForm';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import CopyItemsModal from '../components/Report/forms/CopyItemsModal';
+import ExpenseCalendar from '../components/Report/ExpenseCalendar';
+import ExchangeRatePanel from '../components/Report/ExchangeRatePanel';
+import ReportWorkspaceShell, {
+    ReportWorkspaceTab,
+} from '../components/Report/ReportWorkspaceShell';
 
 
 // Define types for state
@@ -40,10 +45,37 @@ interface ReportData {
     };
 }
 
+const REPORT_CACHE_PREFIX = 'report-workspace-cache:';
+
+function readReportCache(reportId: string): ReportData | null {
+    try {
+        const cached = sessionStorage.getItem(`${REPORT_CACHE_PREFIX}${reportId}`);
+        return cached ? JSON.parse(cached) as ReportData : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeReportCache(reportId: string, data: ReportData) {
+    try {
+        sessionStorage.setItem(`${REPORT_CACHE_PREFIX}${reportId}`, JSON.stringify(data));
+    } catch {
+        // A full or unavailable session storage should not block report usage.
+    }
+}
+
 export default function Report() {
     const { user } = useAuth();
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const requestedTab = searchParams.get('view');
+    const activeTab: ReportWorkspaceTab = requestedTab === 'expenses'
+        || requestedTab === 'details'
+        || requestedTab === 'rates'
+        || requestedTab === 'review'
+        ? requestedTab
+        : 'calendar';
 
     const [reportId, setReportId] = useState<string>('');
     const [reportData, setReportData] = useState<ReportData | null>(null);
@@ -57,6 +89,13 @@ export default function Report() {
     const [copyModalOpen, setCopyModalOpen] = useState(false);
     const [copyCategory, setCopyCategory] = useState('');
     const [sourceItemsToCopy, setSourceItemsToCopy] = useState<any[]>([]);
+
+    const handleTabChange = useCallback((tab: ReportWorkspaceTab) => {
+        const next = new URLSearchParams(searchParams);
+        if (tab === 'calendar') next.delete('view');
+        else next.set('view', tab);
+        setSearchParams(next, { replace: true });
+    }, [searchParams, setSearchParams]);
 
     const handleSelectionChange = useCallback((category: string, items: any[]) => {
         setSelectedItemsMap(prev => ({ ...prev, [category]: items }));
@@ -142,23 +181,23 @@ export default function Report() {
             }
 
             if (!activeReportId) {
-                const res = await sendRequest('createReport', {
-                    userId: user.id,
-                    exchangeRate: 0 // Default rate, should come from API
-                });
-                if (res.status === 'success') {
-                    activeReportId = res.reportId;
-                    if (activeReportId) {
-                        sessionStorage.setItem('activeReportId', activeReportId);
-                    }
-                } else {
-                    alert('初始化報告編號失敗：' + (res.message || '未知錯誤'));
-                }
+                navigate('/report/setup', { replace: true });
+                return;
             }
 
             if (activeReportId) {
                 setReportId(activeReportId);
-                // Load Data
+
+                // Restore the last report snapshot immediately when returning
+                // from another route. The network request below still refreshes
+                // it, but it no longer replaces the workspace with a loader.
+                const cachedReport = readReportCache(activeReportId);
+                if (cachedReport) {
+                    setReportData(cachedReport);
+                    setLocalReportName(cachedReport.header['報告名稱'] || '');
+                    setLoading(false);
+                }
+
                 await fetchReportData(activeReportId, true);
             }
 
@@ -167,7 +206,7 @@ export default function Report() {
         } finally {
             setLoading(false);
         }
-    }, [user]);
+    }, [navigate, user]);
 
     const fetchReportData = async (id: string, forceRefresh = false) => {
         try {
@@ -175,6 +214,7 @@ export default function Report() {
             if (res.status === 'success') {
                 setReportData(res.data);
                 setLocalReportName(res.data.header['報告名稱'] || '');
+                writeReportCache(id, res.data);
             }
         } catch (e) {
             console.error(e);
@@ -197,13 +237,15 @@ export default function Report() {
                     reportId,
                     reportName: localReportName
                 });
-                setReportData({
+                const updatedReportData = {
                     ...reportData,
                     header: {
                         ...reportData.header,
                         '報告名稱': localReportName
                     }
-                });
+                };
+                setReportData(updatedReportData);
+                writeReportCache(reportId, updatedReportData);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -223,10 +265,22 @@ export default function Report() {
         navigate('/report/summary', { state: { reportData: formattedData } });
     };
 
-    if (loading) return <div className="p-8 text-center text-gray-500">{t('loading')}</div>;
+    if (loading) {
+        return (
+            <div className="min-h-[100dvh] bg-slate-100 px-4 py-10">
+                <div className="mx-auto max-w-5xl animate-pulse space-y-5" aria-label={t('loading')}>
+                    <div className="h-16 rounded-2xl bg-slate-200" />
+                    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_240px]">
+                        <div className="h-[620px] rounded-2xl bg-slate-200" />
+                        <div className="h-80 rounded-2xl bg-slate-200" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-gray-100 p-4 md:p-8 pb-32">
+        <>
             <ChangePasswordModal isOpen={isChangePasswordModalOpen} onClose={() => setIsChangePasswordModalOpen(false)} />
             <CopyItemsModal
                 isOpen={copyModalOpen}
@@ -235,73 +289,150 @@ export default function Report() {
                 sourceItems={sourceItemsToCopy}
                 onSuccess={handleCopySuccess}
             />
-            <div className="max-w-7xl mx-auto">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                    <div className="flex-1 w-full md:w-auto">
-                        <input
-                            type="text"
-                            value={localReportName}
-                            onChange={(e) => setLocalReportName(e.target.value)}
-                            onBlur={handleSaveReportName}
-                            placeholder={t('app_title')}
+            <ReportWorkspaceShell
+                activeTab={activeTab}
+                reportId={reportId}
+                reportName={localReportName}
+                userName={user?.name}
+                loading={loadingCount > 0}
+                onTabChange={handleTabChange}
+                onReportNameChange={setLocalReportName}
+                onReportNameBlur={handleSaveReportName}
+                onBack={() => navigate('/dashboard')}
+                onFinish={handleConfirmSave}
+                accountControls={(
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setIsChangePasswordModalOpen(true)}
+                            className="min-h-11 rounded-xl px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        >
+                            {t('change_password')}
+                        </button>
+                        <LanguageSwitcher />
+                    </div>
+                )}
+            >
+                {reportData && (
+                    <div hidden={activeTab !== 'calendar'} aria-hidden={activeTab !== 'calendar'}>
+                        <ExpenseCalendar
+                            reportId={reportId}
+                            items={reportData.items}
+                            tripStartDate={reportData.header['商旅起始日']}
+                            tripEndDate={reportData.header['商旅結束日']}
+                            defaultCurrency={reportData.header['支付幣別'] || 'TWD'}
                             disabled={loadingCount > 0}
-                            className="text-2xl font-bold text-gray-800 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none w-full max-w-lg transition-colors placeholder-gray-400 py-1"
+                            onChanged={handleItemChanged}
+                            onLoadingChange={handleLoadingChange}
                         />
                     </div>
-                    <div className="flex items-center gap-4 shrink-0">
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 flex items-center gap-2 transition"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            <span className="hidden sm:inline">{t('back_to_dashboard')}</span>
-                        </button>
-                        {reportData && (
-                            <button
-                                onClick={handleConfirmSave}
-                                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors shadow-sm flex items-center gap-2"
-                            >
-                                <span>{t('confirm_finish')}</span>
-                            </button>
-                        )}
-                        <div className="flex items-center gap-2">
-                            <span className="text-gray-600">{t('welcome')}, {user?.name}</span>
-                            <button
-                                onClick={() => setIsChangePasswordModalOpen(true)}
-                                className="text-sm text-indigo-600 hover:text-indigo-800 underline"
-                            >
-                                {t('change_password')}
-                            </button>
-                            <div className="ml-2">
-                                <LanguageSwitcher />
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                )}
 
                 {/* Header Info */}
                 {reportData && (
-                    <ReportHeader
-                        reportId={reportId}
-                        days={Number(reportData.header['商旅天數'] || 0)}
-                        rate={Number(reportData.header['USD匯率'] || 0)}
-                        startDate={reportData.header['商旅起始日']} 
-                        endDate={reportData.header['商旅結束日']}
-                        destination={reportData.header['出差國家']}
-                        paymentCurrency={reportData.header['支付幣別'] || 'TWD'}
-                        userName={reportData.header['員工姓名'] || reportData.header['用戶編號'] || user?.name || user?.id}
-                        onUpdateSuccess={handleItemChanged}
-                        items={reportData.items}
-                        extraRates={Object.keys(reportData.header)
-                            .filter(key => key.endsWith('匯率') && key !== 'USD匯率' && Number(reportData.header[key]) > 0)
-                            .reduce((obj, key) => {
-                                obj[key] = Number(reportData.header[key]);
-                                return obj;
-                            }, {} as Record<string, number>)}
-                    />
+                    <div hidden={activeTab !== 'details'} aria-hidden={activeTab !== 'details'}>
+                        <ReportHeader
+                            reportId={reportId}
+                            days={Number(reportData.header['商旅天數'] || 0)}
+                            rate={Number(reportData.header['USD匯率'] || 0)}
+                            startDate={reportData.header['商旅起始日']} 
+                            endDate={reportData.header['商旅結束日']}
+                            destination={reportData.header['出差國家']}
+                            paymentCurrency={reportData.header['支付幣別'] || 'TWD'}
+                            userName={reportData.header['員工姓名'] || reportData.header['用戶編號'] || user?.name || user?.id}
+                            onUpdateSuccess={handleItemChanged}
+                            items={reportData.items}
+                            extraRates={Object.keys(reportData.header)
+                                .filter(key => key.endsWith('匯率') && key !== 'USD匯率' && Number(reportData.header[key]) > 0)
+                                .reduce((obj, key) => {
+                                    obj[key] = Number(reportData.header[key]);
+                                    return obj;
+                                }, {} as Record<string, number>)}
+                        />
+                    </div>
+                )}
+
+                {reportData && (
+                    <div hidden={activeTab !== 'rates'} aria-hidden={activeTab !== 'rates'}>
+                        <ExchangeRatePanel
+                            reportId={reportId}
+                            header={reportData.header}
+                            items={reportData.items}
+                            isAdmin={user?.role === 'admin'}
+                            onSaved={handleItemChanged}
+                        />
+                    </div>
+                )}
+
+                {reportData && (
+                    <div hidden={activeTab !== 'review'} aria-hidden={activeTab !== 'review'}>
+                        <section className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.06)]">
+                        <div className="grid gap-6 border-b border-slate-200 px-5 py-6 sm:px-7 lg:grid-cols-[minmax(0,1fr)_240px]">
+                            <div>
+                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-800">
+                                    <ReceiptText className="h-5 w-5" strokeWidth={1.8} />
+                                </div>
+                                <h2 className="mt-4 text-2xl font-bold tracking-tight text-slate-950">
+                                    {t('workspace_review_title', 'Review before finishing')}
+                                </h2>
+                                <p className="mt-2 max-w-2xl text-base leading-6 text-slate-600">
+                                    {t('workspace_review_description', 'Check the trip details and totals. You can return to any tab without losing your work.')}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl bg-slate-950 p-5 text-white">
+                                <p className="text-sm font-medium text-slate-400">{t('payable_summary')} (TWD)</p>
+                                <p className="mt-2 text-3xl font-bold tabular-nums">
+                                    {Number(
+                                        (reportData.header['合計TWD總體總額'] || 0)
+                                        - (reportData.header['預支費用總額'] || 0),
+                                    ).toLocaleString()}
+                                </p>
+                                <p className="mt-4 text-sm text-slate-400">
+                                    {Object.values(reportData.items).reduce((count, rows) => count + rows.length, 0)}
+                                    {' '}
+                                    {t('calendar_total_expenses', 'total expenses')}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="grid gap-4 px-5 py-6 sm:grid-cols-3 sm:px-7">
+                            <div className="rounded-2xl bg-slate-50 p-4">
+                                <p className="text-sm font-medium text-slate-500">{t('period')}</p>
+                                <p className="mt-2 font-bold text-slate-900">
+                                    {reportData.header['商旅起始日'] || '-'} to {reportData.header['商旅結束日'] || '-'}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl bg-slate-50 p-4">
+                                <p className="text-sm font-medium text-slate-500">{t('destination')}</p>
+                                <p className="mt-2 font-bold text-slate-900">{reportData.header['出差國家'] || '-'}</p>
+                            </div>
+                            <div className="rounded-2xl bg-slate-50 p-4">
+                                <p className="text-sm font-medium text-slate-500">{t('total_twd')}</p>
+                                <p className="mt-2 text-xl font-bold tabular-nums text-slate-900">
+                                    {Number(reportData.header['合計TWD總體總額'] || 0).toLocaleString()}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                            <p className="text-sm text-slate-600">
+                                {t('workspace_review_hint', 'Need to change something? Use the navigation to return to the calendar or forms.')}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={handleConfirmSave}
+                                className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 text-sm font-bold text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 active:scale-[0.98]"
+                            >
+                                <CheckCircle2 className="h-4 w-4" strokeWidth={1.8} />
+                                {t('confirm_finish')}
+                            </button>
+                        </div>
+                        </section>
+                    </div>
                 )}
 
                 {/* Sections */}
+                {reportData && (
+                    <div hidden={activeTab !== 'expenses'} aria-hidden={activeTab !== 'expenses'}>
+                        <div className="mx-auto max-w-7xl">
 
                 {/* Flight */}
                 <SectionAccordion
@@ -456,6 +587,7 @@ export default function Report() {
                                     { key: '幣別', header: t('currency') },
                                     { key: '金額', header: t('amount') },
                                     { key: 'TWD金額', header: t('twd_amount') },
+                                    { key: '匯率', header: t('exchange_rate'), render: (item: any) => Number(item['匯率'] ?? 0) > 0 ? Number(item['匯率']).toFixed(3) : '—' },
                                     { key: '備註', header: t('remark') },
                                 ]}
                             />
@@ -527,6 +659,7 @@ export default function Report() {
                                     { key: '地區', header: t('region') },
                                     { key: '飯店', header: t('hotel') },
                                     { key: '幣別', header: t('currency') },
+                                    { key: '匯率', header: t('exchange_rate'), width: '90px', render: (item: any) => Number(item['匯率'] ?? 0) > 0 ? Number(item['匯率']).toFixed(3) : '—' },
                                     { key: '個人金額', header: t('personal') },
                                     { key: 'TWD個人金額', header: t('twd_personal'), width: '90px', render: (item: any) => item['TWD個人金額'] ?? item['TWD個人'] ?? 0 },
                                     { key: '代墊金額', header: t('advance_payment'), width: '90px', render: (item: any) => item['代墊金額'] ?? item['代墊'] ?? 0 },
@@ -608,6 +741,7 @@ export default function Report() {
                                     { key: '地區', header: t('region') },
                                     { key: '租車公司', header: t('rental_company') },
                                     { key: '幣別', header: t('currency') },
+                                    { key: '匯率', header: t('exchange_rate'), width: '90px', render: (item: any) => Number(item['匯率'] ?? 0) > 0 ? Number(item['匯率']).toFixed(3) : '—' },
                                     { key: '個人金額', header: t('personal') },
                                     { key: 'TWD個人金額', header: t('twd_personal'), width: '90px', render: (item: any) => item['TWD個人金額'] ?? item['TWD個人'] ?? 0 },
                                     { key: '代墊金額', header: t('advance_payment'), width: '90px', render: (item: any) => item['代墊金額'] ?? item['代墊'] ?? 0 },
@@ -1466,7 +1600,10 @@ export default function Report() {
                         </table>
                     </div>
                 </div>
-            </div>
-        </div>
+                        </div>
+                    </div>
+                )}
+            </ReportWorkspaceShell>
+        </>
     );
 }
