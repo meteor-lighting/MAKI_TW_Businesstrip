@@ -1,10 +1,167 @@
 import { supabase } from '../lib/supabase';
+import {
+    getExpenseDate,
+    getExpenseTime,
+    getNextAvailableExpenseTime,
+    moveExpenseToSlot,
+} from '../components/Report/calendarExpense';
 
 export interface ApiResponse<T = any> {
     status: 'success' | 'error';
     message?: string;
     data?: T;
     [key: string]: any;
+}
+
+export interface UploadedExpenseReceipt {
+    path: string;
+    name: string;
+}
+
+async function compressReceiptImage(file: File) {
+    if (!file.type.startsWith('image/')) return file;
+
+    try {
+        const bitmap = await createImageBitmap(file);
+        const maxDimension = 2000;
+        const longestSide = Math.max(bitmap.width, bitmap.height);
+        const scale = Math.min(1, maxDimension / longestSide);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        const context = canvas.getContext('2d');
+        if (!context) {
+            bitmap.close();
+            return file;
+        }
+
+        context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        bitmap.close();
+        const blob = await new Promise<Blob | null>((resolve) => {
+            canvas.toBlob(resolve, 'image/jpeg', 0.78);
+        });
+        if (!blob || blob.size >= file.size) return file;
+
+        const baseName = file.name.replace(/\.[^/.]+$/, '') || 'receipt';
+        return new File([blob], `${baseName}.jpg`, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+        });
+    } catch {
+        // If the browser cannot decode the image, let Dropbox receive the original.
+        return file;
+    }
+}
+
+export async function startDropboxOAuth(): Promise<string> {
+    const { data: sessionData, error: sessionError } = await supabase.auth.refreshSession();
+    if (sessionError || !sessionData.session) throw sessionError || new Error('Not signed in');
+
+    const { data, error } = await supabase.functions.invoke('dropbox-oauth-start', {
+        body: {},
+    });
+    if (error) {
+        let message = data?.message || error.message;
+        const response = (error as { context?: Response }).context;
+        if (response) {
+            try {
+                const body = await response.clone().json() as { message?: string };
+                message = body.message || message;
+            } catch {
+                // Keep the SDK error when the function response is not JSON.
+            }
+        }
+        throw new Error(message);
+    }
+    if (data?.status !== 'success' || !data.authorizationUrl) {
+        throw new Error(data?.message || 'Unable to start Dropbox connection');
+    }
+    return data.authorizationUrl as string;
+}
+
+export async function uploadExpenseReceipt(
+    reportId: string,
+    file: File,
+): Promise<UploadedExpenseReceipt> {
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) throw authError || new Error('Not signed in');
+
+    const uploadFile = await compressReceiptImage(file);
+    const formData = new FormData();
+    formData.append('reportId', reportId);
+    formData.append('file', uploadFile, uploadFile.name);
+    const { data: dropboxData, error: dropboxError } = await supabase.functions.invoke('dropbox-upload', {
+        body: formData,
+    });
+    if (!dropboxError && dropboxData?.status === 'success' && dropboxData.path) {
+        return { path: dropboxData.path as string, name: file.name };
+    }
+    if (dropboxError) {
+        let message = dropboxData?.message || dropboxError.message;
+        const response = (dropboxError as { context?: Response }).context;
+        if (response) {
+            try {
+                const body = await response.clone().json() as { message?: string };
+                message = body.message || message;
+            } catch {
+                // Keep the SDK error when the function response is not JSON.
+            }
+        }
+        throw new Error(message);
+    }
+    throw new Error(dropboxData?.message || 'Unable to upload receipt to Dropbox');
+}
+
+export async function deleteExpenseReceipt(path: string) {
+    if (!path) return;
+
+    if (!path.startsWith('dropbox:')) {
+        const { error } = await supabase.storage.from('expense-receipts').remove([path]);
+        if (error) throw error;
+        return;
+    }
+
+    const { data, error } = await supabase.functions.invoke('dropbox-delete', {
+        body: { path },
+    });
+    if (error) {
+        let message = data?.message || error.message;
+        const response = (error as { context?: Response }).context;
+        if (response) {
+            try {
+                const body = await response.clone().json() as { message?: string };
+                message = body.message || message;
+            } catch {
+                // Keep the SDK error when the function response is not JSON.
+            }
+        }
+        throw new Error(message);
+    }
+    if (data?.status !== 'success') {
+        throw new Error(data?.message || 'Unable to delete receipt from Dropbox');
+    }
+}
+
+export async function getExpenseReceiptUrl(path: string) {
+    if (path.startsWith('dropbox:')) {
+        const { data, error } = await supabase.functions.invoke('dropbox-link', {
+            body: { path },
+        });
+        if (error) throw error;
+        if (data?.status !== 'success' || !data.url) throw new Error(data?.message || 'Unable to open Dropbox receipt');
+        return data.url as string;
+    }
+
+    const { data, error } = await supabase.storage
+        .from('expense-receipts')
+        .createSignedUrl(path, 60 * 10);
+    if (error) throw error;
+    return data.signedUrl;
+}
+
+export async function openExpenseReceipt(path: string) {
+    const url = await getExpenseReceiptUrl(path);
+    window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 const categoryAliases: Record<string, string> = {
@@ -51,17 +208,15 @@ export async function sendRequest<T = any>(action: string, payload: any = {}): P
                 }) as ApiResponse<T>;
             case 'updateReportTripInfo':
                 return await updateTripInfo(payload) as ApiResponse<T>;
+            case 'updateReportExchangeRate':
+                return await updateReportExchangeRateAction(payload) as ApiResponse<T>;
             case 'copyReport':
                 return await copyReportAction(payload) as ApiResponse<T>;
             case 'addItem':
             case 'updateItem':
                 return await upsertItem(payload, action === 'updateItem') as ApiResponse<T>;
             case 'deleteItem':
-                return await callVoidRpc('delete_expense_item', {
-                    target_report_id: payload.reportId,
-                    target_category: normalizeCategory(payload.category),
-                    target_sequence: Number(payload.sequence),
-                }) as ApiResponse<T>;
+                return await deleteItemAction(payload) as ApiResponse<T>;
             case 'copyItems':
                 return await copyItemsAction(payload) as ApiResponse<T>;
             case 'searchCity':
@@ -81,7 +236,15 @@ export async function sendRequest<T = any>(action: string, payload: any = {}): P
         }
     } catch (error) {
         console.error(`Supabase request failed (${action}):`, error);
-        throw error instanceof Error ? error : new Error(String(error));
+        if (error instanceof Error) throw error;
+        if (error && typeof error === 'object') {
+            const details = error as { message?: string; details?: string; hint?: string; code?: string };
+            const message = [details.message, details.details, details.hint]
+                .filter(Boolean)
+                .join(' ');
+            if (message) throw new Error(details.code ? `${details.code}: ${message}` : message);
+        }
+        throw new Error(String(error));
     }
 }
 
@@ -285,7 +448,17 @@ async function copyReportAction(payload: any) {
 
 async function upsertItem(payload: any, updating: boolean) {
     const category = normalizeCategory(payload.category);
-    const data = await addCalculatedAmounts(category, { ...(payload.itemData || {}) }, payload.reportId);
+    const shouldInitializeTrip = category === 'Flight'
+        && !updating
+        && await isFirstFlight(payload.reportId);
+    const calendarItemData = await addDefaultCalendarPlacement(
+        payload.reportId,
+        category,
+        { ...(payload.itemData || {}) },
+        updating,
+        payload.sequence,
+    );
+    const data = await addCalculatedAmounts(category, calendarItemData, payload.reportId);
     const { error } = await supabase.rpc('upsert_expense_item', {
         target_report_id: payload.reportId,
         target_category: category,
@@ -293,7 +466,140 @@ async function upsertItem(payload: any, updating: boolean) {
         item_data: data,
     });
     if (error) throw error;
+    if (shouldInitializeTrip) {
+        await initializeTripFromFirstFlight(payload.reportId, data);
+    }
     return { status: 'success' as const, message: updating ? 'Item updated successfully' : 'Item added successfully' };
+}
+
+async function deleteItemAction(payload: any) {
+    const category = normalizeCategory(payload.category);
+    const sequence = Number(payload.sequence);
+    const { data: item, error: lookupError } = await supabase
+        .from('expense_items')
+        .select('data')
+        .eq('report_id', payload.reportId)
+        .eq('category', category)
+        .eq('sequence', sequence)
+        .maybeSingle();
+    if (lookupError) throw lookupError;
+
+    const receiptPaths = getReceiptPaths(item?.data);
+    await Promise.all(receiptPaths.map((path) => deleteExpenseReceipt(path)));
+
+    return callVoidRpc('delete_expense_item', {
+        target_report_id: payload.reportId,
+        target_category: category,
+        target_sequence: sequence,
+    });
+}
+
+function getReceiptPaths(itemData: Record<string, any> | null | undefined) {
+    const rawAttachments = itemData?.['收據附件'];
+    const attachments = Array.isArray(rawAttachments)
+        ? rawAttachments
+        : typeof rawAttachments === 'string'
+            ? parseReceiptAttachments(rawAttachments)
+            : [];
+    const paths = attachments
+        .map((attachment: any) => String(attachment?.path || ''))
+        .filter(Boolean);
+    const legacyPath = String(itemData?.['收據路徑'] || '');
+    return Array.from(new Set(paths.length > 0 ? paths : legacyPath ? [legacyPath] : []));
+}
+
+function parseReceiptAttachments(value: string) {
+    try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
+
+async function updateReportExchangeRateAction(payload: any) {
+    const currency = String(payload.currency || 'USD').trim().toUpperCase();
+    const rate = Number(payload.rate);
+    if (!/^[A-Z]{3}$/.test(currency) || currency === 'TWD') {
+        throw new Error('Only non-TWD currency rates can be edited');
+    }
+    if (!Number.isFinite(rate) || rate <= 0) {
+        throw new Error('Exchange rate must be greater than zero');
+    }
+    return callVoidRpc('update_report_exchange_rate', {
+        target_report_id: payload.reportId,
+        target_currency: currency,
+        new_rate: rate,
+    });
+}
+
+async function isFirstFlight(reportId: string) {
+    const { data, error } = await supabase
+        .from('expense_items')
+        .select('id')
+        .eq('report_id', reportId)
+        .eq('category', 'Flight')
+        .limit(1);
+    if (error) throw error;
+    return (data || []).length === 0;
+}
+
+async function initializeTripFromFirstFlight(reportId: string, flight: Record<string, any>) {
+    const startDate = String(flight['日期'] || '');
+    if (!startDate) return;
+
+    const endDate = flight['行程類型'] === 'round-trip'
+        ? String(flight['回程日期'] || startDate)
+        : startDate;
+    const start = new Date(`${startDate}T12:00:00`);
+    const end = new Date(`${endDate}T12:00:00`);
+    const days = Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())
+        ? 1
+        : Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
+
+    await updateTripInfo({
+        reportId,
+        days,
+        startDate,
+        endDate,
+        destination: String(flight['抵達地'] || ''),
+        paymentCurrency: String(flight['幣別'] || 'TWD'),
+    });
+}
+
+async function addDefaultCalendarPlacement(
+    reportId: string,
+    category: string,
+    itemData: Record<string, any>,
+    updating: boolean,
+    sequence?: number,
+) {
+    const date = getExpenseDate(category, itemData);
+    if (!date || getExpenseTime(itemData)) return itemData;
+
+    const { data: existingItems, error } = await supabase
+        .from('expense_items')
+        .select('category,sequence,data')
+        .eq('report_id', reportId);
+    if (error) throw error;
+
+    const occupiedTimes = (existingItems || [])
+        .filter((existing: any) => {
+            const isCurrentItem = updating
+                && existing.category === category
+                && Number(existing.sequence) === Number(sequence);
+            return !isCurrentItem
+                && getExpenseDate(existing.category, existing.data || {}) === date;
+        })
+        .map((existing: any) => getExpenseTime(existing.data || {}))
+        .filter(Boolean);
+
+    return moveExpenseToSlot(
+        category,
+        itemData,
+        date,
+        getNextAvailableExpenseTime(occupiedTimes),
+    );
 }
 
 async function copyItemsAction(payload: any) {
@@ -309,7 +615,16 @@ async function addCalculatedAmounts(category: string, data: Record<string, any>,
     const rateDate = itemRateDate(category, data);
     let rate = Number(data['匯率'] || 0);
     if (currency === 'TWD') rate = 1;
-    else rate = await fetchExchangeRate(currency, rateDate);
+    else {
+        const { data: report, error } = await supabase
+            .from('reports')
+            .select('data')
+            .eq('id', reportId)
+            .single();
+        if (error) throw error;
+        const reportRate = numeric(report?.data?.[`${currency}匯率`]);
+        rate = reportRate > 0 ? reportRate : await fetchExchangeRate(currency, rateDate);
+    }
     data['匯率'] = rate;
     if (category === 'Accommodation' || category === 'Rental Car') {
         const personal = numeric(data['個人金額']);
@@ -508,6 +823,8 @@ export const updateReportTripInfo = async (
     reportId: string, days: number | string, startDate: string, endDate: string,
     destination?: string, paymentCurrency?: string,
 ) => sendRequest('updateReportTripInfo', { reportId, days, startDate, endDate, destination, paymentCurrency });
+export const updateReportExchangeRate = async (reportId: string, currency: string, rate: number) =>
+    sendRequest('updateReportExchangeRate', { reportId, currency, rate });
 
 let cachedFlights: any[] | null = null;
 export const getAllFlights = async () => {

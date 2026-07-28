@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getUserReports, getReport, deleteReport, updateReportStatus, copyReport } from '../services/api';
-import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut, ArrowLeft, Copy, Search, ShieldAlert } from 'lucide-react';
+import { getUserReports, getReport, deleteReport, updateReportStatus, copyReport, startDropboxOAuth } from '../services/api';
+import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut, ArrowLeft, Copy, Search, ShieldAlert, Cloud } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { transformReportData } from '../utils/reportTransformer';
@@ -34,8 +34,10 @@ const Dashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [reportToDelete, setReportToDelete] = useState<ReportSummary | null>(null);
+    const [reportToToggleLock, setReportToToggleLock] = useState<ReportSummary | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showPermissionModal, setShowPermissionModal] = useState(false);
+    const [connectingDropbox, setConnectingDropbox] = useState(false);
 
     const fetchReports = useCallback(async () => {
         if (!user?.id) return;
@@ -60,12 +62,23 @@ const Dashboard: React.FC = () => {
 
     const handleCreateNew = () => {
         sessionStorage.removeItem('activeReportId');
-        navigate('/report');
+        navigate('/report/setup');
     };
 
     const handleLogout = () => {
         signOut();
         navigate('/');
+    };
+
+    const handleConnectDropbox = async () => {
+        try {
+            setConnectingDropbox(true);
+            const authorizationUrl = await startDropboxOAuth();
+            window.location.assign(authorizationUrl);
+        } catch (err: any) {
+            setError(err.message || t('dropbox_connect_error', 'Unable to connect Dropbox.'));
+            setConnectingDropbox(false);
+        }
     };
 
     const handleOpenReport = async (report: ReportSummary) => {
@@ -125,15 +138,22 @@ const Dashboard: React.FC = () => {
         setReportToDelete(null);
     };
 
-    const toggleLock = async (e: React.MouseEvent, report: ReportSummary) => {
+    const handleLockClick = (e: React.MouseEvent, report: ReportSummary) => {
         e.preventDefault();
         e.stopPropagation();
+        setReportToToggleLock(report);
+    };
+
+    const confirmToggleLock = async () => {
+        if (!reportToToggleLock) return;
+
         try {
             setLoading(true);
-            const newStatus = report.status ? '' : t('locked') || '已鎖定';
-            const res = await updateReportStatus(report.reportId, newStatus);
+            const newStatus = reportToToggleLock.status ? '' : t('locked') || '已鎖定';
+            const res = await updateReportStatus(reportToToggleLock.reportId, newStatus);
             if (res.status === 'success') {
-                fetchReports();
+                setReportToToggleLock(null);
+                await fetchReports();
             } else {
                 setError(res.message || t('error'));
             }
@@ -142,6 +162,10 @@ const Dashboard: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const cancelToggleLock = () => {
+        setReportToToggleLock(null);
     };
 
     const handleCopyReport = async (e: React.MouseEvent, report: ReportSummary) => {
@@ -205,13 +229,23 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     {user?.role === 'admin' && (
-                        <button
-                            onClick={() => setShowPermissionModal(true)}
-                            className="flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded shadow-sm hover:bg-purple-200 transition font-medium"
-                        >
-                            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-                            <span className="hidden sm:inline">人員權限</span>
-                        </button>
+                        <>
+                            <button
+                                onClick={handleConnectDropbox}
+                                disabled={connectingDropbox}
+                                className="flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-2 rounded shadow-sm hover:bg-emerald-200 disabled:opacity-60 transition font-medium"
+                            >
+                                {connectingDropbox ? <Loader2 className="w-5 h-5 flex-shrink-0 animate-spin" /> : <Cloud className="w-5 h-5 flex-shrink-0" />}
+                                <span className="hidden sm:inline">{connectingDropbox ? t('dropbox_connecting', 'Connecting Dropbox...') : t('dropbox_connect', 'Connect Dropbox')}</span>
+                            </button>
+                            <button
+                                onClick={() => setShowPermissionModal(true)}
+                                className="flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded shadow-sm hover:bg-purple-200 transition font-medium"
+                            >
+                                <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+                                <span className="hidden sm:inline">人員權限</span>
+                            </button>
+                        </>
                     )}
                     <button
                         onClick={handleLogout}
@@ -306,7 +340,7 @@ const Dashboard: React.FC = () => {
                                         {user?.role === 'admin' && (
                                             <button
                                                 type="button"
-                                                onClick={(e) => toggleLock(e, report)}
+                                                onClick={(e) => handleLockClick(e, report)}
                                                 className={`p-1.5 rounded-full transition flex items-center justify-center 
                                                     ${report.status ? 'text-amber-500 hover:bg-amber-50' : 'text-gray-400 hover:text-amber-500 hover:bg-amber-50'}`}
                                                 title={report.status ? t('unlock') : t('lock')}
@@ -411,6 +445,41 @@ const Dashboard: React.FC = () => {
                             >
                                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                                 確認刪除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Lock / Unlock Confirmation Modal */}
+            {reportToToggleLock && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                    <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-fade-in-up">
+                        <div className="flex items-center gap-3 mb-4 text-amber-600">
+                            {reportToToggleLock.status ? <Unlock className="w-6 h-6" /> : <Lock className="w-6 h-6" />}
+                            <h3 className="text-lg font-bold">
+                                {reportToToggleLock.status ? t('unlock_report_title') : t('lock_report_title')}{' '}
+                                {reportToToggleLock.reportName || reportToToggleLock.reportId}
+                            </h3>
+                        </div>
+                        <p className="text-gray-600 mb-6">
+                            {reportToToggleLock.status ? t('confirm_unlock_report') : t('confirm_lock_report')}
+                        </p>
+                        <div className="flex justify-end gap-3 rounded-b">
+                            <button
+                                onClick={cancelToggleLock}
+                                disabled={loading}
+                                className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition font-medium"
+                            >
+                                {t('cancel', '取消')}
+                            </button>
+                            <button
+                                onClick={confirmToggleLock}
+                                disabled={loading}
+                                className="px-4 py-2 text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition font-medium flex items-center gap-2"
+                            >
+                                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {reportToToggleLock.status ? t('confirm_unlock', '解除鎖定') : t('confirm_lock', '確認鎖定')}
                             </button>
                         </div>
                     </div>

@@ -9,9 +9,10 @@ interface FlightFormProps {
     reportId: string;
     headerRate: number;
     tripStartDate?: string;
-    onSubmitSuccess: () => void;
+    onSubmitSuccess: (item?: any) => void;
     onLoadingChange: (loading: boolean) => void;
     disabled?: boolean;
+    onSubmitDraft?: (itemData: any) => Promise<void>;
     editingItem?: any;
     onCancelEdit?: () => void;
 }
@@ -22,6 +23,7 @@ const FlightForm: React.FC<FlightFormProps> = ({
     onSubmitSuccess,
     onLoadingChange,
     disabled,
+    onSubmitDraft,
     editingItem,
     onCancelEdit
 }) => {
@@ -140,8 +142,16 @@ const FlightForm: React.FC<FlightFormProps> = ({
                 }
             };
 
-            const res = await sendRequest(editingItem ? 'updateItem' : 'addItem', payload);
-            if (res.status === 'success') {
+            if (onSubmitDraft && !editingItem) {
+                await onSubmitDraft(payload.itemData);
+            } else {
+                const res = await sendRequest(editingItem ? 'updateItem' : 'addItem', payload);
+                if (res.status !== 'success') {
+                    throw new Error(res.message || '儲存失敗，請重試');
+                }
+            }
+
+            {
                 if (!editingItem) {
                     setFormData({
                         日期: '', 航班代號: '', 出發地: '', 抵達地: '', 出發時間: '', 抵達時間: '', 跨日: '',
@@ -149,10 +159,8 @@ const FlightForm: React.FC<FlightFormProps> = ({
                         幣別: 'TWD', 金額: '', 備註: ''
                     });
                 }
-                onSubmitSuccess();
+                onSubmitSuccess(payload.itemData);
                 if (onCancelEdit) onCancelEdit();
-            } else {
-                alert(res.message || '儲存失敗，請重試');
             }
         } catch (error: any) {
             console.error(error);
