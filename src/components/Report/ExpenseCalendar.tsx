@@ -27,11 +27,17 @@ import {
 import { useTranslation } from 'react-i18next';
 import {
     addDays,
+    addMonths,
     addWeeks,
+    differenceInCalendarDays,
+    endOfMonth,
     format,
     isSameDay,
+    isSameMonth,
     parseISO,
+    startOfMonth,
     startOfWeek,
+    endOfWeek,
 } from 'date-fns';
 import { sendRequest } from '../../services/api';
 import QuickExpenseModal, { QuickExpenseSelection } from './QuickExpenseModal';
@@ -134,6 +140,7 @@ export default function ExpenseCalendar({
     const initialDate = toLocalDate(tripStartDate);
     const [weekStart, setWeekStart] = useState(() => startOfWeek(initialDate, { weekStartsOn: 1 }));
     const [selectedDay, setSelectedDay] = useState(() => initialDate);
+    const [monthCursor, setMonthCursor] = useState(() => startOfMonth(initialDate));
     const [selectedType, setSelectedType] = useState<CalendarExpenseType | null>(null);
     const [selection, setSelection] = useState<QuickExpenseSelection | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -148,6 +155,12 @@ export default function ExpenseCalendar({
         [weekStart],
     );
     const visibleDays = isCompact ? [selectedDay] : weekDays;
+    const monthDays = useMemo(() => {
+        const firstDay = startOfWeek(startOfMonth(monthCursor), { weekStartsOn: 1 });
+        const lastDay = endOfWeek(endOfMonth(monthCursor), { weekStartsOn: 1 });
+        const dayCount = differenceInCalendarDays(lastDay, firstDay) + 1;
+        return Array.from({ length: dayCount }, (_, index) => addDays(firstDay, index));
+    }, [monthCursor]);
 
     useEffect(() => {
         const media = window.matchMedia('(max-width: 1023px)');
@@ -209,6 +222,18 @@ export default function ExpenseCalendar({
                 .includes(query);
         });
     }, [items, searchQuery, t]);
+
+    const expenseCountByDate = useMemo(() => {
+        const counts = new Map<string, number>();
+        Object.entries(items || {}).forEach(([category, categoryItems]) => {
+            categoryItems.forEach((item) => {
+                const date = getExpenseDate(category, item);
+                if (!date) return;
+                counts.set(date, (counts.get(date) || 0) + 1);
+            });
+        });
+        return counts;
+    }, [items]);
 
     const unscheduled = expenses.filter((expense) => {
         if (!expense.date || !expense.time) return true;
@@ -302,6 +327,7 @@ export default function ExpenseCalendar({
         const newWeekStart = startOfWeek(date, { weekStartsOn: 1 });
         setWeekStart(newWeekStart);
         setSelectedDay(date);
+        setMonthCursor(startOfMonth(date));
     };
 
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -609,6 +635,73 @@ export default function ExpenseCalendar({
                 </section>
 
                 <aside className="order-first rounded-2xl bg-slate-950 p-4 text-white shadow-[0_16px_40px_rgba(15,23,42,0.14)] xl:order-none xl:sticky xl:top-5">
+                    <section aria-label={t('calendar_month_view', 'Month view')}>
+                        <div className="flex items-center justify-between gap-2">
+                            <h2 className="text-base font-bold">
+                                {format(monthCursor, 'yyyy/MM')}
+                            </h2>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    onClick={() => setMonthCursor((current) => addMonths(current, -1))}
+                                    aria-label={t('calendar_previous_month', 'Previous month')}
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                >
+                                    <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setMonthCursor((current) => addMonths(current, 1))}
+                                    aria-label={t('calendar_next_month', 'Next month')}
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                >
+                                    <ChevronRight className="h-4 w-4" strokeWidth={2} />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-7 gap-y-1 text-center text-[10px] font-semibold text-slate-500">
+                            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => (
+                                <span key={`${day}-${index}`}>{day}</span>
+                            ))}
+                            {monthDays.map((day) => {
+                                const dateKey = toDateKey(day);
+                                const expenseCount = expenseCountByDate.get(dateKey) || 0;
+                                const selected = isSameDay(day, selectedDay);
+                                const inMonth = isSameMonth(day, monthCursor);
+                                const today = isSameDay(day, new Date());
+                                return (
+                                    <button
+                                        key={dateKey}
+                                        type="button"
+                                        onClick={() => goToWeek(day)}
+                                        aria-label={`${format(day, 'MMM d, yyyy')}${expenseCount ? `, ${expenseCount} ${t('calendar_expenses', 'expenses')}` : ''}`}
+                                        aria-pressed={selected}
+                                        className={`relative mx-auto flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                                            selected
+                                                ? 'bg-blue-500 text-white'
+                                                : today
+                                                    ? 'text-blue-300 ring-1 ring-blue-400/70'
+                                                    : inMonth
+                                                        ? 'text-slate-200 hover:bg-white/10'
+                                                        : 'text-slate-600 hover:bg-white/5'
+                                        }`}
+                                    >
+                                        {format(day, 'd')}
+                                        {expenseCount > 0 && (
+                                            <span
+                                                className={`absolute bottom-0.5 h-1 w-1 rounded-full ${selected ? 'bg-white' : 'bg-blue-400'}`}
+                                                aria-hidden="true"
+                                            />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </section>
+
+                    <div className="my-4 border-t border-white/10" />
+
                     <div className="flex items-start justify-between gap-3">
                         <div>
                             <h2 className="text-base font-bold">{t('calendar_expense_types', 'Expense types')}</h2>

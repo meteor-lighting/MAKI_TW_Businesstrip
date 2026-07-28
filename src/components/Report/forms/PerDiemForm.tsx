@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
 import { Loader2 } from 'lucide-react';
 import CityAutocomplete from '../CityAutocomplete';
+import PerDiemAllowanceGuide from '../PerDiemAllowanceGuide';
 
 interface PerDiemFormProps {
     reportId: string;
@@ -79,6 +80,8 @@ const PerDiemForm: React.FC<PerDiemFormProps> = ({
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <PerDiemAllowanceGuide />
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('start_date')}</label>

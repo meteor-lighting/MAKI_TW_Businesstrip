@@ -22,6 +22,7 @@ import {
     getExpenseTypeConfig,
     getExpenseTitle,
 } from './calendarExpense';
+import PerDiemAllowanceGuide from './PerDiemAllowanceGuide';
 
 export interface QuickExpenseSelection {
     type: CalendarExpenseType;
@@ -245,6 +246,8 @@ export default function QuickExpenseModal({
                             )}
                         </p>
                     </div>
+
+                    {type === 'perDiem' && <PerDiemAllowanceGuide />}
 
                     <div className="grid grid-cols-[minmax(0,1fr)_132px] gap-3">
                         <div>
