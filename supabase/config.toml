@@ -1,0 +1,14 @@
+[functions.dropbox-oauth-callback]
+verify_jwt = false
+
+[functions.dropbox-oauth-start]
+verify_jwt = false
+
+[functions.dropbox-upload]
+verify_jwt = false
+
+[functions.dropbox-link]
+verify_jwt = false
+
+[functions.dropbox-delete]
+verify_jwt = false

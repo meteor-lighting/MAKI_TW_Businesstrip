@@ -18,6 +18,67 @@ export interface UploadedExpenseReceipt {
     name: string;
 }
 
+async function compressReceiptImage(file: File) {
+    if (!file.type.startsWith('image/')) return file;
+
+    try {
+        const bitmap = await createImageBitmap(file);
+        const maxDimension = 2000;
+        const longestSide = Math.max(bitmap.width, bitmap.height);
+        const scale = Math.min(1, maxDimension / longestSide);
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        const context = canvas.getContext('2d');
+        if (!context) {
+            bitmap.close();
+            return file;
+        }
+
+        context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        bitmap.close();
+        const blob = await new Promise<Blob | null>((resolve) => {
+            canvas.toBlob(resolve, 'image/jpeg', 0.78);
+        });
+        if (!blob || blob.size >= file.size) return file;
+
+        const baseName = file.name.replace(/\.[^/.]+$/, '') || 'receipt';
+        return new File([blob], `${baseName}.jpg`, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+        });
+    } catch {
+        // If the browser cannot decode the image, let Dropbox receive the original.
+        return file;
+    }
+}
+
+export async function startDropboxOAuth(): Promise<string> {
+    const { data: sessionData, error: sessionError } = await supabase.auth.refreshSession();
+    if (sessionError || !sessionData.session) throw sessionError || new Error('Not signed in');
+
+    const { data, error } = await supabase.functions.invoke('dropbox-oauth-start', {
+        body: {},
+    });
+    if (error) {
+        let message = data?.message || error.message;
+        const response = (error as { context?: Response }).context;
+        if (response) {
+            try {
+                const body = await response.clone().json() as { message?: string };
+                message = body.message || message;
+            } catch {
+                // Keep the SDK error when the function response is not JSON.
+            }
+        }
+        throw new Error(message);
+    }
+    if (data?.status !== 'success' || !data.authorizationUrl) {
+        throw new Error(data?.message || 'Unable to start Dropbox connection');
+    }
+    return data.authorizationUrl as string;
+}
+
 export async function uploadExpenseReceipt(
     reportId: string,
     file: File,
@@ -25,35 +86,82 @@ export async function uploadExpenseReceipt(
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) throw authError || new Error('Not signed in');
 
-    const extensionByMime: Record<string, string> = {
-        'image/jpeg': 'jpg',
-        'image/png': 'png',
-        'image/webp': 'webp',
-        'application/pdf': 'pdf',
-    };
-    const extension = extensionByMime[file.type] || 'jpg';
-    const safeName = file.name
-        .replace(/\.[^/.]+$/, '')
-        .replace(/[^a-zA-Z0-9_-]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 60) || 'receipt';
-    const path = `${authData.user.id}/${reportId}/${crypto.randomUUID()}-${safeName}.${extension}`;
-    const { error } = await supabase.storage
-        .from('expense-receipts')
-        .upload(path, file, {
-            contentType: file.type || 'image/jpeg',
-            upsert: false,
-        });
-    if (error) throw error;
-    return { path, name: file.name };
+    const uploadFile = await compressReceiptImage(file);
+    const formData = new FormData();
+    formData.append('reportId', reportId);
+    formData.append('file', uploadFile, uploadFile.name);
+    const { data: dropboxData, error: dropboxError } = await supabase.functions.invoke('dropbox-upload', {
+        body: formData,
+    });
+    if (!dropboxError && dropboxData?.status === 'success' && dropboxData.path) {
+        return { path: dropboxData.path as string, name: file.name };
+    }
+    if (dropboxError) {
+        let message = dropboxData?.message || dropboxError.message;
+        const response = (dropboxError as { context?: Response }).context;
+        if (response) {
+            try {
+                const body = await response.clone().json() as { message?: string };
+                message = body.message || message;
+            } catch {
+                // Keep the SDK error when the function response is not JSON.
+            }
+        }
+        throw new Error(message);
+    }
+    throw new Error(dropboxData?.message || 'Unable to upload receipt to Dropbox');
 }
 
-export async function openExpenseReceipt(path: string) {
+export async function deleteExpenseReceipt(path: string) {
+    if (!path) return;
+
+    if (!path.startsWith('dropbox:')) {
+        const { error } = await supabase.storage.from('expense-receipts').remove([path]);
+        if (error) throw error;
+        return;
+    }
+
+    const { data, error } = await supabase.functions.invoke('dropbox-delete', {
+        body: { path },
+    });
+    if (error) {
+        let message = data?.message || error.message;
+        const response = (error as { context?: Response }).context;
+        if (response) {
+            try {
+                const body = await response.clone().json() as { message?: string };
+                message = body.message || message;
+            } catch {
+                // Keep the SDK error when the function response is not JSON.
+            }
+        }
+        throw new Error(message);
+    }
+    if (data?.status !== 'success') {
+        throw new Error(data?.message || 'Unable to delete receipt from Dropbox');
+    }
+}
+
+export async function getExpenseReceiptUrl(path: string) {
+    if (path.startsWith('dropbox:')) {
+        const { data, error } = await supabase.functions.invoke('dropbox-link', {
+            body: { path },
+        });
+        if (error) throw error;
+        if (data?.status !== 'success' || !data.url) throw new Error(data?.message || 'Unable to open Dropbox receipt');
+        return data.url as string;
+    }
+
     const { data, error } = await supabase.storage
         .from('expense-receipts')
         .createSignedUrl(path, 60 * 10);
     if (error) throw error;
-    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    return data.signedUrl;
+}
+
+export async function openExpenseReceipt(path: string) {
+    const url = await getExpenseReceiptUrl(path);
+    window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 const categoryAliases: Record<string, string> = {
@@ -108,11 +216,7 @@ export async function sendRequest<T = any>(action: string, payload: any = {}): P
             case 'updateItem':
                 return await upsertItem(payload, action === 'updateItem') as ApiResponse<T>;
             case 'deleteItem':
-                return await callVoidRpc('delete_expense_item', {
-                    target_report_id: payload.reportId,
-                    target_category: normalizeCategory(payload.category),
-                    target_sequence: Number(payload.sequence),
-                }) as ApiResponse<T>;
+                return await deleteItemAction(payload) as ApiResponse<T>;
             case 'copyItems':
                 return await copyItemsAction(payload) as ApiResponse<T>;
             case 'searchCity':
@@ -366,6 +470,51 @@ async function upsertItem(payload: any, updating: boolean) {
         await initializeTripFromFirstFlight(payload.reportId, data);
     }
     return { status: 'success' as const, message: updating ? 'Item updated successfully' : 'Item added successfully' };
+}
+
+async function deleteItemAction(payload: any) {
+    const category = normalizeCategory(payload.category);
+    const sequence = Number(payload.sequence);
+    const { data: item, error: lookupError } = await supabase
+        .from('expense_items')
+        .select('data')
+        .eq('report_id', payload.reportId)
+        .eq('category', category)
+        .eq('sequence', sequence)
+        .maybeSingle();
+    if (lookupError) throw lookupError;
+
+    const receiptPaths = getReceiptPaths(item?.data);
+    await Promise.all(receiptPaths.map((path) => deleteExpenseReceipt(path)));
+
+    return callVoidRpc('delete_expense_item', {
+        target_report_id: payload.reportId,
+        target_category: category,
+        target_sequence: sequence,
+    });
+}
+
+function getReceiptPaths(itemData: Record<string, any> | null | undefined) {
+    const rawAttachments = itemData?.['收據附件'];
+    const attachments = Array.isArray(rawAttachments)
+        ? rawAttachments
+        : typeof rawAttachments === 'string'
+            ? parseReceiptAttachments(rawAttachments)
+            : [];
+    const paths = attachments
+        .map((attachment: any) => String(attachment?.path || ''))
+        .filter(Boolean);
+    const legacyPath = String(itemData?.['收據路徑'] || '');
+    return Array.from(new Set(paths.length > 0 ? paths : legacyPath ? [legacyPath] : []));
+}
+
+function parseReceiptAttachments(value: string) {
+    try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
 }
 
 async function updateReportExchangeRateAction(payload: any) {

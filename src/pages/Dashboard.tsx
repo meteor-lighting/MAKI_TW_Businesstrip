@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getUserReports, getReport, deleteReport, updateReportStatus, copyReport } from '../services/api';
-import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut, ArrowLeft, Copy, Search, ShieldAlert } from 'lucide-react';
+import { getUserReports, getReport, deleteReport, updateReportStatus, copyReport, startDropboxOAuth } from '../services/api';
+import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut, ArrowLeft, Copy, Search, ShieldAlert, Cloud } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import { transformReportData } from '../utils/reportTransformer';
@@ -37,6 +37,7 @@ const Dashboard: React.FC = () => {
     const [reportToToggleLock, setReportToToggleLock] = useState<ReportSummary | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showPermissionModal, setShowPermissionModal] = useState(false);
+    const [connectingDropbox, setConnectingDropbox] = useState(false);
 
     const fetchReports = useCallback(async () => {
         if (!user?.id) return;
@@ -67,6 +68,17 @@ const Dashboard: React.FC = () => {
     const handleLogout = () => {
         signOut();
         navigate('/');
+    };
+
+    const handleConnectDropbox = async () => {
+        try {
+            setConnectingDropbox(true);
+            const authorizationUrl = await startDropboxOAuth();
+            window.location.assign(authorizationUrl);
+        } catch (err: any) {
+            setError(err.message || t('dropbox_connect_error', 'Unable to connect Dropbox.'));
+            setConnectingDropbox(false);
+        }
     };
 
     const handleOpenReport = async (report: ReportSummary) => {
@@ -217,13 +229,23 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     {user?.role === 'admin' && (
-                        <button
-                            onClick={() => setShowPermissionModal(true)}
-                            className="flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded shadow-sm hover:bg-purple-200 transition font-medium"
-                        >
-                            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-                            <span className="hidden sm:inline">人員權限</span>
-                        </button>
+                        <>
+                            <button
+                                onClick={handleConnectDropbox}
+                                disabled={connectingDropbox}
+                                className="flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-2 rounded shadow-sm hover:bg-emerald-200 disabled:opacity-60 transition font-medium"
+                            >
+                                {connectingDropbox ? <Loader2 className="w-5 h-5 flex-shrink-0 animate-spin" /> : <Cloud className="w-5 h-5 flex-shrink-0" />}
+                                <span className="hidden sm:inline">{connectingDropbox ? t('dropbox_connecting', 'Connecting Dropbox...') : t('dropbox_connect', 'Connect Dropbox')}</span>
+                            </button>
+                            <button
+                                onClick={() => setShowPermissionModal(true)}
+                                className="flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded shadow-sm hover:bg-purple-200 transition font-medium"
+                            >
+                                <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+                                <span className="hidden sm:inline">人員權限</span>
+                            </button>
+                        </>
                     )}
                     <button
                         onClick={handleLogout}

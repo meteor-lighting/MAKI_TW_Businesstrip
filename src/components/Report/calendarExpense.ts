@@ -319,6 +319,7 @@ export function createExpenseItemData({
     existingItem,
     receiptPath,
     receiptName,
+    receiptAttachments,
 }: {
     type: CalendarExpenseType;
     date: string;
@@ -330,6 +331,7 @@ export function createExpenseItemData({
     existingItem?: Record<string, unknown>;
     receiptPath?: string;
     receiptName?: string;
+    receiptAttachments?: Array<{ path: string; name: string }>;
 }) {
     const nextDate = new Date(`${date}T12:00:00`);
     nextDate.setDate(nextDate.getDate() + 1);
@@ -350,6 +352,17 @@ export function createExpenseItemData({
 
     if (receiptPath) base['收據路徑'] = receiptPath;
     if (receiptName) base['收據名稱'] = receiptName;
+    if (receiptAttachments) {
+        if (receiptAttachments.length > 0) {
+            base['收據附件'] = receiptAttachments;
+            base['收據路徑'] = receiptAttachments[0].path;
+            base['收據名稱'] = receiptAttachments[0].name;
+        } else {
+            delete base['收據附件'];
+            delete base['收據路徑'];
+            delete base['收據名稱'];
+        }
+    }
 
     if (type === 'flight') {
         return {
