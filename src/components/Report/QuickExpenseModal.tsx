@@ -22,6 +22,10 @@ import {
     CalendarExpenseType,
     createExpenseItemData,
     getExpenseAmount,
+    getDefaultExpenseEndDate,
+    getDefaultExpenseEndTime,
+    getExpenseEndDate,
+    getExpenseEndTime,
     getExpenseTypeConfig,
     getExpenseTitle,
 } from './calendarExpense';
@@ -32,6 +36,8 @@ export interface QuickExpenseSelection {
     category: string;
     date: string;
     time: string;
+    endDate?: string;
+    endTime?: string;
     item?: Record<string, unknown>;
 }
 
@@ -93,7 +99,9 @@ export default function QuickExpenseModal({
     const previewCloseRef = useRef<HTMLButtonElement>(null);
     const [type, setType] = useState<CalendarExpenseType>('other');
     const [date, setDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const [time, setTime] = useState('09:00');
+    const [endTime, setEndTime] = useState('09:00');
     const [amount, setAmount] = useState('');
     const [currency, setCurrency] = useState(defaultCurrency || 'TWD');
     const [title, setTitle] = useState('');
@@ -126,7 +134,13 @@ export default function QuickExpenseModal({
         const selectedConfig = getExpenseTypeConfig(selection.type);
         setType(selection.type);
         setDate(selection.date);
+        setEndDate(existingItem
+            ? getExpenseEndDate(selection.category, existingItem)
+            : selection.endDate || getDefaultExpenseEndDate(selection.type, selection.date));
         setTime(selection.time || '09:00');
+        setEndTime(existingItem
+            ? getExpenseEndTime(selection.category, existingItem)
+            : selection.endTime || getDefaultExpenseEndTime(selection.type, selection.time || '09:00'));
         setAmount(existingItem ? String(getExpenseAmount(existingItem) || '') : '');
         setCurrency(String(existingItem?.['幣別'] || defaultCurrency || 'TWD'));
         setTitle(existingItem
@@ -174,6 +188,10 @@ export default function QuickExpenseModal({
             amountRef.current?.focus();
             return;
         }
+        if (!endDate || endDate < date || (endDate === date && endTime < time)) {
+            setError(t('calendar_end_date_error', 'The end date must be on or after the start date.'));
+            return;
+        }
 
         setSaving(true);
         setError('');
@@ -190,6 +208,8 @@ export default function QuickExpenseModal({
                 type,
                 date,
                 time,
+                endDate,
+                endTime,
                 title: title.trim() || t(config.labelKey, config.fallbackLabel),
                 amount: numericAmount,
                 currency,
@@ -212,7 +232,7 @@ export default function QuickExpenseModal({
             const removedReceiptPaths = Array.from(previousReceiptPaths)
                 .filter((path) => !retainedReceiptPaths.has(path));
             if (removedReceiptPaths.length > 0) {
-                await Promise.allSettled(removedReceiptPaths.map((path) => deleteExpenseReceipt(path)));
+                await Promise.allSettled(removedReceiptPaths.map((path) => deleteExpenseReceipt(path, reportId)));
             }
             await onSaved();
             onClose();
@@ -298,7 +318,7 @@ export default function QuickExpenseModal({
                 <header className="flex items-start justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
                     <div>
                         <p className="text-sm font-medium text-blue-700">
-                            {date} at {time}
+                            {`${date} ${time} ${t('calendar_date_to', 'to')} ${endDate} ${endTime}`}
                         </p>
                         <h2 id="quick-expense-title" className="mt-1 text-xl font-bold text-slate-950">
                             {isEditing
@@ -387,33 +407,72 @@ export default function QuickExpenseModal({
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label htmlFor="quick-date" className="mb-2 block text-sm font-semibold text-slate-800">
-                                {t('date')}
+                            <label htmlFor="quick-start-date" className="mb-2 block text-sm font-semibold text-slate-800">
+                                {t('start_date', 'Start date')}
                             </label>
                             <input
-                                id="quick-date"
+                                id="quick-start-date"
                                 type="date"
                                 value={date}
-                                onChange={(event) => setDate(event.target.value)}
+                                onChange={(event) => {
+                                    const nextDate = event.target.value;
+                                    setDate(nextDate);
+                                    setEndDate((current) => !current || current < nextDate ? nextDate : current);
+                                }}
                                 className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
                                 required
                             />
                         </div>
                         <div>
                             <label htmlFor="quick-time" className="mb-2 block text-sm font-semibold text-slate-800">
-                                {t('calendar_time', 'Time')}
+                                {t('calendar_time', 'Start time')}
                             </label>
                             <input
                                 id="quick-time"
                                 type="time"
                                 step="1800"
                                 value={time}
-                                onChange={(event) => setTime(event.target.value)}
+                                onChange={(event) => {
+                                    const nextTime = event.target.value;
+                                    setTime(nextTime);
+                                    setEndTime((current) => current === time ? nextTime : current);
+                                }}
+                                className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="quick-end-date" className="mb-2 block text-sm font-semibold text-slate-800">
+                                {t('end_date', 'End date')}
+                            </label>
+                            <input
+                                id="quick-end-date"
+                                type="date"
+                                min={date}
+                                value={endDate}
+                                onChange={(event) => setEndDate(event.target.value)}
+                                className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="quick-end-time" className="mb-2 block text-sm font-semibold text-slate-800">
+                                {t('calendar_end_time', 'End time')}
+                            </label>
+                            <input
+                                id="quick-end-time"
+                                type="time"
+                                step="1800"
+                                value={endTime}
+                                onChange={(event) => setEndTime(event.target.value)}
                                 className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
                                 required
                             />
                         </div>
                     </div>
+                    <p className="-mt-2 text-xs leading-5 text-slate-500">
+                        {t('calendar_date_range_help', 'Use the same date for a one-time expense, or choose an end date for stays, rentals, and other expenses spanning several days.')}
+                    </p>
 
                     <button
                         type="button"

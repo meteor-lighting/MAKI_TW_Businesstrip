@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
     const user = await getAuthenticatedUser(req, supabaseAdmin);
     if (!user) return json(req, { status: "error", message: "You must be signed in" }, 401);
 
-    const payload = await req.json() as { path?: string };
+    const payload = await req.json() as { path?: string; reportId?: string };
     const dropboxPath = String(payload.path || "").replace(/^dropbox:/, "").trim();
     if (!dropboxPath || !isAllowedDropboxPath(dropboxPath) || dropboxPath.includes("/../")) {
       return json(req, { status: "error", message: "Invalid receipt path" }, 400);
@@ -31,9 +31,26 @@ Deno.serve(async (req) => {
     if (profileError) throw profileError;
 
     const isAdmin = profile?.role === "admin";
-    const belongsToUser = dropboxPath.split("/").includes(user.id);
-    if (!isAdmin && !belongsToUser) {
-      return json(req, { status: "error", message: "You cannot delete this receipt" }, 403);
+    if (payload.reportId) {
+      const { data: report, error: reportError } = await supabaseAdmin
+        .from("reports")
+        .select("owner_id,status")
+        .eq("id", String(payload.reportId))
+        .maybeSingle();
+      if (reportError) throw reportError;
+      const canEditReport = Boolean(
+        report
+        && !String(report.status || "")
+        && (isAdmin || report.owner_id === user.id),
+      );
+      if (!canEditReport) {
+        return json(req, { status: "error", message: "You cannot delete this receipt" }, 403);
+      }
+    } else {
+      const belongsToUser = dropboxPath.split("/").includes(user.id);
+      if (!isAdmin && !belongsToUser) {
+        return json(req, { status: "error", message: "You cannot delete this receipt" }, 403);
+      }
     }
 
     const accessToken = await getDropboxAccessToken();

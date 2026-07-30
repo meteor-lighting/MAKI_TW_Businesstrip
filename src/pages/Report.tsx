@@ -230,6 +230,7 @@ export default function Report() {
     };
 
     const handleSaveReportName = async () => {
+        if (!canMutateReport) return;
         if (reportData && localReportName !== (reportData.header['報告名稱'] || '')) {
             try {
                 handleLoadingChange(true);
@@ -257,7 +258,15 @@ export default function Report() {
 
 
     const hasFlights = (reportData?.items?.Flight?.length || 0) > 0;
-    const isOtherFormsDisabled = loadingCount > 0 || !hasFlights;
+    const reportOwnerId = String(reportData?.header?.ownerId || '');
+    const canEditReport = Boolean(
+        reportData
+        && user?.id
+        && (user.role === 'admin' || reportOwnerId === user.id),
+    );
+    const reportIsLocked = Boolean(reportData?.header?.['狀態']);
+    const canMutateReport = canEditReport && !reportIsLocked;
+    const isOtherFormsDisabled = loadingCount > 0 || !hasFlights || !canMutateReport;
 
     const handleConfirmSave = () => {
         if (!reportData || !user) return;
@@ -321,7 +330,7 @@ export default function Report() {
                             tripStartDate={reportData.header['商旅起始日']}
                             tripEndDate={reportData.header['商旅結束日']}
                             defaultCurrency={reportData.header['支付幣別'] || 'TWD'}
-                            disabled={loadingCount > 0}
+                            disabled={loadingCount > 0 || !canMutateReport}
                             onChanged={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                         />
@@ -341,6 +350,7 @@ export default function Report() {
                             paymentCurrency={reportData.header['支付幣別'] || 'TWD'}
                             userName={reportData.header['員工姓名'] || reportData.header['用戶編號'] || user?.name || user?.id}
                             onUpdateSuccess={handleItemChanged}
+                            disabled={!canMutateReport}
                             items={reportData.items}
                             extraRates={Object.keys(reportData.header)
                                 .filter(key => key.endsWith('匯率') && key !== 'USD匯率' && Number(reportData.header[key]) > 0)
@@ -439,7 +449,7 @@ export default function Report() {
                     title={t('flight')}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['機票費總額'] || 0)}
-                    disabled={loadingCount > 0}
+                    disabled={loadingCount > 0 || !canMutateReport}
                 >
                     <div className="space-y-6">
                         {/* Add Form */}
@@ -449,7 +459,7 @@ export default function Report() {
                             tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
-                            disabled={loadingCount > 0}
+                            disabled={loadingCount > 0 || !canMutateReport}
                             editingItem={editingItems['Flight']}
                             onCancelEdit={() => handleCancelEdit('Flight')}
                         />
@@ -477,7 +487,7 @@ export default function Report() {
                                     }).then(handleItemChanged);
                                 }}
                                 onLoadingChange={handleLoadingChange}
-                                disabled={loadingCount > 0}
+                            disabled={loadingCount > 0 || !canMutateReport}
                                 columns={[
                                     { key: '次序', header: t('sequence'), width: '60px' },
                                     {

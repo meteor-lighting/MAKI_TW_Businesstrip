@@ -16,6 +16,7 @@ interface ReportSummary {
     status?: string;
     createdAt: string;
     userId?: string;
+    employeeCode?: string;
     userName?: string;
     reportName?: string;
     paymentCurrency?: string;
