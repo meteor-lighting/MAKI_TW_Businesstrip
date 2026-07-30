@@ -112,7 +112,7 @@ export async function uploadExpenseReceipt(
     throw new Error(dropboxData?.message || 'Unable to upload receipt to Dropbox');
 }
 
-export async function deleteExpenseReceipt(path: string) {
+export async function deleteExpenseReceipt(path: string, reportId?: string) {
     if (!path) return;
 
     if (!path.startsWith('dropbox:')) {
@@ -122,7 +122,7 @@ export async function deleteExpenseReceipt(path: string) {
     }
 
     const { data, error } = await supabase.functions.invoke('dropbox-delete', {
-        body: { path },
+        body: { path, reportId },
     });
     if (error) {
         let message = data?.message || error.message;
@@ -376,7 +376,8 @@ async function fetchReportList() {
             const totalUSDAmount = rate > 0 ? totalAmount / rate : totalAmount;
             return {
                 reportId: row.id,
-                userId: row.employee_code,
+                userId: row.owner_id,
+                employeeCode: row.employee_code,
                 userName: row.display_name,
                 days: row.days,
                 startDate: row.start_date,
@@ -485,7 +486,14 @@ async function deleteItemAction(payload: any) {
     if (lookupError) throw lookupError;
 
     const receiptPaths = getReceiptPaths(item?.data);
-    await Promise.all(receiptPaths.map((path) => deleteExpenseReceipt(path)));
+    const receiptCleanup = await Promise.allSettled(
+        receiptPaths.map((path) => deleteExpenseReceipt(path, payload.reportId)),
+    );
+    receiptCleanup.forEach((result) => {
+        if (result.status === 'rejected') {
+            console.warn('Receipt cleanup failed while deleting expense', result.reason);
+        }
+    });
 
     return callVoidRpc('delete_expense_item', {
         target_report_id: payload.reportId,
@@ -745,6 +753,7 @@ function reportHeader(report: any) {
 
     return {
         ...data,
+        ownerId: report.owner_id,
         報告編號: report.id,
         報告名稱: report.report_name,
         狀態: report.status,

@@ -202,6 +202,49 @@ export function getExpenseDate(category: string, item: Record<string, unknown>) 
     ).slice(0, 10);
 }
 
+export function getExpenseEndDate(category: string, item: Record<string, unknown>) {
+    const startDate = getExpenseDate(category, item);
+    return String(
+        item['行事曆結束日期']
+        || item[category === 'Accommodation' ? '退房日期' : '']
+        || item[category === 'Rental Car' ? '還車日期' : '']
+        || item[category === 'Per Diem' || category === 'Parking' ? '結束日期' : '']
+        || item['結束日期']
+        || startDate,
+    ).slice(0, 10) || startDate;
+}
+
+export function getExpenseEndTime(category: string, item: Record<string, unknown>) {
+    const startDate = getExpenseDate(category, item);
+    const endDate = getExpenseEndDate(category, item);
+    const startTime = getExpenseTime(item) || '09:00';
+    return String(
+        item['行事曆結束時間']
+        || item[category === 'Accommodation' ? '退房時間' : '']
+        || item[category === 'Rental Car' ? '還車時間' : '']
+        || item['結束時間']
+        || (endDate === startDate ? startTime : '23:30'),
+    ).slice(0, 5);
+}
+
+export function getDefaultExpenseEndDate(type: CalendarExpenseType, date: string) {
+    if (type !== 'hotel' && type !== 'rentalCar') return date;
+    const nextDate = new Date(`${date}T12:00:00`);
+    if (Number.isNaN(nextDate.getTime())) return date;
+    nextDate.setDate(nextDate.getDate() + 1);
+    return [
+        nextDate.getFullYear(),
+        String(nextDate.getMonth() + 1).padStart(2, '0'),
+        String(nextDate.getDate()).padStart(2, '0'),
+    ].join('-');
+}
+
+export function getDefaultExpenseEndTime(type: CalendarExpenseType, time: string) {
+    if (type === 'hotel') return '11:00';
+    if (type === 'rentalCar') return '10:00';
+    return time || '09:00';
+}
+
 export function getExpenseTime(item: Record<string, unknown>) {
     const raw = String(item['行事曆時間'] || item['出發時間'] || item['時間'] || '');
     const match = raw.match(/(\d{1,2}):(\d{2})/);
@@ -257,26 +300,34 @@ export function moveExpenseToSlot(
     time: string,
 ) {
     const oldDate = getExpenseDate(category, item);
+    const oldEndDate = getExpenseEndDate(category, item);
+    const oldTime = getExpenseTime(item) || '09:00';
+    const oldEndTime = getExpenseEndTime(category, item);
+    const shiftedEnd = shiftEndDateTime(oldDate, oldTime, oldEndDate, oldEndTime, date, time);
     const next: Record<string, unknown> = {
         ...item,
         行事曆日期: date,
         行事曆時間: time,
+        行事曆結束日期: shiftedEnd.date,
+        行事曆結束時間: shiftedEnd.time,
     };
     delete next._id;
 
     if (category === 'Accommodation') {
         next['入住日期'] = date;
-        next['退房日期'] = shiftEndDate(oldDate, String(item['退房日期'] || ''), date);
+        next['退房日期'] = next['行事曆結束日期'];
+        next['退房時間'] = next['行事曆結束時間'];
     } else if (category === 'Rental Car') {
         next['借車日期'] = date;
-        next['還車日期'] = shiftEndDate(oldDate, String(item['還車日期'] || ''), date);
+        next['還車日期'] = next['行事曆結束日期'];
+        next['還車時間'] = next['行事曆結束時間'];
     } else if (category === 'Per Diem') {
         next['開始日期'] = date;
-        next['結束日期'] = shiftEndDate(oldDate, String(item['結束日期'] || ''), date);
+        next['結束日期'] = next['行事曆結束日期'];
     } else if (category === 'Parking') {
         next['日期'] = date;
         next['開始日期'] = date;
-        next['結束日期'] = date;
+        next['結束日期'] = next['行事曆結束日期'];
     } else {
         next['日期'] = date;
     }
@@ -285,33 +336,42 @@ export function moveExpenseToSlot(
     return next;
 }
 
-function shiftEndDate(oldStart: string, oldEnd: string, newStart: string) {
-    const oldStartDate = new Date(`${oldStart}T12:00:00`);
-    const oldEndDate = new Date(`${oldEnd}T12:00:00`);
-    const newStartDate = new Date(`${newStart}T12:00:00`);
+function shiftEndDateTime(
+    oldStartDate: string,
+    oldStartTime: string,
+    oldEndDate: string,
+    oldEndTime: string,
+    newStartDate: string,
+    newStartTime: string,
+) {
+    const oldStart = new Date(`${oldStartDate}T${oldStartTime}:00`);
+    const oldEnd = new Date(`${oldEndDate}T${oldEndTime}:00`);
+    const nextStart = new Date(`${newStartDate}T${newStartTime}:00`);
     if (
-        Number.isNaN(oldStartDate.getTime())
-        || Number.isNaN(oldEndDate.getTime())
-        || Number.isNaN(newStartDate.getTime())
+        Number.isNaN(oldStart.getTime())
+        || Number.isNaN(oldEnd.getTime())
+        || Number.isNaN(nextStart.getTime())
     ) {
-        return newStart;
+        return { date: newStartDate, time: newStartTime };
     }
-    const durationDays = Math.max(
-        0,
-        Math.round((oldEndDate.getTime() - oldStartDate.getTime()) / 86_400_000),
-    );
-    newStartDate.setDate(newStartDate.getDate() + durationDays);
-    return [
-        newStartDate.getFullYear(),
-        String(newStartDate.getMonth() + 1).padStart(2, '0'),
-        String(newStartDate.getDate()).padStart(2, '0'),
-    ].join('-');
+    const duration = Math.max(0, oldEnd.getTime() - oldStart.getTime());
+    const nextEnd = new Date(nextStart.getTime() + duration);
+    return {
+        date: [
+            nextEnd.getFullYear(),
+            String(nextEnd.getMonth() + 1).padStart(2, '0'),
+            String(nextEnd.getDate()).padStart(2, '0'),
+        ].join('-'),
+        time: `${String(nextEnd.getHours()).padStart(2, '0')}:${String(nextEnd.getMinutes()).padStart(2, '0')}`,
+    };
 }
 
 export function createExpenseItemData({
     type,
     date,
     time,
+    endDate,
+    endTime,
     title,
     amount,
     currency,
@@ -324,6 +384,8 @@ export function createExpenseItemData({
     type: CalendarExpenseType;
     date: string;
     time: string;
+    endDate?: string;
+    endTime?: string;
     title: string;
     amount: number;
     currency: string;
@@ -333,21 +395,26 @@ export function createExpenseItemData({
     receiptName?: string;
     receiptAttachments?: Array<{ path: string; name: string }>;
 }) {
-    const nextDate = new Date(`${date}T12:00:00`);
-    nextDate.setDate(nextDate.getDate() + 1);
-    const followingDate = [
-        nextDate.getFullYear(),
-        String(nextDate.getMonth() + 1).padStart(2, '0'),
-        String(nextDate.getDate()).padStart(2, '0'),
-    ].join('-');
+    const existingEndDate = existingItem
+        ? getExpenseEndDate(getExpenseTypeConfig(type).category, existingItem)
+        : '';
+    const requestedEndDate = endDate || existingEndDate || getDefaultExpenseEndDate(type, date);
+    const normalizedEndDate = requestedEndDate < date ? date : requestedEndDate;
+    const existingEndTime = existingItem
+        ? getExpenseEndTime(getExpenseTypeConfig(type).category, existingItem)
+        : '';
+    const normalizedEndTime = endTime || existingEndTime || getDefaultExpenseEndTime(type, time);
     const base: Record<string, unknown> = {
         ...(existingItem || {}),
         行事曆日期: date,
         行事曆時間: time,
+        行事曆結束日期: normalizedEndDate,
+        行事曆結束時間: normalizedEndTime,
         行事曆標題: title,
         幣別: currency,
         備註: note,
     };
+    if (!existingItem) base['行事曆建立時間'] = new Date().toISOString();
     delete base._id;
 
     if (receiptPath) base['收據路徑'] = receiptPath;
@@ -377,7 +444,8 @@ export function createExpenseItemData({
         return {
             ...base,
             入住日期: date,
-            退房日期: base['退房日期'] || followingDate,
+            退房日期: normalizedEndDate,
+            退房時間: normalizedEndTime,
             飯店: title,
             個人金額: amount,
             代墊金額: base['代墊金額'] || 0,
@@ -389,7 +457,8 @@ export function createExpenseItemData({
         return {
             ...base,
             借車日期: date,
-            還車日期: base['還車日期'] || followingDate,
+            還車日期: normalizedEndDate,
+            還車時間: normalizedEndTime,
             租車公司: title,
             個人金額: amount,
             代墊金額: base['代墊金額'] || 0,
@@ -410,7 +479,7 @@ export function createExpenseItemData({
             ...base,
             日期: date,
             開始日期: date,
-            結束日期: date,
+            結束日期: normalizedEndDate,
             金額: amount,
         };
     }
@@ -418,7 +487,7 @@ export function createExpenseItemData({
         return {
             ...base,
             開始日期: date,
-            結束日期: date,
+            結束日期: normalizedEndDate,
             每日金額: amount,
             金額: amount,
         };

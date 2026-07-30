@@ -14,6 +14,7 @@ interface ReportHeaderProps {
     paymentCurrency: string;
     userName?: string;
     onUpdateSuccess: () => void;
+    disabled?: boolean;
     extraRates?: Record<string, number>;
     items?: Record<string, any[]>;
 }
@@ -28,6 +29,7 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
     paymentCurrency,
     userName,
     onUpdateSuccess,
+    disabled = false,
     extraRates,
     items
 }) => {
@@ -43,6 +45,7 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
     const [editPaymentCurrency, setEditPaymentCurrency] = useState(paymentCurrency);
 
     const handleEdit = () => {
+        if (disabled) return;
         setEditDays(String(days));
         setEditStartDate(startDate);
         setEditEndDate(endDate);
@@ -131,6 +134,7 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
                 {!isEditing && (
                     <button 
                         onClick={handleEdit}
+                        disabled={disabled}
                         className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
                         title={t('edit', '編輯')}
                     >

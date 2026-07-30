@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties } from 'react';
 import {
     CalendarPlus,
     CalendarRange,
@@ -46,6 +47,10 @@ import {
     getExpenseTypeConfig,
     getExpenseAmount,
     getExpenseDate,
+    getDefaultExpenseEndDate,
+    getDefaultExpenseEndTime,
+    getExpenseEndDate,
+    getExpenseEndTime,
     getNextAvailableExpenseTime,
     getExpenseTime,
     getExpenseTitle,
@@ -68,8 +73,12 @@ interface ExpenseCalendarProps {
 interface CalendarExpense {
     category: string;
     item: Record<string, unknown>;
+    order: number;
+    createdAt: string;
     date: string;
+    endDate: string;
     time: string;
+    endTime: string;
     title: string;
     amount: number;
     type: CalendarExpenseType;
@@ -114,6 +123,41 @@ function timeToMinutes(time: string) {
     const [hours, minutes] = time.split(':').map(Number);
     if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
     return hours * 60 + minutes;
+}
+
+function isDateInRange(date: string, startDate: string, endDate: string) {
+    if (!date || !startDate) return false;
+    return date >= startDate && date <= (endDate || startDate);
+}
+
+function expenseKey(expense: CalendarExpense) {
+    return `${expense.category}-${String(expense.item['次序'])}`;
+}
+
+function getExpenseSegmentMinutes(expense: CalendarExpense, dateKey: string) {
+    const start = expense.date === dateKey
+        ? timeToMinutes(expense.time) || START_MINUTES
+        : START_MINUTES;
+    const rawEnd = expense.endDate === dateKey
+        ? timeToMinutes(expense.endTime) ?? END_MINUTES
+        : END_MINUTES;
+    return { start, end: Math.max(start + SLOT_MINUTES, rawEnd) };
+}
+
+function compareExpenseAge(first: CalendarExpense, second: CalendarExpense) {
+    const firstTime = first.createdAt ? Date.parse(first.createdAt) : Number.NaN;
+    const secondTime = second.createdAt ? Date.parse(second.createdAt) : Number.NaN;
+    if (Number.isFinite(firstTime) && Number.isFinite(secondTime) && firstTime !== secondTime) {
+        return firstTime - secondTime;
+    }
+    if (Number.isFinite(firstTime) !== Number.isFinite(secondTime)) {
+        return Number.isFinite(firstTime) ? 1 : -1;
+    }
+    return first.order - second.order;
+}
+
+function segmentsOverlap(first: { start: number; end: number }, second: { start: number; end: number }) {
+    return first.start < second.end && second.start < first.end;
 }
 
 function createTimeSlots(step: number) {
@@ -186,11 +230,17 @@ export default function ExpenseCalendar({
         Object.entries(items || {}).forEach(([category, categoryItems]) => {
             (categoryItems || []).forEach((item) => {
                 const config = getExpenseTypeForItem(category, item);
+                const startDate = getExpenseDate(category, item);
+                const rawEndDate = getExpenseEndDate(category, item);
                 normalized.push({
                     category,
                     item,
-                    date: getExpenseDate(category, item),
+                    order: normalized.length,
+                    createdAt: String(item['行事曆建立時間'] || ''),
+                    date: startDate,
+                    endDate: rawEndDate < startDate ? startDate : rawEndDate,
                     time: getExpenseTime(item),
+                    endTime: getExpenseEndTime(category, item),
                     title: getExpenseTitle(category, item, t(config.labelKey, config.fallbackLabel)),
                     amount: getExpenseAmount(item),
                     type: config.id,
@@ -227,9 +277,17 @@ export default function ExpenseCalendar({
         const counts = new Map<string, number>();
         Object.entries(items || {}).forEach(([category, categoryItems]) => {
             categoryItems.forEach((item) => {
-                const date = getExpenseDate(category, item);
-                if (!date) return;
-                counts.set(date, (counts.get(date) || 0) + 1);
+                const startDate = getExpenseDate(category, item);
+                const endDate = getExpenseEndDate(category, item) || startDate;
+                if (!startDate) return;
+                const start = parseISO(startDate);
+                const end = parseISO(endDate < startDate ? startDate : endDate);
+                if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return;
+                const dayCount = Math.max(0, differenceInCalendarDays(end, start));
+                for (let offset = 0; offset <= dayCount; offset += 1) {
+                    const date = toDateKey(addDays(start, offset));
+                    counts.set(date, (counts.get(date) || 0) + 1);
+                }
             });
         });
         return counts;
@@ -248,6 +306,8 @@ export default function ExpenseCalendar({
             category: config.category,
             date: toDateKey(date),
             time,
+            endDate: getDefaultExpenseEndDate(type, toDateKey(date)),
+            endTime: getDefaultExpenseEndTime(type, time),
         });
         setSelectedType(null);
     };
@@ -258,6 +318,8 @@ export default function ExpenseCalendar({
             category: expense.category,
             date: expense.date || toDateKey(selectedDay),
             time: expense.time || '09:00',
+            endDate: expense.endDate || expense.date || toDateKey(selectedDay),
+            endTime: expense.endTime || expense.time || '09:00',
             item: expense.item,
         });
     };
@@ -333,7 +395,7 @@ export default function ExpenseCalendar({
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
     const currentTop = ((currentMinutes - START_MINUTES) / SLOT_MINUTES) * SLOT_HEIGHT;
     const weekExpenseCount = expenses.filter((expense) => weekDays.some(
-        (day) => expense.date === toDateKey(day),
+        (day) => isDateInRange(toDateKey(day), expense.date, expense.endDate),
     )).length;
 
     return (
@@ -522,9 +584,24 @@ export default function ExpenseCalendar({
                         {visibleDays.map((day) => {
                             const dateKey = toDateKey(day);
                             const dayExpenses = expenses.filter((expense) => {
-                                if (expense.date !== dateKey) return false;
+                                if (!isDateInRange(dateKey, expense.date, expense.endDate)) return false;
+                                if (expense.date !== dateKey) return true;
                                 const minutes = timeToMinutes(expense.time);
                                 return minutes !== null && minutes >= START_MINUTES && minutes < END_MINUTES;
+                            });
+                            const dayExpenseLayouts = new Map<string, { inset: number; zIndex: number; spineOffset: number }>();
+                            const oldestFirst = [...dayExpenses].sort(compareExpenseAge);
+                            oldestFirst.forEach((expense, ageIndex) => {
+                                const segment = getExpenseSegmentMinutes(expense, dateKey);
+                                const olderOverlaps = oldestFirst.filter((candidate) => {
+                                    if (compareExpenseAge(candidate, expense) >= 0) return false;
+                                    return segmentsOverlap(segment, getExpenseSegmentMinutes(candidate, dateKey));
+                                });
+                                dayExpenseLayouts.set(expenseKey(expense), {
+                                    inset: Math.min(44, olderOverlaps.length * 10),
+                                    zIndex: 10 + ageIndex,
+                                    spineOffset: Math.min(48, olderOverlaps.length * 18),
+                                });
                             });
                             const isToday = isSameDay(day, now);
                             return (
@@ -582,15 +659,82 @@ export default function ExpenseCalendar({
                                     />
 
                                     {dayExpenses.map((expense) => {
-                                        const minutes = timeToMinutes(expense.time) || START_MINUTES;
+                                        const isStartDay = expense.date === dateKey;
+                                        const isMultiDay = expense.endDate > expense.date;
+                                        const isEndDay = expense.endDate === dateKey;
+                                        const minutes = isStartDay
+                                            ? timeToMinutes(expense.time) || START_MINUTES
+                                            : START_MINUTES;
+                                        const endMinutes = timeToMinutes(expense.endTime) ?? END_MINUTES;
+                                        const isTimedSameDay = !isMultiDay && endMinutes > minutes;
+                                        const isExtended = isMultiDay || isTimedSameDay;
                                         const slotIndex = Math.floor((minutes - START_MINUTES) / SLOT_MINUTES);
-                                        const sameSlot = dayExpenses.filter((candidate) => candidate.time === expense.time);
-                                        const sameSlotIndex = sameSlot.indexOf(expense);
+                                        const layout = dayExpenseLayouts.get(expenseKey(expense)) || {
+                                            inset: 0,
+                                            zIndex: 10,
+                                            spineOffset: 0,
+                                        };
+                                        const spineLeft = `calc(50% + ${layout.spineOffset}px)`;
                                         const typeConfig = getExpenseTypeForItem(expense.category, expense.item);
                                         const EventIcon = TYPE_ICONS[expense.type];
-                                        return (
+                                        const dayHeight = timeSlots.length * SLOT_HEIGHT + END_LABEL_HEIGHT;
+                                        const segmentTop = isStartDay ? slotIndex * SLOT_HEIGHT + 3 : 3;
+                                        const segmentHeight = isMultiDay
+                                            ? isEndDay
+                                                ? Math.max(SLOT_HEIGHT - 6, (endMinutes / SLOT_MINUTES) * SLOT_HEIGHT - segmentTop)
+                                                : dayHeight - segmentTop - 3
+                                            : isTimedSameDay
+                                                ? Math.max(SLOT_HEIGHT - 6, ((endMinutes - minutes) / SLOT_MINUTES) * SLOT_HEIGHT - 6)
+                                                : SLOT_HEIGHT - 6;
+                                        const rangeLabel = isMultiDay || isTimedSameDay
+                                            ? `${expense.date} ${expense.time} ${t('calendar_date_to', 'to')} ${expense.endDate} ${expense.endTime}`
+                                            : expense.time;
+                                        const eventClassName = `absolute z-10 overflow-hidden rounded-xl border px-2 py-1 text-left shadow-sm transition hover:z-30 hover:-translate-y-0.5 hover:shadow-md focus:z-30 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1 ${typeConfig.surfaceClass} ${typeConfig.borderClass} ${typeConfig.textClass}`;
+                                        const eventStyle: CSSProperties = {
+                                            top: segmentTop,
+                                            left: 4 + layout.inset,
+                                            right: 4 + layout.inset,
+                                            height: Math.max(SLOT_HEIGHT - 6, segmentHeight),
+                                            zIndex: layout.zIndex,
+                                        };
+                                        const eventAriaLabel = `${expense.title}, ${expense.amount.toLocaleString()} ${String(expense.item['幣別'] || defaultCurrency)}`;
+                                        const eventContent = (
+                                            <>
+                                                <span className="flex items-center gap-1.5">
+                                                    <EventIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
+                                                    <span className="truncate text-xs font-bold">{expense.title}</span>
+                                                    {Boolean(expense.item['收據路徑'] || expense.item['收據附件']) && (
+                                                        <Paperclip className="ml-auto h-3 w-3 shrink-0" strokeWidth={1.8} />
+                                                    )}
+                                                </span>
+                                                <span className="mt-0.5 block truncate text-[10px] font-semibold tabular-nums opacity-75">
+                                                    {rangeLabel} · {expense.amount.toLocaleString()} {String(expense.item['幣別'] || defaultCurrency)}
+                                                </span>
+                                            </>
+                                        );
+                                        const compactEventContent = (
+                                            <>
+                                                <span className="flex items-center gap-1.5">
+                                                    <EventIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
+                                                    <span className="truncate text-xs font-bold">{expense.title}</span>
+                                                    {Boolean(expense.item['收據路徑'] || expense.item['收據附件']) && (
+                                                        <Paperclip className="ml-auto h-3 w-3 shrink-0" strokeWidth={1.8} />
+                                                    )}
+                                                </span>
+                                                <span className="mt-0.5 block truncate text-[10px] font-semibold tabular-nums opacity-80">
+                                                    {expense.amount.toLocaleString()} {String(expense.item['幣別'] || defaultCurrency)}
+                                                </span>
+                                                <span className="mt-0.5 block truncate text-[10px] font-medium opacity-70">
+                                                    {expense.date} {expense.time}
+                                                </span>
+                                            </>
+                                        );
+                                        const renderEventButton = (
+                                            className: string,
+                                            style?: CSSProperties,
+                                            content = eventContent,
+                                        ) => (
                                             <button
-                                                key={`${expense.category}-${String(expense.item['次序'])}`}
                                                 type="button"
                                                 draggable={!disabled}
                                                 onDragStart={(event) => {
@@ -606,26 +750,73 @@ export default function ExpenseCalendar({
                                                     event.stopPropagation();
                                                     openExistingExpense(expense);
                                                 }}
-                                                className={`absolute z-10 overflow-hidden rounded-xl border px-2 py-1 text-left shadow-sm transition hover:z-30 hover:-translate-y-0.5 hover:shadow-md focus:z-30 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1 ${typeConfig.surfaceClass} ${typeConfig.borderClass} ${typeConfig.textClass}`}
-                                                style={{
-                                                    top: slotIndex * SLOT_HEIGHT + 3 + sameSlotIndex * 4,
-                                                    left: 4 + sameSlotIndex * 5,
-                                                    right: 4,
-                                                    height: SLOT_HEIGHT - 6,
-                                                }}
-                                                aria-label={`${expense.title}, ${expense.amount.toLocaleString()} ${String(expense.item['幣別'] || defaultCurrency)}`}
+                                                className={className}
+                                                style={style}
+                                            aria-label={eventAriaLabel}
                                             >
-                                                <span className="flex items-center gap-1.5">
-                                                    <EventIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
-                                                    <span className="truncate text-xs font-bold">{expense.title}</span>
-                                                    {Boolean(expense.item['收據路徑']) && (
-                                                        <Paperclip className="ml-auto h-3 w-3 shrink-0" strokeWidth={1.8} />
-                                                    )}
-                                                </span>
-                                                <span className="mt-0.5 block truncate text-[10px] font-semibold tabular-nums opacity-75">
-                                                    {expense.time} · {expense.amount.toLocaleString()} {String(expense.item['幣別'] || defaultCurrency)}
-                                                </span>
+                                                {content}
                                             </button>
+                                        );
+                                        if (isExtended) {
+                                            const lineTop = isStartDay
+                                                ? Math.min(64, Math.max(24, segmentHeight - 8))
+                                                : 0;
+                                            const lineEnd = isEndDay
+                                                ? Math.max(lineTop + 8, Math.min(segmentHeight, (endMinutes / SLOT_MINUTES) * SLOT_HEIGHT - segmentTop))
+                                                : Math.max(lineTop + 8, segmentHeight - 3);
+                                            const lineHeight = Math.max(8, lineEnd - lineTop);
+                                            return (
+                                                <div
+                                                    key={expenseKey(expense)}
+                                                    className="pointer-events-none absolute z-10 overflow-visible"
+                                                    style={eventStyle}
+                                                >
+                                                    <span
+                                                        className={`absolute border-l-2 border-dashed ${typeConfig.borderClass}`}
+                                                        style={{
+                                                            top: lineTop,
+                                                            left: spineLeft,
+                                                            height: lineHeight,
+                                                            transform: 'translateX(-50%)',
+                                                        }}
+                                                        aria-hidden="true"
+                                                    />
+                                                    {isStartDay && renderEventButton(
+                                                        `pointer-events-auto flex min-h-14 w-full flex-col justify-start rounded-lg border px-2 py-1 text-left shadow-sm transition hover:z-30 hover:-translate-y-0.5 hover:bg-white/75 focus:z-30 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-inset ${typeConfig.surfaceClass} ${typeConfig.borderClass} ${typeConfig.textClass}`,
+                                                        { height: Math.min(68, Number(eventStyle.height) || 68) },
+                                                        compactEventContent,
+                                                    )}
+                                                    {isEndDay && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                openExistingExpense(expense);
+                                                            }}
+                                                            aria-label={`${t('calendar_edit_end', 'Edit end time')}: ${expense.endDate} ${expense.endTime}`}
+                                                            title={t('calendar_edit_end', 'Edit end time')}
+                                                            className="pointer-events-auto absolute inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-left text-[10px] font-semibold text-slate-500 transition hover:bg-white hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1"
+                                                            style={{
+                                                                top: Math.max(0, lineEnd - 8),
+                                                                left: `calc(50% + ${layout.spineOffset + 4}px)`,
+                                                            }}
+                                                        >
+                                                            <span
+                                                                className={`h-2.5 w-2.5 shrink-0 rounded-full border-2 bg-white ${typeConfig.borderClass}`}
+                                                                aria-hidden="true"
+                                                            />
+                                                            <span className="whitespace-nowrap">
+                                                                {t('calendar_ends_label', 'Ends')} {expense.endDate} {expense.endTime}
+                                                            </span>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        }
+
+                                        return renderEventButton(
+                                            eventClassName,
+                                            eventStyle,
                                         );
                                     })}
                                 </div>
