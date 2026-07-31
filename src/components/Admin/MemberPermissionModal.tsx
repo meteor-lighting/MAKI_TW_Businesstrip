@@ -77,7 +77,7 @@ const MemberPermissionModal: React.FC<Props> = ({ onClose }) => {
                 <div className="flex items-center justify-between p-6 border-b border-gray-100">
                     <div className="flex items-center gap-2 text-gray-800">
                         <ShieldAlert className="w-5 h-5 text-blue-600" />
-                        <h2 className="text-xl font-bold">人員權限管理</h2>
+                        <h2 className="text-xl font-bold">{t('member_permissions', 'Member permissions')}</h2>
                     </div>
                     <button
                         onClick={onClose}
@@ -89,7 +89,7 @@ const MemberPermissionModal: React.FC<Props> = ({ onClose }) => {
 
                 <div className="p-6 overflow-y-auto flex-1">
                     <p className="text-sm text-gray-500 mb-6">
-                        在此設定各使用者是否可查看與複製他人的差旅報告。即便開啟此權限，使用者對於他人的報告依然只有「無編輯、無刪除」的唯讀與複製權限。
+                        {t('member_permissions_description', "Choose whether each user can view and copy other employees' travel reports. These permissions remain read-only and never allow editing or deleting someone else's report.")}
                     </p>
 
                     {error && (
@@ -107,10 +107,10 @@ const MemberPermissionModal: React.FC<Props> = ({ onClose }) => {
                             <table className="w-full text-left text-sm whitespace-nowrap">
                                 <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
                                     <tr>
-                                        <th className="py-3 px-4 font-semibold">用戶編號</th>
-                                        <th className="py-3 px-4 font-semibold">用戶名稱</th>
-                                        <th className="py-3 px-4 font-semibold">角色</th>
-                                        <th className="py-3 px-4 font-semibold text-center">可查看與複製他人</th>
+                                        <th className="py-3 px-4 font-semibold">{t('employee_id', 'Employee ID')}</th>
+                                        <th className="py-3 px-4 font-semibold">{t('user_name', 'User name')}</th>
+                                        <th className="py-3 px-4 font-semibold">{t('role', 'Role')}</th>
+                                        <th className="py-3 px-4 font-semibold text-center">{t('can_view_copy_others', 'Can view and copy others')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
@@ -122,7 +122,7 @@ const MemberPermissionModal: React.FC<Props> = ({ onClose }) => {
                                                 <span className={`px-2 py-1 text-xs rounded-full font-medium
                                                     ${member.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}
                                                 `}>
-                                                    {member.role === 'admin' ? '管理員' : '一般用戶'}
+                                                    {member.role === 'admin' ? t('administrator', 'Administrator') : t('regular_user', 'Regular user')}
                                                 </span>
                                             </td>
                                             <td className="py-3 px-4 text-center">
@@ -155,7 +155,7 @@ const MemberPermissionModal: React.FC<Props> = ({ onClose }) => {
                                     {members.length === 0 && (
                                         <tr>
                                             <td colSpan={4} className="py-8 text-center text-gray-500">
-                                                無成員資料
+                                                {t('no_members', 'No members found')}
                                             </td>
                                         </tr>
                                     )}
@@ -170,7 +170,7 @@ const MemberPermissionModal: React.FC<Props> = ({ onClose }) => {
                         onClick={onClose}
                         className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition shadow-sm font-medium"
                     >
-                        完成
+                        {t('done', 'Done')}
                     </button>
                 </div>
             </div>

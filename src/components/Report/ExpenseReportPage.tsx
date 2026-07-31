@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SummaryCards from './SummaryCards';
 import ExpenseCharts from './ExpenseCharts';
@@ -6,19 +6,14 @@ import DetailTable from './DetailTable';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../LanguageSwitcher';
 
-import { ArrowLeft, LogOut, ArrowDown } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowDown } from 'lucide-react';
 import { ReportData } from '../../types/report';
-import { useAuth } from '../../context/AuthContext';
-import { generatePDF } from '../../utils/pdfGenerator'; // Import generator
 
 const ExpenseReportPage: React.FC = () => {
     const { t } = useTranslation();
     const location = useLocation();
     const navigate = useNavigate();
 
-    const chartsRef = useRef<HTMLDivElement>(null);
-
-    // Get data from location state
     const reportData = location.state?.reportData as ReportData;
 
     if (!reportData) {
@@ -38,8 +33,6 @@ const ExpenseReportPage: React.FC = () => {
     }
 
 
-
-    const { signOut } = useAuth();
 
     // 動態掃描本次差旅實際使用到的外幣與匯率，且同一幣別僅顯示一次
     const getUsedRates = () => {
@@ -84,28 +77,27 @@ const ExpenseReportPage: React.FC = () => {
 
     const usedRates = getUsedRates();
 
-    const handleLogout = () => {
-        signOut();
-        navigate('/');
-    };
-
     const handleDownloadPDF = async () => {
         if (!reportData) return;
         try {
-            // Show loading state if needed? For now just call it
+            const { generatePDF } = await import('../../utils/pdfGenerator');
             await generatePDF(reportData.reportId);
         } catch (error) {
             console.error("PDF Generation failed", error);
         }
     };
 
+    const handleOpenWorkspace = () => {
+        sessionStorage.setItem('activeReportId', reportData.reportId);
+        navigate('/report');
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 p-8">
             <div className="max-w-7xl mx-auto">
-                {/* Top Bar */}
                 <div className="flex justify-between items-center mb-6 bg-white p-4 shadow-sm rounded-lg border border-slate-200">
-                    <div id="report-header-section"> {/* Added ID for PDF capture */}
-                        <h1 className="text-2xl font-bold text-gray-800 mb-2 leading-tight">
+                    <div id="report-header-section">
+                        <h1 className="mb-3 text-4xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">
                             {reportData.summary.reportName || `${t('app_title')} - ${reportData.reportId}`}
                         </h1>
                         <div className="text-base text-gray-600 flex flex-wrap gap-x-6 gap-y-2 mb-1">
@@ -116,7 +108,7 @@ const ExpenseReportPage: React.FC = () => {
                         </div>
                         {Object.keys(usedRates).length > 0 && (
                             <div className="flex flex-wrap gap-2 pt-2 border-t border-dashed border-gray-200 mt-2">
-                                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider self-center mr-1">實際使用匯率:</span>
+                                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider self-center mr-1">{t('used_exchange_rates', 'Applied exchange rates:')}</span>
                                 {Object.keys(usedRates).map(cur => (
                                     <span key={cur} className="bg-emerald-50 text-emerald-800 text-xs px-2.5 py-1 rounded-md border border-emerald-100 font-bold">
                                         {cur}：{usedRates[cur]}
@@ -127,13 +119,6 @@ const ExpenseReportPage: React.FC = () => {
                     </div>
                     <div className="flex gap-3 items-center">
                         <button
-                            onClick={handleDownloadPDF}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
-                        >
-                            <ArrowDown size={18} />
-                            {t('download_pdf')}
-                        </button>
-                        <button
                             onClick={() => navigate('/dashboard')}
                             className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                         >
@@ -141,51 +126,24 @@ const ExpenseReportPage: React.FC = () => {
                             {t('back_to_dashboard')}
                         </button>
                         <button
-                            onClick={handleLogout}
-                            className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-red-200"
+                            onClick={handleOpenWorkspace}
+                            className="bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-blue-200"
                         >
-                            <LogOut size={18} />
-                            {t('logout')}
+                            <ArrowRight size={18} />
+                            {t('view_report', 'View report')}
+                        </button>
+                        <button
+                            onClick={handleDownloadPDF}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
+                        >
+                            <ArrowDown size={18} />
+                            {t('download_pdf')}
                         </button>
                         <LanguageSwitcher />
                     </div>
                 </div>
 
-                {/* Report Content Container for any potential scoping */}
                 <div id="report-content">
-                    {/* Header Details (Hidden in UI but maybe useful for PDF? actually we use top bar info usually. 
-                       Wait, the PDF design asked for "screen content". The top bar is good.
-                       Let's wrap the Header info we want to capture.
-                       Actually, looking at the UI, the top bar has the title/user/etc.
-                       Let's add ID to the top bar? 
-                       But user might want just the content below.
-                       Let's see pdfGenerator again. It looks for 'report-header-section'.
-                       I should wrap the summary/header info in a div ensuring it looks good in PDF.
-                       The current top bar has navigation buttons which we DON'T want in PDF.
-                       
-                       Strategy: Create a "Print Header" that is visible only during specific capture? 
-                       No, `html - to - image` captures what is visible.
-                       
-                       Better Strategy: Wrap the info part of the Top Bar in a div with ID 'report-header-section'.
-                     */}
-
-                    {/* We need to separate the header info from buttons for the PDF capture */}
-                    <div className="hidden" id="report-header-section">
-                        {/* This hidden section is for PDF only? 
-                             No, html-to-image captures rendered element. If it's hidden (display:none), it might render empty.
-                             Safest way: Capture the visible header info.
-                             Let's add ID to the left part of the top bar.
-                          */}
-                    </div>
-
-                    {/* Let's modify the Top Bar to be capture-friendly or just capture the essential parts below. 
-                       The prompt says "Final Report Page... PDF Download".
-                       Usually includes Header.
-                       
-                       Let's wrap the "Header Info" inside the top bar with the ID.
-                     */}
-
-                    {/* Summary Cards */}
                     <div id="report-summary-section" className="mb-6 bg-slate-200 p-4 rounded-xl">
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div className="md:col-span-1 bg-slate-700 text-white rounded-xl overflow-hidden shadow-md">
@@ -271,8 +229,7 @@ const ExpenseReportPage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Charts */}
-                    <div id="report-charts-section" ref={chartsRef}>
+                    <div id="report-charts-section">
                         <ExpenseCharts pieData={reportData.charts.pie} barData={reportData.charts.bar} />
                     </div>
 
@@ -303,14 +260,14 @@ const ExpenseReportPage: React.FC = () => {
                             );
                         })
                     ) : (
-                        <div className="text-center py-10 text-gray-500">無詳細資料</div>
+                        <div className="text-center py-10 text-gray-500">{t('no_details', 'No details available')}</div>
                     )}
                 </div>
 
                 {/* Signature Section */}
                 <div id="report-signature-section" className="report-detail-section mt-10 pt-6">
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '40px', padding: '0 20px' }}>
-                        {['部門主管', '總經理', '董事長'].map((title) => (
+                        {[t('department_manager', 'Department manager'), t('general_manager', 'General manager'), t('chairperson', 'Chairperson')].map((title) => (
                             <div key={title} style={{ flex: 1, textAlign: 'center' }}>
                                 <div style={{ borderBottom: '1px solid #333', height: '60px', marginBottom: '8px' }} />
                                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#333' }}>{title}</div>

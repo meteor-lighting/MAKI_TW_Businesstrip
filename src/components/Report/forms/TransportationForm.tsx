@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
@@ -7,8 +6,6 @@ import CityAutocomplete from '../CityAutocomplete';
 
 interface TransportationFormProps {
     reportId: string;
-    headerRate: number;
-    tripStartDate?: string;
     onSubmitSuccess: () => void;
     onLoadingChange: (loading: boolean) => void;
     disabled?: boolean;
@@ -18,7 +15,6 @@ interface TransportationFormProps {
 
 const TransportationForm: React.FC<TransportationFormProps> = ({
     reportId,
-    headerRate,
     onSubmitSuccess,
     onLoadingChange,
     disabled,
@@ -39,11 +35,11 @@ const TransportationForm: React.FC<TransportationFormProps> = ({
 
     useEffect(() => {
         if (editingItem) {
-            setFormData({
-                ...formData,
+            setFormData((current) => ({
+                ...current,
                 ...editingItem,
                 金額: String(editingItem['金額'] || '')
-            });
+            }));
         }
     }, [editingItem]);
 
@@ -65,11 +61,11 @@ const TransportationForm: React.FC<TransportationFormProps> = ({
                 onSubmitSuccess();
                 if (onCancelEdit) onCancelEdit();
             } else {
-                alert(res.message || '儲存失敗，請重試');
+                alert(res.message || t('save_failed_retry', 'Could not save. Please try again.'));
             }
         } catch (error: any) {
             console.error(error);
-            alert(error.message || '儲存失敗，請聯絡管理員');
+            alert(error.message || t('save_failed_admin', 'Could not save. Please contact an administrator.'));
         } finally {
             setLoading(false);
             onLoadingChange(false);
@@ -77,7 +73,7 @@ const TransportationForm: React.FC<TransportationFormProps> = ({
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <form onSubmit={handleSubmit} className="expense-form-panel space-y-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('date')}</label>
@@ -85,7 +81,7 @@ const TransportationForm: React.FC<TransportationFormProps> = ({
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('transportation_type')}</label>
-                    <input type="text" value={formData.交通工具} onChange={e => setFormData({ ...formData, 交通工具: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg" placeholder="Taxi, Train, etc." required />
+                    <input type="text" value={formData.交通工具} onChange={e => setFormData({ ...formData, 交通工具: e.target.value })} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg" placeholder={t('transportation_placeholder', 'Taxi, train, etc.')} required />
                 </div>
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('region')}</label>

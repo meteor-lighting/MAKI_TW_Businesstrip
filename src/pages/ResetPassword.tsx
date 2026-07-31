@@ -1,7 +1,9 @@
 import { FormEvent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
 
 export default function ResetPassword() {
+    const { t } = useTranslation();
     const [password, setPassword] = useState('');
     const [confirmation, setConfirmation] = useState('');
     const [message, setMessage] = useState('');
@@ -42,13 +44,13 @@ export default function ResetPassword() {
         event.preventDefault();
         setError('');
         setMessage('');
-        if (password.length < 8) return setError('Password must be at least 8 characters.');
-        if (password !== confirmation) return setError('Passwords do not match.');
+        if (password.length < 8) return setError(t('password_min_length'));
+        if (password !== confirmation) return setError(t('password_mismatch'));
         setLoading(true);
         try {
             const { error: passwordError } = await supabase.auth.updateUser({ password });
             if (passwordError) throw passwordError;
-            setMessage('Your password has been updated. You can now sign in.');
+            setMessage(t('password_updated_message'));
             await supabase.auth.signOut();
             window.setTimeout(() => window.location.assign(appBaseUrl()), 1200);
         } catch (caught) {
@@ -62,7 +64,7 @@ export default function ResetPassword() {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
                 <div className="w-full max-w-md rounded-xl bg-white p-8 text-center shadow">
-                    Checking your password-reset session...
+                    {t('password_reset_session_check')}
                 </div>
             </div>
         );
@@ -72,16 +74,16 @@ export default function ResetPassword() {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
                 <div className="w-full max-w-md rounded-xl bg-white p-8 shadow space-y-4">
-                    <h1 className="text-2xl font-bold text-gray-900">Password setup required</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">{t('password_setup_required')}</h1>
                     <p className="text-sm text-gray-600">
-                        Return to sign in and use the reset-password form to choose a new password.
+                        {t('password_setup_return_hint')}
                     </p>
                     {error && <div className="text-sm text-red-600">{error}</div>}
                     <a
                         href={appBaseUrl()}
                         className="block w-full rounded bg-indigo-600 p-3 text-center font-medium text-white"
                     >
-                        Return to sign in
+                        {t('return_to_sign_in')}
                     </a>
                 </div>
             </div>
@@ -92,8 +94,8 @@ export default function ResetPassword() {
         <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
             <form onSubmit={submit} className="w-full max-w-md rounded-xl bg-white p-8 shadow space-y-5">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Set a new password</h1>
-                    <p className="mt-2 text-sm text-gray-600">Use at least 8 characters.</p>
+                    <h1 className="text-2xl font-bold text-gray-900">{t('set_new_password')}</h1>
+                    <p className="mt-2 text-sm text-gray-600">{t('password_minimum_hint')}</p>
                 </div>
                 <input
                     type="password"
@@ -101,7 +103,7 @@ export default function ResetPassword() {
                     autoComplete="new-password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    placeholder="New password"
+                    placeholder={t('new_password')}
                     className="w-full rounded border border-gray-300 p-3"
                 />
                 <input
@@ -110,7 +112,7 @@ export default function ResetPassword() {
                     autoComplete="new-password"
                     value={confirmation}
                     onChange={(event) => setConfirmation(event.target.value)}
-                    placeholder="Confirm new password"
+                    placeholder={t('confirm_password_placeholder')}
                     className="w-full rounded border border-gray-300 p-3"
                 />
                 {error && <div className="text-sm text-red-600">{error}</div>}
@@ -120,7 +122,7 @@ export default function ResetPassword() {
                     disabled={loading}
                     className="w-full rounded bg-indigo-600 p-3 font-medium text-white disabled:opacity-50"
                 >
-                    {loading ? 'Updating…' : 'Update password'}
+                    {loading ? t('processing') : t('update_password')}
                 </button>
             </form>
         </div>

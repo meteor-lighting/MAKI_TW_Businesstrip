@@ -1,3 +1,184 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .expense-section[data-expense-view='list'] .expense-form-panel,
+  .expense-modal-panel[data-expense-view='list'] .expense-form-panel {
+    display: none;
+  }
+
+  .expense-section[data-expense-view='form'] .expense-list-panel,
+  .expense-modal-panel[data-expense-view='form'] .expense-list-panel {
+    display: none;
+  }
+}
+
+.expense-form-panel {
+  border: 0 !important;
+  border-radius: 20px !important;
+  background: rgb(248 250 252 / 0.78) !important;
+  box-shadow: none !important;
+  padding: 24px !important;
+}
+
+.expense-form-panel label {
+  color: rgb(71 85 105);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.expense-form-panel :is(
+  input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  select,
+  textarea
+) {
+  min-height: 44px;
+  border-color: rgb(203 213 225 / 0.82) !important;
+  border-radius: 12px !important;
+  background: rgb(255 255 255 / 0.92) !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
+  color: rgb(15 23 42);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.expense-form-panel :is(
+  input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  select,
+  textarea
+):focus {
+  border-color: rgb(96 165 250) !important;
+  background: white !important;
+  box-shadow: 0 0 0 3px rgb(219 234 254 / 0.8);
+  outline: none;
+}
+
+.expense-form-panel :is(input, textarea):read-only {
+  background: rgb(241 245 249) !important;
+  color: rgb(100 116 139);
+}
+
+.expense-form-panel button {
+  min-height: 44px;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+.expense-form-panel .border-t {
+  border-color: rgb(226 232 240 / 0.8) !important;
+}
+
+.expense-list-panel > h4 {
+  margin-bottom: 12px !important;
+  color: rgb(30 41 59) !important;
+  font-size: 0.875rem !important;
+  font-weight: 700 !important;
+}
+
+.expense-summary-panel table {
+  border: 0 !important;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+.expense-summary-panel thead {
+  background: transparent !important;
+}
+
+.expense-summary-panel :is(th, td) {
+  border: 0 !important;
+}
+
+.expense-summary-panel thead th {
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.5rem !important;
+  color: rgb(100 116 139) !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.expense-summary-panel tbody tr {
+  background: rgb(248 250 252);
+}
+
+.expense-summary-panel tbody td {
+  padding-top: 0.8rem !important;
+  padding-bottom: 0.8rem !important;
+}
+
+.expense-summary-panel tbody td:first-child {
+  border-radius: 12px 0 0 12px;
+}
+
+.expense-summary-panel tbody td:last-child {
+  border-radius: 0 12px 12px 0;
+}
+
+.expense-modal-backdrop {
+  animation: expense-modal-backdrop-in 180ms ease-out both;
+}
+
+.expense-modal-panel {
+  animation: expense-modal-panel-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes expense-modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes expense-modal-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .expense-modal-backdrop,
+  .expense-modal-panel {
+    animation: none;
+  }
+}
+
+@media (max-width: 639px) {
+  .expense-summary-panel table {
+    min-width: 0 !important;
+    table-layout: fixed;
+    font-size: 0.78rem !important;
+  }
+
+  .expense-summary-panel :is(th, td) {
+    padding-left: 0.55rem !important;
+    padding-right: 0.55rem !important;
+  }
+
+  .expense-summary-panel :is(th, td):first-child {
+    width: 44%;
+  }
+
+  .expense-summary-panel :is(th, td):not(:first-child) {
+    width: 28%;
+    white-space: nowrap;
+  }
+
+  .expense-form-panel {
+    border-radius: 16px !important;
+    padding: 16px !important;
+  }
+}

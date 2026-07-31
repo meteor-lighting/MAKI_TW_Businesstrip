@@ -27,7 +27,7 @@ function formatTime(val: any): string {
 }
 
 export const searchFlightLocal = (codeStr: string, dateStr: string, data: any[]): FlightInfo | null => {
-    let code = (codeStr || '').toUpperCase().trim().replace(/\s+/g, '');
+    const code = (codeStr || '').toUpperCase().trim().replace(/\s+/g, '');
     if (!code || !dateStr || !data || data.length === 0) return null;
 
     const date = new Date(dateStr);

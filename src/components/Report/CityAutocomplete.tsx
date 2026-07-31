@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { sendRequest } from '../../services/api';
 import clsx from 'clsx';
 import { MapPin, Loader2, History } from 'lucide-react';
@@ -73,20 +73,19 @@ export default function CityAutocomplete({
 
     const debouncedQuery = useDebounceValue(inputValue, 300);
 
-    // Get default suggestions (History + Popular)
-    const getDefaultSuggestions = () => {
+    const getDefaultSuggestions = useCallback(() => {
         const historyItems = history.map(name => ({ name, isHistory: true }));
         const popularItems = POPULAR_CITIES
-            .filter(city => !history.includes(city)) // Deduplicate
-            .slice(0, 10 - historyItems.length)
+            .filter(city => !history.includes(city))
+            .slice(0, Math.max(0, 10 - historyItems.length))
             .map(name => ({ name, isHistory: false }));
+
         return [...historyItems, ...popularItems];
-    };
+    }, [history]);
 
     useEffect(() => {
         if (!isOpen) return;
 
-        // If input is empty, show defaults
         if (debouncedQuery.trim().length === 0) {
             setSuggestions(getDefaultSuggestions());
             return;
@@ -128,7 +127,7 @@ export default function CityAutocomplete({
             })
             .finally(() => setLoading(false));
 
-    }, [debouncedQuery, isOpen, history]); // Depend on history to update defaults if history changes
+    }, [debouncedQuery, getDefaultSuggestions, isOpen]);
 
     // Close on click outside
     useEffect(() => {

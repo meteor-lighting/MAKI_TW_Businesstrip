@@ -157,13 +157,13 @@ const History: React.FC = () => {
                 { key: '報告名稱', header: t('report_name', '報告名稱') },
                 { key: '員工姓名', header: t('user', '員工姓名'), render: (i: any) => i['員工姓名'] || i['用戶編號'] },
                 { key: '出差國家', header: t('country', '國家'), render: (item: any) => {
-                    let d = item['出差國家'];
-                    try { const p = JSON.parse(d); if(Array.isArray(p)) return p.join(', '); } catch(e){}
+                    const d = item['出差國家'];
+                    try { const p = JSON.parse(d); if(Array.isArray(p)) return p.join(', '); } catch { /* Plain text values are valid. */ }
                     return d || '-';
                 }},
                 { key: '商旅天數', header: t('trip_duration', '商旅天數') },
                 { key: '合計TWD總體總額', header: t('total_twd', '合計總額(TWD)'), render: (item: any) => item['合計TWD總體總額'] ? Number(item['合計TWD總體總額']).toLocaleString() : '0' },
-                { key: '狀態', header: t('status', '狀態'), render: (i: any) => <span className="px-2 py-1 rounded text-xs bg-gray-100">{i['狀態'] || 'Draft'}</span> },
+                { key: '狀態', header: t('status', '狀態'), render: (i: any) => <span className="px-2 py-1 rounded text-xs bg-gray-100">{i['狀態'] || t('draft', 'Draft')}</span> },
                 { key: '操作', header: t('actions', '操作'), render: (i: any) => (
                     <div className="flex justify-center w-full">
                         <button
@@ -197,8 +197,8 @@ const History: React.FC = () => {
                 
                 if (k === '地區' || k === '出差國家') {
                      renderFn = (item: any) => {
-                         let d = item[k];
-                         try { const p = JSON.parse(d); if(Array.isArray(p)) return p.join(', '); } catch(e){}
+                         const d = item[k];
+                         try { const p = JSON.parse(d); if(Array.isArray(p)) return p.join(', '); } catch { /* Plain text values are valid. */ }
                          return d || '-';
                      };
                 } else if (k.includes('日期') || k === '建立時間' || k === '最後修改時間') {
@@ -260,7 +260,7 @@ const History: React.FC = () => {
                                 value={employeeId}
                                 onChange={(e) => setEmployeeId(e.target.value)}
                                 className="w-full rounded border-gray-300 shadow-sm p-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                                placeholder={user?.role !== 'admin' ? `${user?.id} (預設模糊)` : '搜尋編號'}
+                                placeholder={user?.role !== 'admin' ? `${user?.id} ${t('default_fuzzy', '(default fuzzy)')}` : t('search_employee_id', 'Search employee ID')}
                             />
                         </div>
 
@@ -273,7 +273,7 @@ const History: React.FC = () => {
                                 value={reportName}
                                 onChange={(e) => setReportName(e.target.value)}
                                 className="w-full rounded border-gray-300 shadow-sm p-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                                placeholder="模糊搜尋"
+                                placeholder={t('fuzzy_search', 'Fuzzy search')}
                             />
                         </div>
 
@@ -297,7 +297,7 @@ const History: React.FC = () => {
                                     value={destination}
                                     onChange={(e) => setDestination(e.target.value)}
                                     className="w-full rounded border-gray-300 shadow-sm p-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                                    placeholder="地名或代號"
+                                    placeholder={t('place_or_code', 'Place or code')}
                                 />
                             </div>
                         )}
@@ -313,7 +313,7 @@ const History: React.FC = () => {
                             >
                                 {CATEGORIES.map(cat => (
                                     <option key={cat.value} value={cat.value}>
-                                        {cat.value === 'All' ? '全部 (All Reports)' : t(cat.label, cat.value)}
+                                        {cat.value === 'All' ? t('all_reports', 'All reports') : t(cat.label, cat.value)}
                                     </option>
                                 ))}
                             </select>
@@ -402,11 +402,11 @@ const History: React.FC = () => {
                     {!loading && results.length > 0 && (
                         <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                             <span className="text-sm text-gray-600">
-                                找到 {results.length} 筆紀錄
+                                {t('found_records', 'Found {{count}} records', { count: results.length })}
                             </span>
                             {resultType === 'items' && category !== 'All' && (
                                 <span className="text-sm font-medium text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full">
-                                    項目預覽：{t(CATEGORIES.find(c => c.value === category)?.label || category, category)}
+                                    {t('item_preview', 'Item preview:')}{t(CATEGORIES.find(c => c.value === category)?.label || category, category)}
                                 </span>
                             )}
                         </div>
@@ -430,7 +430,7 @@ const History: React.FC = () => {
                     {!resultType && !loading && (
                         <div className="p-16 text-center text-gray-400">
                             <HistoryIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                            請設定條件並點擊查詢
+                            {t('history_set_filters', 'Set filters and click Search')}
                         </div>
                     )}
                 </div>

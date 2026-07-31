@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sendRequest, getAllFlights } from '../../../services/api';
@@ -7,8 +6,6 @@ import { Loader2 } from 'lucide-react';
 
 interface FlightFormProps {
     reportId: string;
-    headerRate: number;
-    tripStartDate?: string;
     onSubmitSuccess: (item?: any) => void;
     onLoadingChange: (loading: boolean) => void;
     disabled?: boolean;
@@ -19,7 +16,6 @@ interface FlightFormProps {
 
 const FlightForm: React.FC<FlightFormProps> = ({
     reportId,
-    headerRate,
     onSubmitSuccess,
     onLoadingChange,
     disabled,
@@ -53,11 +49,11 @@ const FlightForm: React.FC<FlightFormProps> = ({
 
     useEffect(() => {
         if (editingItem) {
-            setFormData({
-                ...formData,
+            setFormData((current) => ({
+                ...current,
                 ...editingItem,
                 金額: String(editingItem['金額'] || '')
-            });
+            }));
             setTripType(editingItem['行程類型'] === 'round-trip' ? 'round-trip' : 'one-way');
         }
     }, [editingItem]);
@@ -172,7 +168,7 @@ const FlightForm: React.FC<FlightFormProps> = ({
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <form onSubmit={handleSubmit} className="expense-form-panel space-y-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div className="flex gap-4 p-1 bg-gray-100 rounded-lg w-fit">
                 <button
                     type="button"
