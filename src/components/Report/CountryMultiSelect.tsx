@@ -86,7 +86,7 @@ export default function CountryMultiSelect({
             });
 
         return () => { isMounted = false; };
-    }, []);
+    }, [type]);
 
     // Filter logic
     useEffect(() => {
@@ -223,7 +223,7 @@ export default function CountryMultiSelect({
             
             {isOpen && !loading && inputValue.trim() && suggestions.length === 0 && !disabled && (
                 <div className="absolute top-full left-0 z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg p-3 text-center text-slate-400 text-sm">
-                    No matching countries found
+                    {t('no_matching_countries', 'No matching countries found')}
                 </div>
             )}
         </div>

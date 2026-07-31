@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
 
 const LanguageSwitcher: React.FC = () => {
-    const { i18n } = useTranslation();
+    const { i18n, t } = useTranslation();
 
     const toggleLanguage = () => {
         const newLang = i18n.language === 'zh' ? 'en' : 'zh';
@@ -14,10 +14,14 @@ const LanguageSwitcher: React.FC = () => {
         <button
             onClick={toggleLanguage}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white transition-colors text-sm font-medium shadow-lg"
-            title="Switch Language / 切換語言"
+            title={i18n.language === 'zh'
+                ? t('language_switch_to_en', 'EN')
+                : t('language_switch_to_zh', '中文')}
         >
             <Globe size={18} />
-            <span>{i18n.language === 'zh' ? 'EN' : '中文'}</span>
+            <span>{i18n.language === 'zh'
+                ? t('language_switch_to_en', 'EN')
+                : t('language_switch_to_zh', '中文')}</span>
         </button>
     );
 };

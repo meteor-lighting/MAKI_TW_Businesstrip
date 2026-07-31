@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getUserReports, getReport, deleteReport, updateReportStatus, copyReport, startDropboxOAuth } from '../services/api';
-import { PlusCircle, FileText, Calendar, Clock, Loader2, Lock, Eye, Trash2, Unlock, LogOut, ArrowLeft, Copy, Search, ShieldAlert, Cloud } from 'lucide-react';
+import { getUserReports, deleteReport, updateReportStatus, copyReport } from '../services/api';
+import { PlusCircle, FileText, Clock, Calendar, Loader2, Lock, Eye, Trash2, Unlock, ArrowLeft, Copy, Search, ShieldAlert } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
-import { transformReportData } from '../utils/reportTransformer';
 import MemberPermissionModal from '../components/Admin/MemberPermissionModal';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 interface ReportSummary {
     reportId: string;
@@ -27,7 +27,7 @@ interface ReportSummary {
 }
 
 const Dashboard: React.FC = () => {
-    const { user, signOut } = useAuth();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const { t } = useTranslation();
 
@@ -38,7 +38,6 @@ const Dashboard: React.FC = () => {
     const [reportToToggleLock, setReportToToggleLock] = useState<ReportSummary | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showPermissionModal, setShowPermissionModal] = useState(false);
-    const [connectingDropbox, setConnectingDropbox] = useState(false);
 
     const fetchReports = useCallback(async () => {
         if (!user?.id) return;
@@ -55,7 +54,7 @@ const Dashboard: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [user?.id, t]);
+    }, [t, user?.id, user?.role]);
 
     useEffect(() => {
         fetchReports();
@@ -66,46 +65,11 @@ const Dashboard: React.FC = () => {
         navigate('/report/setup');
     };
 
-    const handleLogout = () => {
-        signOut();
-        navigate('/');
-    };
-
-    const handleConnectDropbox = async () => {
-        try {
-            setConnectingDropbox(true);
-            const authorizationUrl = await startDropboxOAuth();
-            window.location.assign(authorizationUrl);
-        } catch (err: any) {
-            setError(err.message || t('dropbox_connect_error', 'Unable to connect Dropbox.'));
-            setConnectingDropbox(false);
-        }
-    };
-
     const handleOpenReport = async (report: ReportSummary) => {
-        const isReadonly = report.status || (user?.role !== 'admin' && String(report.userId) !== String(user?.id));
-        
-        if (isReadonly) {
-            // Read-only mode - fetch full report and go to summary
-            try {
-                setLoading(true);
-                const res = await getReport(report.reportId, user?.id);
-                if (res.status === 'success' && res.data) {
-                    const formattedData = transformReportData(res.data, report.reportId, user?.name || '', t);
-                    navigate('/report/summary', { state: { reportData: formattedData } });
-                } else {
-                    setError(res.message || t('error'));
-                }
-            } catch (err: any) {
-                setError(err.message || t('error'));
-            } finally {
-                setLoading(false);
-            }
-        } else {
-            // Edit mode
-            sessionStorage.setItem('activeReportId', report.reportId);
-            navigate('/report');
-        }
+        // Open every report in the workspace. Report.tsx still enforces
+        // read-only mode for locked reports and users without edit rights.
+        sessionStorage.setItem('activeReportId', report.reportId);
+        navigate('/report');
     };
 
     const handleDeleteClick = (e: React.MouseEvent, report: ReportSummary) => {
@@ -217,65 +181,53 @@ const Dashboard: React.FC = () => {
     });
 
     return (
-        <div className="max-w-6xl mx-auto p-4 md:p-6 pb-24">
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-4">
-                    <button 
-                        onClick={() => navigate('/home')}
-                        className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-600"
-                    >
-                        <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <h1 className="text-2xl font-bold text-gray-800">{t('my_reports')}</h1>
+        <div className="min-h-[100dvh] bg-slate-100/70 px-4 py-6 md:px-6 md:py-10">
+            <div className="mx-auto max-w-6xl rounded-3xl border border-slate-200 bg-white/70 p-5 shadow-sm md:p-8">
+            <div className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                <div className="min-w-0">
+                    <div className="mb-2 text-xs font-semibold tracking-wide text-slate-400">
+                        {t('home', 'Home')} <span className="px-1 text-slate-300">/</span> {t('my_reports')}
+                    </div>
+                    <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">{t('my_reports')}</h1>
                 </div>
-                <div className="flex items-center gap-3">
-                    {user?.role === 'admin' && (
-                        <>
-                            <button
-                                onClick={handleConnectDropbox}
-                                disabled={connectingDropbox}
-                                className="flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-2 rounded shadow-sm hover:bg-emerald-200 disabled:opacity-60 transition font-medium"
-                            >
-                                {connectingDropbox ? <Loader2 className="w-5 h-5 flex-shrink-0 animate-spin" /> : <Cloud className="w-5 h-5 flex-shrink-0" />}
-                                <span className="hidden sm:inline">{connectingDropbox ? t('dropbox_connecting', 'Connecting Dropbox...') : t('dropbox_connect', 'Connect Dropbox')}</span>
-                            </button>
-                            <button
-                                onClick={() => setShowPermissionModal(true)}
-                                className="flex items-center gap-2 bg-purple-100 text-purple-700 px-4 py-2 rounded shadow-sm hover:bg-purple-200 transition font-medium"
-                            >
-                                <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-                                <span className="hidden sm:inline">人員權限</span>
-                            </button>
-                        </>
-                    )}
+                <div className="flex flex-wrap items-center gap-2">
                     <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded shadow-sm transition"
+                        onClick={() => navigate('/home')}
+                        className="order-last flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 lg:order-first"
                     >
-                        <LogOut className="w-4 h-4" />
-                        {t('logout')}
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="hidden sm:inline">{t('back_to_home', 'Home')}</span>
                     </button>
+                    {user?.role === 'admin' && (
+                        <button
+                            onClick={() => setShowPermissionModal(true)}
+                            className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        >
+                            <ShieldAlert className="h-4 w-4" />
+                            <span className="hidden sm:inline">{t('member_permissions_button', 'Member permissions')}</span>
+                        </button>
+                    )}
+                    <LanguageSwitcher />
                     <button
                         onClick={handleCreateNew}
-                        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition"
+                        className="flex min-h-10 items-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 active:scale-[0.98]"
                     >
-                        <PlusCircle className="w-5 h-5" />
+                        <PlusCircle className="h-4 w-4" />
                         {t('new_report')}
                     </button>
                 </div>
             </div>
 
-            {/* Search Bar */}
-            <div className="mb-6 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400" />
+            <div className="relative mb-7">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                    <Search className="h-4 w-4 text-slate-400" />
                 </div>
                 <input
                     type="text"
                     placeholder={t('search_reports', '搜尋報告 (編號、名稱、用戶、日期、天數、狀態)...')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all duration-200"
+                    className="block min-h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                 />
             </div>
 
@@ -303,97 +255,108 @@ const Dashboard: React.FC = () => {
                     <p className="text-gray-500">{t('try_different_keyword', '請嘗試調整搜尋關鍵字')}</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {filteredReports.map((report) => (
                         <div
                             key={report.reportId}
                             onClick={() => handleOpenReport(report)}
-                            className={`p-6 rounded-xl border transition group cursor-pointer 
+                            className={`group relative flex h-full min-h-[20rem] cursor-pointer flex-col rounded-2xl border border-l-4 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md
                                 ${report.status
-                                    ? 'bg-gray-50 border-gray-200 hover:border-gray-300'
-                                    : 'bg-white shadow-sm border-gray-100 hover:shadow-md hover:border-blue-200'}
+                                    ? 'border-slate-300 border-l-amber-500 bg-slate-100 opacity-65 hover:opacity-100'
+                                    : 'border-slate-200 border-l-transparent bg-white shadow-sm hover:border-blue-200'}
                             `}
                         >
-                            <div className="flex justify-between items-start mb-4 gap-4">
-                                <div className="flex flex-col gap-2 flex-1 min-w-0">
-                                    <span className={`text-xs font-semibold px-2 py-1 rounded inline-block truncate w-full max-w-max
-                                        ${report.status ? 'bg-gray-200 text-gray-600' : 'bg-blue-50 text-blue-600'}`} title={report.reportName || report.reportId}>
-                                        {report.reportName || report.reportId}
-                                    </span>
+                            <div className="mb-4 flex items-start justify-between gap-3">
+                                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                                    {report.status && (
+                                        <span className="rounded-md bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-800">
+                                            {t('locked', 'Locked')}
+                                        </span>
+                                    )}
                                     {user?.role === 'admin' && report.userName && (
-                                        <span className="text-xs font-semibold px-2 py-0.5 rounded inline-block truncate max-w-max bg-purple-100 text-purple-700" title={report.userName}>
+                                        <span className="truncate rounded-md bg-blue-50 px-2 py-1 text-[11px] font-bold tracking-wide text-blue-700" title={report.userName}>
                                             {report.userName}
                                         </span>
                                     )}
-                                    {report.status && (
-                                        <span className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded flex items-center gap-1 truncate max-w-max">
-                                            <Lock className="w-3 h-3 flex-shrink-0" />
-                                            <span className="truncate">{report.status}</span>
-                                        </span>
-                                    )}
                                 </div>
-                                <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                                    <div className="text-xs text-gray-400 flex items-center gap-1 whitespace-nowrap">
-                                        <Clock className="w-3 h-3 flex-shrink-0" />
+                                <div className="flex shrink-0 items-center gap-1 text-xs font-medium text-slate-400">
+                                    <Clock className="h-3.5 w-3.5" />
                                         {formatDate(report.createdAt)}
+                                </div>
+                            </div>
+
+                            <div className="mb-2 min-h-[2.5rem]">
+                                <h2 className="line-clamp-2 break-words text-xl font-black leading-tight tracking-tight text-slate-950 sm:text-2xl" title={report.reportName || report.reportId}>
+                                    {report.reportName || report.reportId}
+                                </h2>
+                            </div>
+
+                            <div className="mb-3 space-y-2 text-xs">
+                                <div className="flex items-start gap-2">
+                                    <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                                    <div className="min-w-0">
+                                        <div className="font-semibold text-slate-400">{t('trip_start_date')}</div>
+                                        <div className="font-medium text-slate-700">{formatDate(report.startDate) || '-'}</div>
                                     </div>
-                                    <div className="flex z-10 relative">
+                                </div>
+                                <div className="ml-2 border-l border-slate-200 pl-4">
+                                    <div className="font-semibold text-slate-400">{t('trip_end_date')}</div>
+                                    <div className="font-medium text-slate-700">{formatDate(report.endDate) || '-'}</div>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                    <Clock className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                                    <div className="min-w-0">
+                                        <div className="font-semibold text-slate-400">{t('trip_duration')}</div>
+                                        <div className="font-bold text-slate-700">{report.days}{t('day_unit', ' day')}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-end justify-between gap-3 border-t border-slate-100 pt-4">
+                                <div className="min-w-0">
+                                    <div className="text-[11px] font-semibold text-slate-400">{t('payable_amount', 'Payable amount')}</div>
+                                    <div className="truncate text-lg font-black tracking-tight text-slate-950">
+                                        {report.paymentCurrency} {(report.paymentCurrency === 'USD' ? ((report.totalUSDAmount || 0) - ((report.advanceAmount || 0)/(report.rate || 1))) : ((report.totalAmount || 0) - (report.advanceAmount || 0)))?.toLocaleString(undefined, { minimumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0, maximumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0 }) || 0}
+                                    </div>
+                                    <div className="text-xs text-slate-400">
+                                        {t('total_amount', 'Total')}: {report.paymentCurrency} {(report.paymentCurrency === 'USD' ? report.totalUSDAmount : report.totalAmount)?.toLocaleString(undefined, { minimumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0, maximumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0 }) || 0}
+                                    </div>
+                                </div>
+                                <div className="relative z-10 flex shrink-0 items-center gap-1">
                                         {user?.role === 'admin' && (
                                             <button
                                                 type="button"
                                                 onClick={(e) => handleLockClick(e, report)}
-                                                className={`p-1.5 rounded-full transition flex items-center justify-center 
-                                                    ${report.status ? 'text-amber-500 hover:bg-amber-50' : 'text-gray-400 hover:text-amber-500 hover:bg-amber-50'}`}
+                                                className={`flex h-9 w-9 items-center justify-center rounded-lg transition
+                                                    ${report.status ? 'text-amber-600 hover:bg-amber-100' : 'text-slate-400 hover:bg-amber-50 hover:text-amber-600'}`}
                                                 title={report.status ? t('unlock') : t('lock')}
                                             >
-                                                {report.status ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                                                {report.status ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                                             </button>
                                         )}
                                         {(user?.role === 'admin' || user?.canCopyOthers || String(report.userId) === String(user?.id)) && (
                                             <button
                                                 type="button"
                                                 onClick={(e) => handleCopyReport(e, report)}
-                                                className="text-gray-400 hover:text-blue-500 hover:bg-blue-50 p-1.5 rounded-full transition ml-1"
+                                                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-blue-50 hover:text-blue-600"
                                                 title={t('copy_report', '複製')}
                                             >
-                                                <Copy className="w-4 h-4" />
+                                                <Copy className="h-4 w-4" />
                                             </button>
                                         )}
                                         {!report.status && (user?.role === 'admin' || String(report.userId) === String(user?.id)) && (
                                             <button
                                                 type="button"
                                                 onClick={(e) => handleDeleteClick(e, report)}
-                                                className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-full transition ml-1"
+                                                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600"
                                                 title={t('delete')}
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="h-4 w-4" />
                                             </button>
                                         )}
                                     </div>
-                                </div>
                             </div>
-
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2 text-gray-600">
-                                    <Calendar className="w-4 h-4 text-gray-400" />
-                                    <span className="text-sm">
-                                        {t('trip_start_date')}: <span className="font-medium text-gray-800">{formatDate(report.startDate) || '-'}</span>
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-gray-600 border-l-2 border-gray-200 ml-2 pl-4 py-1">
-                                    <span className="text-sm">
-                                        {t('trip_end_date')}: <span className="font-medium text-gray-800">{formatDate(report.endDate) || '-'}</span>
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-2 text-gray-600">
-                                    <Clock className="w-4 h-4 text-gray-400" />
-                                    <span className="text-sm">
-                                        {t('trip_duration')}: <span className="font-medium text-gray-800">{report.days}</span> {t('days')}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="mt-5 pt-4 border-t border-gray-50 flex justify-between items-end">
+                            <div className="mt-auto pt-3 flex justify-end">
                                 <span className={`text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 mb-1
                                     ${(report.status || (user?.role !== 'admin' && String(report.userId) !== String(user?.id))) ? 'text-gray-500' : 'text-blue-600'}`}>
                                     {(report.status || (user?.role !== 'admin' && String(report.userId) !== String(user?.id))) ? (
@@ -406,14 +369,6 @@ const Dashboard: React.FC = () => {
                                         </>
                                     )}
                                 </span>
-                                <div className="flex flex-col items-end gap-1">
-                                    <span className="text-xs text-gray-500 whitespace-nowrap">
-                                        {t('total_amount', '總額')}: {report.paymentCurrency} {(report.paymentCurrency === 'USD' ? report.totalUSDAmount : report.totalAmount)?.toLocaleString(undefined, { minimumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0, maximumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0 }) || 0}
-                                    </span>
-                                    <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">
-                                        {t('payable_amount', '應付金額')}: {report.paymentCurrency} {(report.paymentCurrency === 'USD' ? ((report.totalUSDAmount || 0) - ((report.advanceAmount || 0)/(report.rate || 1))) : ((report.totalAmount || 0) - (report.advanceAmount || 0)))?.toLocaleString(undefined, { minimumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0, maximumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0 }) || 0}
-                                    </span>
-                                </div>
                             </div>
                         </div>
                     ))}
@@ -426,7 +381,7 @@ const Dashboard: React.FC = () => {
                     <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 animate-fade-in-up">
                         <div className="flex items-center gap-3 mb-4 text-red-600">
                             <Trash2 className="w-6 h-6" />
-                            <h3 className="text-lg font-bold">刪除報告 {reportToDelete.reportName || reportToDelete.reportId}</h3>
+                            <h3 className="text-lg font-bold">{t('delete_report_title', 'Delete report')} {reportToDelete.reportName || reportToDelete.reportId}</h3>
                         </div>
                         <p className="text-gray-600 mb-6">
                             {t('confirm_delete_report')}
@@ -437,7 +392,7 @@ const Dashboard: React.FC = () => {
                                 disabled={loading}
                                 className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition font-medium"
                             >
-                                取消
+                                {t('cancel', 'Cancel')}
                             </button>
                             <button
                                 onClick={confirmDelete}
@@ -445,7 +400,7 @@ const Dashboard: React.FC = () => {
                                 className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition font-medium flex items-center gap-2"
                             >
                                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                                確認刪除
+                                {t('confirm_delete', 'Confirm delete')}
                             </button>
                         </div>
                     </div>
@@ -491,6 +446,7 @@ const Dashboard: React.FC = () => {
             {showPermissionModal && (
                 <MemberPermissionModal onClose={() => setShowPermissionModal(false)} />
             )}
+            </div>
         </div>
     );
 };

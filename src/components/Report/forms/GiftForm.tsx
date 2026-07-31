@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
@@ -7,8 +6,6 @@ import CityAutocomplete from '../CityAutocomplete';
 
 interface GenericFormProps {
     reportId: string;
-    headerRate: number;
-    tripStartDate?: string;
     onSubmitSuccess: () => void;
     onLoadingChange: (loading: boolean) => void;
     disabled?: boolean;
@@ -18,8 +15,6 @@ interface GenericFormProps {
 
 const GiftForm: React.FC<GenericFormProps> = ({
     reportId,
-    headerRate,
-    tripStartDate,
     onSubmitSuccess,
     onLoadingChange,
     disabled,
@@ -39,11 +34,11 @@ const GiftForm: React.FC<GenericFormProps> = ({
 
     useEffect(() => {
         if (editingItem) {
-            setFormData({
-                ...formData,
+            setFormData((current) => ({
+                ...current,
                 ...editingItem,
                 金額: String(editingItem['金額'] || '')
-            });
+            }));
         }
     }, [editingItem]);
 
@@ -74,7 +69,7 @@ const GiftForm: React.FC<GenericFormProps> = ({
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <form onSubmit={handleSubmit} className="expense-form-panel space-y-6 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('date')}</label>

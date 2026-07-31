@@ -10,7 +10,6 @@ export default function ReportSetup() {
     const navigate = useNavigate();
     const [reportId, setReportId] = useState('');
     const [reportName, setReportName] = useState('');
-    const [headerRate, setHeaderRate] = useState(0);
     const [initializing, setInitializing] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -20,7 +19,7 @@ export default function ReportSetup() {
 
         const initialize = async () => {
             try {
-                let activeReportId = sessionStorage.getItem('activeReportId') || '';
+                const activeReportId = sessionStorage.getItem('activeReportId') || '';
                 let reportResponse: any;
 
                 if (activeReportId) {
@@ -38,7 +37,6 @@ export default function ReportSetup() {
                 if (!cancelled) {
                     setReportId(activeReportId);
                     setReportName(String(reportResponse.data?.header?.['報告名稱'] || ''));
-                    setHeaderRate(Number(reportResponse.data?.header?.['USD匯率'] || 0));
                 }
             } catch (caught) {
                 if (!cancelled) {
@@ -206,7 +204,6 @@ export default function ReportSetup() {
                         </div>
                         <FlightForm
                             reportId={reportId}
-                            headerRate={headerRate}
                             onSubmitDraft={handleFirstFlightDraft}
                             onSubmitSuccess={() => navigate('/report', { replace: true })}
                             onLoadingChange={setSaving}

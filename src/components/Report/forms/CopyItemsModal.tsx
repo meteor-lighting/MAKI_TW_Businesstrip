@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { sendRequest } from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
@@ -12,11 +11,19 @@ interface CopyItemsModalProps {
     onSuccess: () => void;
 }
 
+interface CopyTargetReport {
+    reportId: string;
+    userId: string;
+    userName?: string;
+    reportName?: string;
+    createdAt: string;
+}
+
 export default function CopyItemsModal({ isOpen, onClose, category, sourceItems, onSuccess }: CopyItemsModalProps) {
     const { t } = useTranslation();
     const { user } = useAuth();
     const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
-    const [reports, setReports] = useState<any[]>([]);
+    const [reports, setReports] = useState<CopyTargetReport[]>([]);
     
     const [selectedUser, setSelectedUser] = useState<string>('');
     const [selectedReport, setSelectedReport] = useState<string>('');
@@ -24,26 +31,17 @@ export default function CopyItemsModal({ isOpen, onClose, category, sourceItems,
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => {
-        if (isOpen) {
-            fetchUsersAndReports();
-        } else {
-            setSelectedUser('');
-            setSelectedReport('');
-        }
-    }, [isOpen]);
-
-    const fetchUsersAndReports = async () => {
+    const fetchUsersAndReports = useCallback(async () => {
         if (!user) return;
         setLoading(true);
         try {
             const res = await sendRequest('getUserReports', { userId: user.id, role: user.role });
             if (res.status === 'success' && res.data) {
-                const fetchedReports = res.data;
+                const fetchedReports = res.data as CopyTargetReport[];
                 setReports(fetchedReports);
                 
-                const uniqueUsersMap = new Map();
-                fetchedReports.forEach((r: any) => {
+                const uniqueUsersMap = new Map<string, string>();
+                fetchedReports.forEach((r) => {
                     if (r.userId && !uniqueUsersMap.has(r.userId)) {
                         uniqueUsersMap.set(r.userId, r.userName || r.userId);
                     }
@@ -57,7 +55,16 @@ export default function CopyItemsModal({ isOpen, onClose, category, sourceItems,
         } finally {
             setLoading(false);
         }
-    };
+    }, [user]);
+
+    useEffect(() => {
+        if (isOpen) {
+            void fetchUsersAndReports();
+        } else {
+            setSelectedUser('');
+            setSelectedReport('');
+        }
+    }, [fetchUsersAndReports, isOpen]);
 
     const handleConfirm = async () => {
         if (!selectedReport || sourceItems.length === 0 || !user) return;
@@ -76,8 +83,8 @@ export default function CopyItemsModal({ isOpen, onClose, category, sourceItems,
             } else {
                 alert(res.message || 'Copy failed');
             }
-        } catch (e: any) {
-            alert(e.message || 'Copy failed');
+        } catch (error) {
+            alert(error instanceof Error ? error.message : 'Copy failed');
         } finally {
             setSubmitting(false);
         }

@@ -109,7 +109,7 @@ const DetailTable: React.FC<DetailTableProps> = ({ id, title, total, columns, da
 
             {/* Footer Total */}
             <div className="flex flex-wrap justify-between items-center bg-white px-4 py-3 border-b border-x border-slate-200">
-                <div className="font-bold text-slate-700 text-lg min-w-max">Total</div>
+                <div className="font-bold text-slate-700 text-lg min-w-max">{t('total', 'Total')}</div>
                 <div className="flex flex-wrap items-center justify-end gap-x-6 gap-y-2">
                     {/* Average Info */}
                     {total.count !== undefined && total.count > 0 && (

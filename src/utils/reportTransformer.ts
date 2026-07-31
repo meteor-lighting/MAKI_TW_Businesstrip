@@ -169,7 +169,7 @@ export function transformReportData(raw: RawReportData, reportId: string, userNa
     const createSection = (key: string, title: string, columns: any[], id: string, totalOverride?: number, avgType: 'general' | 'per_person_per_day' = 'general') => {
         const items = raw.items[key];
         if (items && items.length > 0) {
-            let twdTotalAmount = totalOverride !== undefined ? totalOverride : (catTotals[key] || 0);
+            const twdTotalAmount = totalOverride !== undefined ? totalOverride : (catTotals[key] || 0);
             
             // Calculate usdTotalAmount and average amounts
             const rateUSD = safeNum(header['USD匯率'] || 1);

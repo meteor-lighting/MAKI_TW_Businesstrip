@@ -1,8 +1,8 @@
 import { ReactNode } from 'react';
 import {
     ArrowLeft,
+    ArrowRight,
     CalendarDays,
-    CheckCircle2,
     ClipboardCheck,
     CircleDollarSign,
     ListChecks,
@@ -24,7 +24,7 @@ interface ReportWorkspaceShellProps {
     onReportNameChange: (name: string) => void;
     onReportNameBlur: () => void;
     onBack: () => void;
-    onFinish: () => void;
+    onViewSummary: () => void;
 }
 
 const TAB_DEFINITIONS = [
@@ -47,12 +47,12 @@ export default function ReportWorkspaceShell({
     onReportNameChange,
     onReportNameBlur,
     onBack,
-    onFinish,
+    onViewSummary,
 }: ReportWorkspaceShellProps) {
     const { t } = useTranslation();
 
     return (
-        <div className="min-h-[100dvh] bg-slate-100 text-slate-950">
+        <div className="min-h-[100dvh] bg-[#f4f6fa] text-slate-950">
             <a
                 href="#report-workspace-main"
                 className="fixed left-3 top-3 z-[110] -translate-y-24 rounded-xl bg-white px-4 py-3 font-semibold text-blue-800 shadow-lg transition focus:translate-y-0"
@@ -60,19 +60,19 @@ export default function ReportWorkspaceShell({
                 {t('skip_to_content', 'Skip to content')}
             </a>
 
-            <div className="mx-auto grid min-h-[100dvh] max-w-[1800px] lg:grid-cols-[224px_minmax(0,1fr)]">
-                <aside className="hidden bg-slate-950 px-4 py-5 text-white lg:sticky lg:top-0 lg:flex lg:h-[100dvh] lg:flex-col">
+            <div className="mx-auto grid min-h-[100dvh] max-w-[1840px] lg:grid-cols-[232px_minmax(0,1fr)]">
+                <aside className="hidden border-r border-slate-200/70 bg-white/80 px-4 py-6 text-slate-900 lg:sticky lg:top-0 lg:flex lg:h-[100dvh] lg:flex-col">
                     <div className="flex items-center gap-3 px-2">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600">
+                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-sky-500 text-white shadow-[0_8px_20px_rgba(37,99,235,0.18)]">
                             <CalendarDays className="h-5 w-5" strokeWidth={1.8} />
                         </span>
                         <div>
-                            <p className="font-bold tracking-tight">MAKI Travel</p>
+                            <p className="font-bold tracking-tight text-slate-950">MAKI Travel</p>
                             <p className="text-xs text-slate-400">{t('report', 'Report')} {reportId.slice(-6)}</p>
                         </div>
                     </div>
 
-                    <nav className="mt-9 space-y-1" aria-label={t('workspace_navigation', 'Report navigation')}>
+                    <nav className="mt-9 space-y-1.5" aria-label={t('workspace_navigation', 'Report navigation')}>
                         {TAB_DEFINITIONS.map((tab) => {
                             const Icon = tab.icon;
                             const selected = activeTab === tab.id;
@@ -82,29 +82,29 @@ export default function ReportWorkspaceShell({
                                     type="button"
                                     onClick={() => onTabChange(tab.id)}
                                     aria-current={selected ? 'page' : undefined}
-                                    className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                                    className={`flex min-h-12 w-full items-center gap-3 rounded-2xl px-3.5 text-left text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-[0.98] ${
                                         selected
-                                            ? 'bg-white text-slate-950'
-                                            : 'text-slate-300 hover:bg-white/10 hover:text-white'
+                                            ? 'bg-slate-100 text-slate-950 shadow-[inset_0_0_0_1px_rgba(226,232,240,0.7)]'
+                                            : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                                     }`}
                                 >
-                                    <Icon className="h-5 w-5" strokeWidth={1.8} />
+                                    <Icon className={`h-5 w-5 ${selected ? 'text-blue-600' : ''}`} strokeWidth={1.8} />
                                     {t(tab.labelKey, tab.fallback)}
                                 </button>
                             );
                         })}
                     </nav>
 
-                    <div className="mt-auto border-t border-white/10 px-2 pt-4">
-                        <p className="truncate text-sm font-semibold text-slate-200">{userName || t('user')}</p>
-                        <p className="mt-1 text-xs text-slate-500">
+                    <div className="mt-auto rounded-2xl bg-slate-50 px-3 py-3.5">
+                        <p className="truncate text-sm font-semibold text-slate-800">{userName || t('user')}</p>
+                        <p className="mt-1 text-xs text-slate-400">
                             {loading ? t('saving', 'Saving') : t('workspace_changes_saved', 'Changes save automatically')}
                         </p>
                     </div>
                 </aside>
 
                 <div className="min-w-0">
-                    <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
+                    <header className="bg-[#f4f6fa] px-4 pb-3 pt-5 sm:px-6 lg:px-8 lg:pt-7">
                         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                             <div className="min-w-0 flex-1">
                                 <label htmlFor="report-name" className="sr-only">
@@ -118,9 +118,9 @@ export default function ReportWorkspaceShell({
                                     onBlur={onReportNameBlur}
                                     disabled={loading}
                                     placeholder={t('app_title')}
-                                    className="h-11 w-full max-w-3xl border-b border-transparent bg-transparent text-xl font-bold tracking-tight text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-600 disabled:opacity-60 sm:text-2xl"
+                                    className="h-12 w-full max-w-3xl rounded-xl bg-transparent px-1 text-2xl font-extrabold tracking-tight text-slate-950 outline-none transition placeholder:text-slate-400 hover:bg-white/60 focus:bg-white focus:ring-2 focus:ring-blue-100 disabled:opacity-60 sm:text-3xl"
                                 />
-                                <p className="mt-1 text-sm text-slate-500">
+                                <p className="mt-1 px-1 text-sm leading-5 text-slate-500">
                                     {t('workspace_subtitle', 'Place expenses on the trip timeline, then review the details.')}
                                 </p>
                             </div>
@@ -129,7 +129,7 @@ export default function ReportWorkspaceShell({
                                 <button
                                     type="button"
                                     onClick={onBack}
-                                    className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-600 sm:px-4"
+                                    className="flex min-h-11 items-center gap-2 rounded-[14px] bg-white px-3 text-sm font-semibold text-slate-700 shadow-[0_4px_16px_rgba(74,91,124,0.08)] ring-1 ring-slate-200/70 transition hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 active:scale-[0.98] sm:px-4"
                                 >
                                     <ArrowLeft className="h-4 w-4" strokeWidth={1.8} />
                                     <span className="hidden sm:inline">{t('back_to_dashboard')}</span>
@@ -137,12 +137,11 @@ export default function ReportWorkspaceShell({
                                 {activeTab !== 'review' && (
                                     <button
                                         type="button"
-                                        onClick={onFinish}
-                                        disabled={loading}
-                                        className="flex min-h-11 items-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-bold text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                                        onClick={onViewSummary}
+                                        className="flex min-h-11 items-center gap-2 rounded-[14px] bg-blue-700 px-3 text-sm font-semibold text-white shadow-[0_6px_18px_rgba(29,78,216,0.18)] transition hover:bg-blue-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 active:scale-[0.98] sm:px-4"
                                     >
-                                        <CheckCircle2 className="h-4 w-4" strokeWidth={1.8} />
-                                        {t('confirm_finish')}
+                                        <ArrowRight className="h-4 w-4" strokeWidth={1.8} />
+                                        <span className="hidden sm:inline">{t('view_summary', 'View summary')}</span>
                                     </button>
                                 )}
                                 {accountControls}
@@ -150,7 +149,7 @@ export default function ReportWorkspaceShell({
                         </div>
 
                         <nav
-                            className="mt-4 grid grid-cols-5 gap-1 rounded-xl bg-slate-100 p-1 lg:hidden"
+                            className="mt-4 flex gap-1.5 overflow-x-auto rounded-2xl bg-white/80 p-1.5 shadow-[0_4px_16px_rgba(74,91,124,0.06)] ring-1 ring-slate-200/60 lg:hidden"
                             aria-label={t('workspace_navigation', 'Report navigation')}
                         >
                             {TAB_DEFINITIONS.map((tab) => {
@@ -162,10 +161,10 @@ export default function ReportWorkspaceShell({
                                         type="button"
                                         onClick={() => onTabChange(tab.id)}
                                         aria-current={selected ? 'page' : undefined}
-                                        className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-lg px-1 text-[11px] font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-600 sm:flex-row sm:text-sm ${
+                                        className={`flex min-h-12 min-w-[92px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl px-2 text-[11px] font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 active:scale-[0.98] sm:min-w-0 sm:flex-row sm:text-sm ${
                                             selected
-                                                ? 'bg-white text-slate-950 shadow-sm'
-                                                : 'text-slate-600 hover:text-slate-950'
+                                                ? 'bg-slate-100 text-blue-700'
+                                                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-950'
                                         }`}
                                     >
                                         <Icon className="h-4 w-4" strokeWidth={1.8} />
@@ -176,7 +175,7 @@ export default function ReportWorkspaceShell({
                         </nav>
                     </header>
 
-                    <main id="report-workspace-main" className="px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+                    <main id="report-workspace-main" className="px-4 pb-8 pt-4 sm:px-6 lg:px-8 lg:pb-10 lg:pt-5">
                         {children}
                     </main>
                 </div>

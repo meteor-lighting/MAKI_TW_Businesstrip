@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle2, Copy, ReceiptText } from 'lucide-react';
+import { Copy, ReceiptText } from 'lucide-react';
 import { transformReportData } from '../utils/reportTransformer';
 import { formatTimeHHmm } from '../utils/formatters';
 
@@ -25,7 +25,6 @@ import PerDiemForm from '../components/Report/forms/PerDiemForm';
 import AdvancePaymentForm from '../components/Report/forms/AdvancePaymentForm';
 import OthersForm from '../components/Report/forms/OthersForm';
 import LunchLearnForm from '../components/Report/forms/LunchLearnForm';
-import ChangePasswordModal from '../components/ChangePasswordModal';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import CopyItemsModal from '../components/Report/forms/CopyItemsModal';
 import ExpenseCalendar from '../components/Report/ExpenseCalendar';
@@ -81,7 +80,6 @@ export default function Report() {
     const [reportData, setReportData] = useState<ReportData | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadingCount, setLoadingCount] = useState(0);
-    const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
     const [localReportName, setLocalReportName] = useState('');
     const [editingItems, setEditingItems] = useState<{ [category: string]: any }>({});
 
@@ -96,6 +94,23 @@ export default function Report() {
         else next.set('view', tab);
         setSearchParams(next, { replace: true });
     }, [searchParams, setSearchParams]);
+
+    const fetchReportData = useCallback(async (id: string, forceRefresh = false) => {
+        try {
+            const res = await sendRequest('getReport', { reportId: id, userId: user?.id, forceRefresh });
+            if (res.status === 'success') {
+                setReportData(res.data);
+                setLocalReportName(res.data.header['報告名稱'] || '');
+                writeReportCache(id, res.data);
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }, [user?.id]);
+
+    const handleItemChanged = useCallback(async () => {
+        if (reportId) await fetchReportData(reportId, false);
+    }, [fetchReportData, reportId]);
 
     const handleSelectionChange = useCallback((category: string, items: any[]) => {
         setSelectedItemsMap(prev => ({ ...prev, [category]: items }));
@@ -119,9 +134,9 @@ export default function Report() {
             delete newMap[copyCategory];
             return newMap;
         });
-        handleItemChanged(); // refresh the items
+        handleItemChanged();
         alert(t('copy_success', '複製成功'));
-    }, [copyCategory, t]);
+    }, [copyCategory, handleItemChanged, t]);
 
     const renderBatchCopyButton = (category: string) => {
         const selected = selectedItemsMap[category] || [];
@@ -129,7 +144,7 @@ export default function Report() {
         return (
             <button
                 onClick={() => handleCopyClick(category)}
-                className="mb-2 px-3 py-1.5 text-sm bg-indigo-50 text-indigo-600 border border-indigo-200 rounded hover:bg-indigo-100 flex items-center gap-1 transition shadow-sm font-medium"
+                className="mb-3 flex min-h-10 items-center gap-2 rounded-xl bg-slate-100 px-3.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-200 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 active:scale-[0.98]"
             >
                 <Copy className="w-4 h-4" />
                 {t('batch_copy', '批次複製')} ({selected.length})
@@ -157,24 +172,10 @@ export default function Report() {
         preloadFlights();
     }, []);
 
-    // Initialize Report or Load existing
     const loadReport = useCallback(async () => {
         if (!user) return;
         setLoading(true);
         try {
-            // Step 1: Check if we have an active report ID in URL or local storage? 
-            // For prompt requirements: "Success sign in -> Report Input Page". 
-            // And "System auto generate ID".
-            // Let's assume we create a NEW report every time we enter this flow for MVP, 
-            // OR we should list existing reports.
-            // Prompt says "System auto generate report ID... everytime enter report page?" 
-            // "成功進入報告輸入頁時，系統要自動產生報告編號... 每次產生報告編號後，自動遞增數字1"
-            // This implies a NEW report is created on entry. 
-            // BUT, if I refresh page, do I get a new one? Probably yes based on strict reading.
-            // However, standard UX would be "Create New" or "Edit".
-            // Let's implement: On mount, ask backend to create new Report ID.
-
-            // Optimization: Use session storage to persist ID across reloads if same session?
             let activeReportId = sessionStorage.getItem('activeReportId');
             if (activeReportId === 'null' || activeReportId === 'undefined' || activeReportId === '') {
                 activeReportId = null;
@@ -188,9 +189,6 @@ export default function Report() {
             if (activeReportId) {
                 setReportId(activeReportId);
 
-                // Restore the last report snapshot immediately when returning
-                // from another route. The network request below still refreshes
-                // it, but it no longer replaces the workspace with a loader.
                 const cachedReport = readReportCache(activeReportId);
                 if (cachedReport) {
                     setReportData(cachedReport);
@@ -206,28 +204,11 @@ export default function Report() {
         } finally {
             setLoading(false);
         }
-    }, [navigate, user]);
-
-    const fetchReportData = async (id: string, forceRefresh = false) => {
-        try {
-            const res = await sendRequest('getReport', { reportId: id, userId: user?.id, forceRefresh });
-            if (res.status === 'success') {
-                setReportData(res.data);
-                setLocalReportName(res.data.header['報告名稱'] || '');
-                writeReportCache(id, res.data);
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    };
+    }, [fetchReportData, navigate, user]);
 
     useEffect(() => {
         loadReport();
     }, [loadReport]);
-
-    const handleItemChanged = async () => {
-        if (reportId) await fetchReportData(reportId, false);
-    };
 
     const handleSaveReportName = async () => {
         if (!canMutateReport) return;
@@ -267,7 +248,6 @@ export default function Report() {
     const reportIsLocked = Boolean(reportData?.header?.['狀態']);
     const canMutateReport = canEditReport && !reportIsLocked;
     const isOtherFormsDisabled = loadingCount > 0 || !hasFlights || !canMutateReport;
-
     const handleConfirmSave = () => {
         if (!reportData || !user) return;
         const formattedData = transformReportData(reportData, reportId, user.name, t);
@@ -290,7 +270,6 @@ export default function Report() {
 
     return (
         <>
-            <ChangePasswordModal isOpen={isChangePasswordModalOpen} onClose={() => setIsChangePasswordModalOpen(false)} />
             <CopyItemsModal
                 isOpen={copyModalOpen}
                 onClose={() => setCopyModalOpen(false)}
@@ -308,18 +287,9 @@ export default function Report() {
                 onReportNameChange={setLocalReportName}
                 onReportNameBlur={handleSaveReportName}
                 onBack={() => navigate('/dashboard')}
-                onFinish={handleConfirmSave}
+                onViewSummary={handleConfirmSave}
                 accountControls={(
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setIsChangePasswordModalOpen(true)}
-                            className="min-h-11 rounded-xl px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600"
-                        >
-                            {t('change_password')}
-                        </button>
-                        <LanguageSwitcher />
-                    </div>
+                    <LanguageSwitcher />
                 )}
             >
                 {reportData && (
@@ -408,7 +378,7 @@ export default function Report() {
                             <div className="rounded-2xl bg-slate-50 p-4">
                                 <p className="text-sm font-medium text-slate-500">{t('period')}</p>
                                 <p className="mt-2 font-bold text-slate-900">
-                                    {reportData.header['商旅起始日'] || '-'} to {reportData.header['商旅結束日'] || '-'}
+                                    {reportData.header['商旅起始日'] || '-'} {t('to', 'to')} {reportData.header['商旅結束日'] || '-'}
                                 </p>
                             </div>
                             <div className="rounded-2xl bg-slate-50 p-4">
@@ -426,14 +396,6 @@ export default function Report() {
                             <p className="text-sm text-slate-600">
                                 {t('workspace_review_hint', 'Need to change something? Use the navigation to return to the calendar or forms.')}
                             </p>
-                            <button
-                                type="button"
-                                onClick={handleConfirmSave}
-                                className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 text-sm font-bold text-white transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 active:scale-[0.98]"
-                            >
-                                <CheckCircle2 className="h-4 w-4" strokeWidth={1.8} />
-                                {t('confirm_finish')}
-                            </button>
                         </div>
                         </section>
                     </div>
@@ -442,11 +404,13 @@ export default function Report() {
                 {/* Sections */}
                 {reportData && (
                     <div hidden={activeTab !== 'expenses'} aria-hidden={activeTab !== 'expenses'}>
-                        <div className="mx-auto max-w-7xl">
+                        <div className="mx-auto grid max-w-[1400px] grid-cols-1 items-start gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
 
                 {/* Flight */}
                 <SectionAccordion
                     title={t('flight')}
+                    sectionKey="Flight"
+                    editing={Boolean(editingItems['Flight'])}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['機票費總額'] || 0)}
                     disabled={loadingCount > 0 || !canMutateReport}
@@ -455,8 +419,6 @@ export default function Report() {
                         {/* Add Form */}
                         <FlightForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={loadingCount > 0 || !canMutateReport}
@@ -467,7 +429,7 @@ export default function Report() {
 
 
                         {/* List */}
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Flight')}
                             <DataGrid
@@ -608,6 +570,8 @@ export default function Report() {
                 {/* Accommodation */}
                 <SectionAccordion
                     title={t('accommodation')}
+                    sectionKey="Accommodation"
+                    editing={Boolean(editingItems['Accommodation'])}
                     totalAmountText={t('personal_total')}
                     totalAmount={Number(reportData?.header['個人住宿費總額'] || 0)}
                     secondaryTotalAmountText={t('overall_total')}
@@ -617,8 +581,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <AccommodationForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -626,7 +588,7 @@ export default function Report() {
                             onCancelEdit={() => handleCancelEdit('Accommodation')}
                         />
 
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Accommodation')}
                             <DataGrid
@@ -688,6 +650,8 @@ export default function Report() {
                 {/* Rental Car */}
                 <SectionAccordion
                     title={t('rental_car')}
+                    sectionKey="Rental Car"
+                    editing={Boolean(editingItems['Rental Car'])}
                     totalAmountText={t('personal_total')}
                     totalAmount={Number(reportData?.header['個人租車費總額'] || 0)}
                     secondaryTotalAmountText={t('overall_total')}
@@ -697,8 +661,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <RentalCarForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -706,7 +668,7 @@ export default function Report() {
                             onCancelEdit={() => handleCancelEdit('Rental Car')}
                         />
 
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Rental Car')}
                             <DataGrid
@@ -770,6 +732,8 @@ export default function Report() {
                 {/* Gas */}
                 <SectionAccordion
                     title={t('gas')}
+                    sectionKey="Gas"
+                    editing={Boolean(editingItems['Gas'])}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['瓦斯費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -777,8 +741,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <GasForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -786,7 +748,7 @@ export default function Report() {
                             onCancelEdit={() => handleCancelEdit('Gas')}
                         />
 
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Gas')}
                             <DataGrid
@@ -832,6 +794,8 @@ export default function Report() {
                 {/* Parking */}
                 <SectionAccordion
                     title={t('parking')}
+                    sectionKey="Parking"
+                    editing={Boolean(editingItems['Parking'])}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['停車費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -839,8 +803,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <ParkingForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -848,7 +810,7 @@ export default function Report() {
                             onCancelEdit={() => handleCancelEdit('Parking')}
                         />
 
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Parking')}
                             <DataGrid
@@ -895,6 +857,8 @@ export default function Report() {
                 {/* Transportation */}
                 <SectionAccordion
                     title={t('transportation')}
+                    sectionKey="Transportation"
+                    editing={Boolean(editingItems['Transportation'])}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['交通運輸費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -902,8 +866,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <TransportationForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -911,7 +873,7 @@ export default function Report() {
                             onCancelEdit={() => handleCancelEdit('Transportation')}
                         />
 
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Transportation')}
                             <DataGrid
@@ -958,6 +920,8 @@ export default function Report() {
                 {/* Internet */}
                 <SectionAccordion
                     title={t('internet')}
+                    sectionKey="Internet"
+                    editing={Boolean(editingItems['Internet'])}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['網路費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -965,8 +929,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <InternetForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -974,7 +936,7 @@ export default function Report() {
                             onCancelEdit={() => handleCancelEdit('Internet')}
                         />
 
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Internet')}
                             <DataGrid
@@ -1020,6 +982,8 @@ export default function Report() {
                 {/* Social */}
                 <SectionAccordion
                     title={t('social')}
+                    sectionKey="Social"
+                    editing={Boolean(editingItems['Social'])}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['社交費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -1027,8 +991,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <SocialForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -1036,7 +998,7 @@ export default function Report() {
                             onCancelEdit={() => handleCancelEdit('Social')}
                         />
 
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Social')}
                             <DataGrid
@@ -1082,6 +1044,8 @@ export default function Report() {
                 {/* Gift */}
                 <SectionAccordion
                     title={t('gift')}
+                    sectionKey="Gift"
+                    editing={Boolean(editingItems['Gift'])}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['禮品費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -1089,8 +1053,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <GiftForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -1098,7 +1060,7 @@ export default function Report() {
                             onCancelEdit={() => handleCancelEdit('Gift')}
                         />
 
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Gift')}
                             <DataGrid
@@ -1144,6 +1106,8 @@ export default function Report() {
                 {/* Luggage Fee */}
                 <SectionAccordion
                     title={t('luggage_fee')}
+                    sectionKey="Luggage Fee"
+                    editing={Boolean(editingItems['Luggage Fee'])}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['行李費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -1151,8 +1115,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <LuggageFeeForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -1160,7 +1122,7 @@ export default function Report() {
                             onCancelEdit={() => handleCancelEdit('Luggage Fee')}
                         />
 
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Luggage Fee')}
                             <DataGrid
@@ -1206,6 +1168,8 @@ export default function Report() {
                 {/* Handing Fee */}
                 <SectionAccordion
                     title={t('handing_fee')}
+                    sectionKey="Handing Fee"
+                    editing={Boolean(editingItems['Handing Fee'])}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['手續費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -1213,8 +1177,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <HandingFeeForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -1222,7 +1184,7 @@ export default function Report() {
                             onCancelEdit={() => handleCancelEdit('Handing Fee')}
                         />
 
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Handing Fee')}
                             <DataGrid
@@ -1268,6 +1230,8 @@ export default function Report() {
                 {/* Per Diem */}
                 <SectionAccordion
                     title={t('per_diem')}
+                    sectionKey="Per Diem"
+                    editing={Boolean(editingItems['Per Diem'])}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['日支費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -1275,10 +1239,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <PerDiemForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
-                            tripEndDate={reportData?.header['商旅結束日']}
-                            flights={reportData?.items?.Flight || []}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -1286,7 +1246,7 @@ export default function Report() {
                             onCancelEdit={() => handleCancelEdit('Per Diem')}
                         />
 
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Per Diem')}
                             <DataGrid
@@ -1341,6 +1301,8 @@ export default function Report() {
                 {/* Advance Payment */}
                 <SectionAccordion
                     title={t('advance_payment_category')}
+                    sectionKey="Advance Payment"
+                    editing={Boolean(editingItems['Advance Payment'])}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['預支費用總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -1349,8 +1311,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <AdvancePaymentForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -1358,7 +1318,7 @@ export default function Report() {
                             onCancelEdit={() => handleCancelEdit('Advance Payment')}
                         />
 
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Advance Payment')}
                             <DataGrid
@@ -1404,6 +1364,8 @@ export default function Report() {
                 {/* Others */}
                 <SectionAccordion
                     title={t('others')}
+                    sectionKey="Others"
+                    editing={Boolean(editingItems['Others'])}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['其他費用總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -1411,8 +1373,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <OthersForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -1420,7 +1380,7 @@ export default function Report() {
                             onCancelEdit={() => handleCancelEdit('Others')}
                         />
 
-                        <div className="mt-4">
+                        <div className="expense-list-panel mt-4">
                             <h4 className="text-md font-medium text-gray-700 mb-2">{t('input_data')}</h4>
                             {renderBatchCopyButton('Others')}
                             <DataGrid
@@ -1467,6 +1427,8 @@ export default function Report() {
                 {/* Lunch & Learn */}
                 <SectionAccordion
                     title={t('lunch_learn')}
+                    sectionKey="Lunch & Learn"
+                    editing={Boolean(editingItems['Lunch & Learn'])}
                     totalAmountText={t('total_amount_text')}
                     totalAmount={Number(reportData?.header['午餐與學費總額'] || 0)}
                     disabled={isOtherFormsDisabled}
@@ -1474,8 +1436,6 @@ export default function Report() {
                     <div className="space-y-6">
                         <LunchLearnForm
                             reportId={reportId}
-                            headerRate={Number(reportData?.header['USD匯率'] || 0)}
-                            tripStartDate={reportData?.header['商旅起始日']}
                             onSubmitSuccess={handleItemChanged}
                             onLoadingChange={handleLoadingChange}
                             disabled={isOtherFormsDisabled}
@@ -1528,11 +1488,11 @@ export default function Report() {
                 </SectionAccordion>
 
                 {/* Total Summary Table */}
-                <div className="mt-8 border-t pt-6 bg-gray-50 p-4 rounded-lg">
-                    <h3 className="text-lg font-bold mb-4 text-gray-800">{t('expense_summary')}</h3>
+                <div className="expense-summary-panel order-first col-span-full mb-1 w-full rounded-[20px] bg-white/90 p-5 shadow-[0_8px_28px_rgba(74,91,124,0.07)] ring-1 ring-slate-200/60 sm:p-6">
+                    <h3 className="mb-4 text-xl font-bold tracking-tight text-slate-950">{t('expense_summary')}</h3>
                     <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-300 border border-gray-300">
-                            <thead className="bg-gray-100">
+                        <table className="w-full min-w-[560px] text-base">
+                            <thead>
                                 <tr>
                                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border-r border-gray-300">{t('item')}</th>
                                     <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider border-r border-gray-300">{t('personal')}</th>
@@ -1542,40 +1502,40 @@ export default function Report() {
                             <tbody className="bg-white divide-y divide-gray-200">
                                 <tr className="bg-red-50 text-red-600">
                                     <td className="px-4 py-3 text-sm font-medium border-r border-gray-300">{t('advance_payment_summary')}(TWD)</td>
-                                    <td className="px-4 py-3 text-sm text-right border-r border-gray-300 font-mono">
+                                    <td className="px-4 py-3 text-sm text-right border-r border-gray-300 tabular-nums">
                                         -
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-right font-mono">
+                                    <td className="px-4 py-3 text-sm text-right tabular-nums">
                                         {Number(reportData?.header['預支費用總額'] || 0).toLocaleString()}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className="px-4 py-3 text-sm font-medium text-gray-900 border-r border-gray-300">{t('total_twd')}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-900 text-right border-r border-gray-300 font-mono">
+                                    <td className="px-4 py-3 text-sm text-gray-900 text-right border-r border-gray-300 tabular-nums">
                                         {Number(reportData?.header['合計TWD個人總額'] || 0).toLocaleString()}
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-gray-900 text-right font-mono">
+                                    <td className="px-4 py-3 text-sm text-gray-900 text-right tabular-nums">
                                         {Number(reportData?.header['合計TWD總體總額'] || 0).toLocaleString()}
                                     </td>
                                 </tr>
                                 <tr className="bg-blue-50 text-blue-700">
                                     <td className="px-4 py-3 text-sm font-medium border-r border-gray-300">{t('payable_summary')}(TWD)</td>
-                                    <td className="px-4 py-3 text-sm text-right border-r border-gray-300 font-mono">
+                                    <td className="px-4 py-3 text-sm text-right border-r border-gray-300 tabular-nums">
                                         -
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-right font-mono font-bold">
+                                    <td className="px-4 py-3 text-sm text-right tabular-nums font-bold">
                                         {Number((reportData?.header['合計TWD總體總額'] || 0) - (reportData?.header['預支費用總額'] || 0)).toLocaleString()}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td className="px-4 py-3 text-sm font-medium text-gray-900 border-r border-gray-300">{t('avg_day_twd')}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-900 text-right border-r border-gray-300 font-mono">
+                                    <td className="px-4 py-3 text-sm text-gray-900 text-right border-r border-gray-300 tabular-nums">
                                         {(() => {
                                             const val = Number(reportData?.header['合計TWD個人平均'] || 0);
                                             return isFinite(val) ? val.toLocaleString(undefined, { maximumFractionDigits: 1 }) : '0.0';
                                         })()}
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-gray-900 text-right font-mono">
+                                    <td className="px-4 py-3 text-sm text-gray-900 text-right tabular-nums">
                                         {(() => {
                                             const val = Number(reportData?.header['合計TWD總體平均'] || 0);
                                             return isFinite(val) ? val.toLocaleString(undefined, { maximumFractionDigits: 1 }) : '0.0';
@@ -1584,22 +1544,22 @@ export default function Report() {
                                 </tr>
                                 <tr>
                                     <td className="px-4 py-3 text-sm font-medium text-gray-900 border-r border-gray-300">{t('total_usd')}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-900 text-right border-r border-gray-300 font-mono">
+                                    <td className="px-4 py-3 text-sm text-gray-900 text-right border-r border-gray-300 tabular-nums">
                                         {Number(reportData?.header['合計USD個人總額'] || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-gray-900 text-right font-mono">
+                                    <td className="px-4 py-3 text-sm text-gray-900 text-right tabular-nums">
                                         {Number(reportData?.header['合計USD總體總額'] || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                     </td>
                                 </tr>
                                 <tr className="bg-gray-50">
                                     <td className="px-4 py-3 text-sm font-medium text-gray-900 border-r border-gray-300">{t('avg_day_usd')}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-900 text-right border-r border-gray-300 font-mono">
+                                    <td className="px-4 py-3 text-sm text-gray-900 text-right border-r border-gray-300 tabular-nums">
                                         {(() => {
                                             const val = Number(reportData?.header['合計USD個人平均'] || 0);
                                             return isFinite(val) ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0.00';
                                         })()}
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-gray-900 text-right font-mono">
+                                    <td className="px-4 py-3 text-sm text-gray-900 text-right tabular-nums">
                                         {(() => {
                                             const val = Number(reportData?.header['合計USD總體平均'] || 0);
                                             return isFinite(val) ? val.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0.00';
