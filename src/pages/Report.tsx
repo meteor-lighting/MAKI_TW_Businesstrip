@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Copy, ReceiptText } from 'lucide-react';
 import { transformReportData } from '../utils/reportTransformer';
 import { formatTimeHHmm } from '../utils/formatters';
+import { canEditReport as userCanEditReport } from '../utils/reportPermissions';
 
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -240,11 +241,7 @@ export default function Report() {
 
     const hasFlights = (reportData?.items?.Flight?.length || 0) > 0;
     const reportOwnerId = String(reportData?.header?.ownerId || '');
-    const canEditReport = Boolean(
-        reportData
-        && user?.id
-        && (user.role === 'admin' || reportOwnerId === user.id),
-    );
+    const canEditReport = Boolean(reportData && userCanEditReport(reportOwnerId, user));
     const reportIsLocked = Boolean(reportData?.header?.['狀態']);
     const canMutateReport = canEditReport && !reportIsLocked;
     const isOtherFormsDisabled = loadingCount > 0 || !hasFlights || !canMutateReport;
