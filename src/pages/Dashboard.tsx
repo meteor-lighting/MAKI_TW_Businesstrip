@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { format } from 'date-fns';
 import MemberPermissionModal from '../components/Admin/MemberPermissionModal';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import { canEditReport } from '../utils/reportPermissions';
 
 interface ReportSummary {
     reportId: string;
@@ -334,7 +335,7 @@ const Dashboard: React.FC = () => {
                                                 {report.status ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                                             </button>
                                         )}
-                                        {(user?.role === 'admin' || user?.canCopyOthers || String(report.userId) === String(user?.id)) && (
+                                        {(canEditReport(report.userId, user) || user?.canCopyOthers) && (
                                             <button
                                                 type="button"
                                                 onClick={(e) => handleCopyReport(e, report)}
@@ -344,7 +345,7 @@ const Dashboard: React.FC = () => {
                                                 <Copy className="h-4 w-4" />
                                             </button>
                                         )}
-                                        {!report.status && (user?.role === 'admin' || String(report.userId) === String(user?.id)) && (
+                                        {!report.status && canEditReport(report.userId, user) && (
                                             <button
                                                 type="button"
                                                 onClick={(e) => handleDeleteClick(e, report)}
@@ -358,8 +359,8 @@ const Dashboard: React.FC = () => {
                             </div>
                             <div className="mt-auto pt-3 flex justify-end">
                                 <span className={`text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 mb-1
-                                    ${(report.status || (user?.role !== 'admin' && String(report.userId) !== String(user?.id))) ? 'text-gray-500' : 'text-blue-600'}`}>
-                                    {(report.status || (user?.role !== 'admin' && String(report.userId) !== String(user?.id))) ? (
+                                    ${(report.status || !canEditReport(report.userId, user)) ? 'text-gray-500' : 'text-blue-600'}`}>
+                                    {(report.status || !canEditReport(report.userId, user)) ? (
                                         <>
                                             <Eye className="w-4 h-4" /> {t('view_summary')} &rarr;
                                         </>

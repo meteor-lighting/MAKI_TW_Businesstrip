@@ -3,7 +3,9 @@ import { loadCurrentUser, sendRequest } from '../services/api';
 import { supabase } from '../lib/supabase';
 
 export interface User {
+    /** Employee code used for display and legacy API compatibility. */
     id: string;
+    /** Supabase Auth UUID. Use this value for database ownership checks. */
     authId?: string;
     name: string;
     email: string;

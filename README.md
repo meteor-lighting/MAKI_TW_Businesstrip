@@ -23,7 +23,7 @@ source files.
 
 ## Local setup
 
-1. Install Node.js 20 or later and project dependencies:
+1. Install Node.js 24 LTS and project dependencies:
 
    ```sh
    npm install
