@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Trash2, Edit, Hourglass, Copy, ChevronDown } from 'lucide-react';
+import { Trash2, Edit, Hourglass, Copy, ChevronDown, Image as ImageIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import ReceiptPreviewModal from './ReceiptPreviewModal';
+import { getReceiptAttachments, ReceiptAttachment } from './receiptUtils';
 
 interface Column<T> {
     key: keyof T | 'actions';
@@ -54,6 +56,7 @@ export default function DataGrid<T>({
     const { t } = useTranslation();
     const [isDeleting, setIsDeleting] = useState(false);
     const [expandedMobileRows, setExpandedMobileRows] = useState<Set<string>>(() => new Set());
+    const [receiptPreviewAttachments, setReceiptPreviewAttachments] = useState<ReceiptAttachment[] | null>(null);
 
     const toggleMobileRow = (rowKey: string) => {
         setExpandedMobileRows((current) => {
@@ -127,8 +130,17 @@ export default function DataGrid<T>({
         );
     }
 
+    const getItemReceiptAttachments = (item: T) => getReceiptAttachments(item as unknown as Record<string, unknown>);
+    const dataHasReceipts = data.some((item) => getItemReceiptAttachments(item).length > 0);
+    const hasActions = Boolean(onDelete || onEdit || onCopy || dataHasReceipts);
+
     return (
-        <div className="expense-list-panel relative overflow-hidden rounded-2xl bg-slate-50/70 ring-1 ring-slate-200/60">
+        <>
+            <ReceiptPreviewModal
+                attachments={receiptPreviewAttachments || []}
+                onClose={() => setReceiptPreviewAttachments(null)}
+            />
+            <div className="expense-list-panel relative overflow-hidden rounded-2xl bg-slate-50/70 ring-1 ring-slate-200/60">
             {isDeleting && (
                 <div className="absolute inset-0 z-50 flex flex-col items-center justify-center rounded-2xl bg-white/80 backdrop-blur-sm">
                     <Hourglass className="h-8 w-8 animate-spin text-blue-600" />
@@ -140,6 +152,7 @@ export default function DataGrid<T>({
                 {data.map((item) => {
                     const isSelected = selectedItems.some(i => i[keyField] === item[keyField]);
                     const rowKey = String(item[keyField]);
+                    const receiptAttachments = getItemReceiptAttachments(item);
                     const isExpanded = expandedMobileRows.has(rowKey);
                     const titleValue = mobileTitleColumn
                         ? formatGridValue(mobileTitleColumn.render
@@ -230,7 +243,7 @@ export default function DataGrid<T>({
 
                             {isExpanded && (
                                 <div id={detailId} className="border-t border-slate-100 px-4 pb-4 pt-3">
-                                    {(onDelete || onEdit || onCopy) && (
+                                    {hasActions && (
                                         <div className="mb-3 flex items-center justify-end gap-1">
                                             {onCopy && (
                                                 <button
@@ -266,6 +279,18 @@ export default function DataGrid<T>({
                                                     disabled={isDeleting || disabled}
                                                 >
                                                     <Trash2 size={18} />
+                                                </button>
+                                            )}
+                                            {receiptAttachments.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setReceiptPreviewAttachments(receiptAttachments)}
+                                                    className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 transition hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-50"
+                                                    title={t('calendar_preview_receipt', 'View receipt')}
+                                                    aria-label={t('calendar_preview_receipt', 'View receipt')}
+                                                    disabled={isDeleting}
+                                                >
+                                                    <ImageIcon size={18} />
                                                 </button>
                                             )}
                                         </div>
@@ -318,7 +343,7 @@ export default function DataGrid<T>({
                                 {col.header}
                             </th>
                         ))}
-                        {(onDelete || onEdit || onCopy) && (
+                        {hasActions && (
                             <th scope="col" className="px-5 py-3.5 text-right text-xs font-semibold text-slate-500">
                                 {t('actions', 'Actions')}
                             </th>
@@ -328,6 +353,7 @@ export default function DataGrid<T>({
                 <tbody className="divide-y divide-slate-100 bg-white">
                     {data.map((item) => {
                         const isSelected = selectedItems.some(i => i[keyField] === item[keyField]);
+                        const receiptAttachments = getItemReceiptAttachments(item);
                         return (
                             <tr key={String(item[keyField])} className={`transition-colors hover:bg-slate-50 ${isSelected ? 'bg-blue-50' : ''}`}>
                                 {selectable && (
@@ -346,7 +372,7 @@ export default function DataGrid<T>({
                                         {formatGridValue(col.render ? col.render(item) : String(item[col.key as keyof T]))}
                                     </td>
                                 ))}
-                                {(onDelete || onEdit || onCopy) && (
+                                {hasActions && (
                                     <td className="whitespace-nowrap px-5 py-3 text-right text-sm font-medium">
                                         <div className="flex justify-end gap-1">
                                             {onCopy && (
@@ -382,6 +408,18 @@ export default function DataGrid<T>({
                                                     <Trash2 size={18} />
                                                 </button>
                                             )}
+                                            {receiptAttachments.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setReceiptPreviewAttachments(receiptAttachments)}
+                                                    className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:opacity-50"
+                                                    title={t('calendar_preview_receipt', 'View receipt')}
+                                                    aria-label={t('calendar_preview_receipt', 'View receipt')}
+                                                    disabled={isDeleting}
+                                                >
+                                                    <ImageIcon size={18} />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 )}
@@ -391,6 +429,7 @@ export default function DataGrid<T>({
                 </tbody>
                 </table>
             </div>
-        </div>
+            </div>
+        </>
     );
 }
