@@ -287,7 +287,7 @@ const Dashboard: React.FC = () => {
                             </div>
 
                             <div className="mb-2 min-h-[2.5rem]">
-                                <h2 className="line-clamp-2 break-words text-xl font-black leading-tight tracking-tight text-slate-950 sm:text-2xl" title={report.reportName || report.reportId}>
+                                <h2 className="line-clamp-2 break-words text-xl font-semibold leading-tight tracking-tight text-slate-950 sm:text-2xl" title={report.reportName || report.reportId}>
                                     {report.reportName || report.reportId}
                                 </h2>
                             </div>
@@ -316,7 +316,7 @@ const Dashboard: React.FC = () => {
                             <div className="flex items-end justify-between gap-3 border-t border-slate-100 pt-4">
                                 <div className="min-w-0">
                                     <div className="text-[11px] font-semibold text-slate-400">{t('payable_amount', 'Payable amount')}</div>
-                                    <div className="truncate text-lg font-black tracking-tight text-slate-950">
+                                    <div className="truncate text-lg font-semibold tracking-tight text-slate-950">
                                         {report.paymentCurrency} {(report.paymentCurrency === 'USD' ? ((report.totalUSDAmount || 0) - ((report.advanceAmount || 0)/(report.rate || 1))) : ((report.totalAmount || 0) - (report.advanceAmount || 0)))?.toLocaleString(undefined, { minimumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0, maximumFractionDigits: report.paymentCurrency === 'USD' ? 2 : 0 }) || 0}
                                     </div>
                                     <div className="text-xs text-slate-400">
@@ -357,7 +357,13 @@ const Dashboard: React.FC = () => {
                                         )}
                                     </div>
                             </div>
-                            <div className="mt-auto pt-3 flex justify-end">
+                            <div className="mt-auto flex items-center justify-between gap-3 pt-3">
+                                <span
+                                    className="min-w-0 truncate text-[11px] font-semibold tracking-wide text-slate-400"
+                                    title={report.reportId}
+                                >
+                                    {report.reportId}
+                                </span>
                                 <span className={`text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 mb-1
                                     ${(report.status || !canEditReport(report.userId, user)) ? 'text-gray-500' : 'text-blue-600'}`}>
                                     {(report.status || !canEditReport(report.userId, user)) ? (

@@ -295,7 +295,7 @@ export default function SectionAccordion({
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby={dialogTitleId}
-                        className="expense-modal-panel relative flex max-h-[96dvh] w-full max-w-[1180px] flex-col overflow-hidden rounded-t-[24px] bg-white shadow-[0_28px_90px_rgba(15,23,42,0.24)] sm:max-h-[92dvh] sm:rounded-[24px]"
+                        className="expense-modal-panel relative flex max-h-[96dvh] w-full max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-t-[24px] bg-white shadow-[0_28px_90px_rgba(15,23,42,0.24)] sm:max-h-[92dvh] sm:rounded-[24px]"
                     >
                         <div className={`shrink-0 bg-gradient-to-br ${visual.surface} px-4 py-4 sm:px-6 sm:py-5`}>
                             <div className="flex items-start justify-between gap-4">
