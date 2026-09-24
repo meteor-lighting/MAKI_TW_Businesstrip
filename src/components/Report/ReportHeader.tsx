@@ -177,6 +177,7 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
                         <option value="HKD">HKD</option>
                         <option value="THB">THB</option>
                         <option value="CAD">CAD</option>
+                        <option value="SGD">SGD</option>
                         </select>
                     </div>
 

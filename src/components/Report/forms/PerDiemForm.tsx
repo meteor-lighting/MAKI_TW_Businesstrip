@@ -103,6 +103,7 @@ const PerDiemForm: React.FC<PerDiemFormProps> = ({
                         <option value="CNY">CNY</option>
                         <option value="HKD">HKD</option>
                         <option value="THB">THB</option>
+                        <option value="SGD">SGD</option>
                     </select>
                 </div>
                 <div className="space-y-1">

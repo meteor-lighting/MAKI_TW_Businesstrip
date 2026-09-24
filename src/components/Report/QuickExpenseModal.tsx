@@ -398,7 +398,7 @@ export default function QuickExpenseModal({
                                 onChange={(event) => setCurrency(event.target.value)}
                                 className="h-12 w-full rounded-xl border border-slate-300 bg-white px-3 font-semibold text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20"
                             >
-                                {['TWD', 'USD', 'EUR', 'JPY', 'CNY', 'HKD', 'THB', 'CAD'].map((code) => (
+                                {['TWD', 'USD', 'EUR', 'JPY', 'CNY', 'HKD', 'THB', 'CAD', 'SGD'].map((code) => (
                                     <option key={code} value={code}>{code}</option>
                                 ))}
                             </select>
