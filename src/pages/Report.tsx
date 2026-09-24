@@ -335,7 +335,7 @@ export default function Report() {
                             reportId={reportId}
                             header={reportData.header}
                             items={reportData.items}
-                            isAdmin={user?.role === 'admin'}
+                            canEdit={canMutateReport}
                             onSaved={handleItemChanged}
                         />
                     </div>
