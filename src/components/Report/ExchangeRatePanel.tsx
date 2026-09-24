@@ -7,7 +7,7 @@ interface ExchangeRatePanelProps {
     reportId: string;
     header: Record<string, any>;
     items: Record<string, any[]>;
-    isAdmin: boolean;
+    canEdit: boolean;
     onSaved: () => Promise<void> | void;
 }
 
@@ -38,7 +38,7 @@ function expenseRateDate(category: string, item: Record<string, any>) {
     return parsed.toISOString().slice(0, 10);
 }
 
-export default function ExchangeRatePanel({ reportId, header, items, isAdmin, onSaved }: ExchangeRatePanelProps) {
+export default function ExchangeRatePanel({ reportId, header, items, canEdit, onSaved }: ExchangeRatePanelProps) {
     const { t } = useTranslation();
     const usdRate = Number(header['USD匯率'] || 0);
     const paymentCurrency = String(header['支付幣別'] || 'TWD').toUpperCase();
@@ -157,9 +157,9 @@ export default function ExchangeRatePanel({ reportId, header, items, isAdmin, on
                             <TrendingUp className="h-4 w-4" strokeWidth={1.8} />
                             {paymentCurrency} {t('exchange_rate_report_currency', 'report currency')}
                         </span>
-                        {isAdmin && (
+                        {canEdit && (
                             <span className="inline-flex min-h-9 items-center rounded-full bg-blue-50 px-3 text-xs font-bold text-blue-700">
-                                {t('exchange_rate_admin_hint', 'Admin can edit rates')}
+                                {t('exchange_rate_edit_hint', 'All users can edit rates')}
                             </span>
                         )}
                     </div>
@@ -210,7 +210,7 @@ export default function ExchangeRatePanel({ reportId, header, items, isAdmin, on
                                         ? t('exchange_rate_report_source', 'Report')
                                     : t('exchange_rate_expense_source', 'Expense')}
                             </span>
-                            {row.currency === 'TWD' || !isAdmin ? (
+                            {row.currency === 'TWD' || !canEdit ? (
                                 <span className="text-xs text-slate-400">—</span>
                             ) : editingCurrency === row.currency ? (
                                 <div className="flex items-center gap-1">
@@ -250,7 +250,7 @@ export default function ExchangeRatePanel({ reportId, header, items, isAdmin, on
 
                 <div className="mt-5 flex items-start gap-3 rounded-xl bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900">
                     <Info className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.8} />
-                    <p>{t('exchange_rate_note', 'TWD is fixed at 1.000. Admins can edit any other currency rate, and existing payments in that currency will be recalculated.')}</p>
+                    <p>{t('exchange_rate_note', 'TWD is fixed at 1.000. Users with edit access can change any other currency rate, and existing payments in that currency will be recalculated.')}</p>
                 </div>
                 {error && <p className="text-sm font-medium text-red-700" role="alert">{error}</p>}
             </div>
